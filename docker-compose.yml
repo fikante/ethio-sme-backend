@@ -1,0 +1,34 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ethio_sme_app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - postgres
+    environment:
+      - APP_ENV=local
+      - DB_HOST=postgres
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: ethio_sme_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ethio_sme
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
