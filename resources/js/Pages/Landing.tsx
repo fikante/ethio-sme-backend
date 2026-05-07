@@ -101,7 +101,27 @@ export default function Landing() {
             <Head title="Ethio‑SME Valuation System" />
 
             <div className="min-h-screen bg-black text-white">
+                {/* Hero background image */}
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
+                    <div
+                        className="absolute inset-0 bg-[url('/photos/image.png')] bg-cover bg-[center_30%] opacity-[0.60] [animation:heroKenBurns_18s_ease-in-out_infinite]"
+                        aria-hidden="true"
+                    />
+                    {/* Vignette + readability overlays */}
+                    <div
+                        className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/70"
+                        aria-hidden="true"
+                    />
+                    <div
+                        className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.18),transparent_55%)]"
+                        aria-hidden="true"
+                    />
+                    {/* Subtle animated highlight blob */}
+                    <div
+                        className="absolute -left-24 top-24 h-[30rem] w-[30rem] rounded-full bg-white/15 blur-3xl [animation:heroFloat_9s_ease-in-out_infinite]"
+                        aria-hidden="true"
+                    />
+
                     <div className="absolute left-1/2 top-[-14rem] h-[30rem] w-[60rem] -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
                     <div className="absolute right-[-10rem] top-[8rem] h-[22rem] w-[22rem] rounded-full bg-white/5 blur-3xl" />
                     <div className="absolute bottom-[-14rem] left-[-12rem] h-[28rem] w-[28rem] rounded-full bg-white/5 blur-3xl" />
