@@ -21,7 +21,37 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user;
+    const user = usePage().props.auth.user as
+        | {
+              id: number;
+              name: string;
+              email: string;
+              roles?: string[];
+              permissions?: string[];
+          }
+        | null;
+    const roles = user?.roles ?? [];
+    const isSuperAdmin = roles.includes("super-admin");
+    const isSmeOwner = roles.includes("sme-owner");
+    const isLoanProvider = roles.includes("loan-provider");
+    const userName = user?.name ?? "User";
+    const userEmail = user?.email ?? "";
+
+    const safeRoute = (name: string) => {
+        try {
+            return route(name);
+        } catch {
+            return "#";
+        }
+    };
+
+    const safeCurrent = (name: string) => {
+        try {
+            return route().current(name);
+        } catch {
+            return false;
+        }
+    };
 
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -68,8 +98,8 @@ export default function Authenticated({
         () => [
             {
                 name: "Dashboard",
-                href: route("dashboard"),
-                active: route().current("dashboard"),
+                href: safeRoute("dashboard"),
+                active: safeCurrent("dashboard"),
                 icon: (
                     <svg
                         viewBox="0 0 24 24"
@@ -95,13 +125,15 @@ export default function Authenticated({
                 label: "Overview",
                 items: [...navigation],
             },
-            {
+            ...(isSuperAdmin || isSmeOwner
+                ? ([
+                      {
                 label: "Borrower (SME Owner)",
                 items: [
                     {
                         name: "Psychometrics",
-                        href: route("psychometrics"),
-                        active: route().current("psychometrics"),
+                href: safeRoute("psychometrics"),
+                active: safeCurrent("psychometrics"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -120,8 +152,8 @@ export default function Authenticated({
                     },
                     {
                         name: "Integrations",
-                        href: route("integrations"),
-                        active: route().current("integrations"),
+                href: safeRoute("integrations"),
+                active: safeCurrent("integrations"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -145,8 +177,8 @@ export default function Authenticated({
                     },
                     {
                         name: "SME Valuation",
-                        href: route("sme.valuation"),
-                        active: route().current("sme.valuation"),
+                href: safeRoute("sme.valuation"),
+                active: safeCurrent("sme.valuation"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -174,14 +206,18 @@ export default function Authenticated({
                         ),
                     },
                 ],
-            },
-            {
+                      },
+                  ] satisfies NavSection[])
+                : []),
+            ...(isSuperAdmin || isLoanProvider
+                ? ([
+                      {
                 label: "Lender (Loan Officer)",
                 items: [
                     {
                         name: "Applications Pipeline",
-                        href: route("applications.pipeline"),
-                        active: route().current("applications.pipeline"),
+                href: safeRoute("applications.pipeline"),
+                active: safeCurrent("applications.pipeline"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -215,8 +251,8 @@ export default function Authenticated({
                     },
                     {
                         name: "Risk & Forecast",
-                        href: route("risk.forecast"),
-                        active: route().current("risk.forecast"),
+                href: safeRoute("risk.forecast"),
+                active: safeCurrent("risk.forecast"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -240,8 +276,8 @@ export default function Authenticated({
                     },
                     {
                         name: "Decisioning & XAI",
-                        href: route("decisioning.xai"),
-                        active: route().current("decisioning.xai"),
+                href: safeRoute("decisioning.xai"),
+                active: safeCurrent("decisioning.xai"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -264,14 +300,18 @@ export default function Authenticated({
                         ),
                     },
                 ],
-            },
-            {
+                      },
+                  ] satisfies NavSection[])
+                : []),
+            ...(isSuperAdmin
+                ? ([
+                      {
                 label: "Admin / Audit",
                 items: [
                     {
                         name: "Macroeconomic Factors",
-                        href: route("admin.macroeconomic"),
-                        active: route().current("admin.macroeconomic"),
+                href: safeRoute("admin.macroeconomic"),
+                active: safeCurrent("admin.macroeconomic"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -295,8 +335,8 @@ export default function Authenticated({
                     },
                     {
                         name: "Fairness Audit",
-                        href: route("admin.fairness"),
-                        active: route().current("admin.fairness"),
+                href: safeRoute("admin.fairness"),
+                active: safeCurrent("admin.fairness"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"
@@ -329,9 +369,18 @@ export default function Authenticated({
                         ),
                     },
                 ],
-            },
+                      },
+                  ] satisfies NavSection[])
+                : []),
         ],
-        [navigation],
+        [
+            navigation,
+            isSuperAdmin,
+            isSmeOwner,
+            isLoanProvider,
+            safeCurrent,
+            safeRoute,
+        ],
     );
 
     const SidebarNav = ({ className = "" }: { className?: string }) => (
@@ -356,6 +405,7 @@ export default function Authenticated({
                             <Link
                                 key={item.name}
                                 href={item.href}
+                                onClick={() => setSidebarOpen(false)}
                                 className={[
                                     "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition",
                                     item.active
@@ -625,7 +675,7 @@ export default function Authenticated({
                                 </div>
                             ) : (
                                 <div className="truncate text-base font-semibold text-gray-900">
-                                    {route().current("dashboard")
+                                    {safeCurrent("dashboard")
                                         ? "Dashboard"
                                         : "Overview"}
                                 </div>
@@ -641,17 +691,17 @@ export default function Authenticated({
                                         className="inline-flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:focus:ring-white/40"
                                     >
                                         <span className="grid h-9 w-9 place-items-center rounded-full bg-gray-900 text-sm font-semibold text-white">
-                                            {String(user.name ?? "U")
+                                            {String(userName ?? "U")
                                                 .trim()
                                                 .slice(0, 1)
                                                 .toUpperCase()}
                                         </span>
                                         <span className="min-w-0 text-left">
                                             <span className="block max-w-[12rem] truncate text-sm font-semibold text-gray-900 dark:text-white">
-                                                {user.name}
+                                                {userName}
                                             </span>
                                             <span className="block max-w-[12rem] truncate text-xs text-gray-500 dark:text-white/60">
-                                                {user.email}
+                                                {userEmail}
                                             </span>
                                         </span>
                                     </button>
@@ -663,16 +713,16 @@ export default function Authenticated({
                                     <div className="w-48">
                                         <div className="border-b border-gray-100 px-4 py-3 dark:border-white/10">
                                             <div className="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                                                {user.name}
+                                                {userName}
                                             </div>
                                             <div className="truncate text-xs text-gray-500 dark:text-white/60">
-                                                {user.email}
+                                                {userEmail}
                                             </div>
                                         </div>
 
                                         <div className="p-1">
                                             <Dropdown.Link
-                                                href={route("profile.edit")}
+                                                href={safeRoute("profile.edit")}
                                                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:text-white/80 dark:hover:bg-white/10"
                                             >
                                                 <svg
@@ -698,7 +748,7 @@ export default function Authenticated({
                                             </Dropdown.Link>
 
                                             <Dropdown.Link
-                                                href={route("logout")}
+                                                href={safeRoute("logout")}
                                                 method="post"
                                                 as="button"
                                                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-white/10"

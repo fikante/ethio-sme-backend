@@ -22,9 +22,10 @@ class InjectSyntheticStatementAction
     {
         return DB::transaction(function () use ($business, $request): array {
             if ($request->idempotencyKey !== null) {
+                $baseKey = $request->idempotencyKey;
                 $existing = RawTransaction::query()
                     ->where('business_id', $business->id)
-                    ->where('idempotency_key', $request->idempotencyKey)
+                    ->where('idempotency_key', 'like', $baseKey.':%')
                     ->exists();
 
                 if ($existing) {
@@ -32,14 +33,19 @@ class InjectSyntheticStatementAction
                         'business' => $business,
                         'transactions_count' => RawTransaction::query()
                             ->where('business_id', $business->id)
-                            ->where('idempotency_key', $request->idempotencyKey)
+                            ->where('idempotency_key', 'like', $baseKey.':%')
                             ->count(),
                     ];
                 }
             }
 
             $count = 0;
+            $index = 1;
             foreach ($this->generator->generate($business, $request->days) as $payload) {
+                $idempotencyKey = $request->idempotencyKey !== null
+                    ? $request->idempotencyKey.':'.$index
+                    : null;
+
                 $data = new RawTransactionData(
                     businessId: $business->id,
                     providerTxRef: $payload->trxRef,
@@ -51,11 +57,12 @@ class InjectSyntheticStatementAction
                     rawPayload: $payload->toRawPayload(),
                     transactedAt: $payload->createdAt,
                     source: TransactionSource::ChapaSimulated,
-                    idempotencyKey: $request->idempotencyKey,
+                    idempotencyKey: $idempotencyKey,
                 );
 
                 RawTransaction::create($data->toAttributes());
                 $count++;
+                $index++;
             }
 
             LoanApplication::query()
