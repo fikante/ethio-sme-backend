@@ -2,46 +2,81 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Auth\Enums\PermissionName;
+use App\Domain\Auth\Enums\RoleName;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
+    /**
+     * Seeds the canonical permission catalog from PRD §14.4 and the three
+     * production roles from §5. Also seeds backward-compatible aliases
+     * used by the legacy web (Inertia) layer.
+     */
     public function run(): void
     {
-        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $permissions = [
-            'view applications',
-            'create applications',
-            'evaluate applications',
-            'decide applications',
-            'view own applications',
-            'submit psychometric',
-            'trigger simulation',
-            'manage exogenous factors',
-            'view fairness metrics',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+        foreach (PermissionName::values() as $permissionName) {
+            Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'api']);
+            Permission::firstOrCreate(['name' => $permissionName, 'guard_name' => 'web']);
         }
 
-        Role::firstOrCreate(['name' => 'sme_owner'])->syncPermissions([
-            'view own applications',
-            'create applications',
-            'submit psychometric',
-            'trigger simulation',
-        ]);
+        $rolePermissions = [
+            RoleName::SmeOwner->value => [
+                PermissionName::AuthLogout->value,
+                PermissionName::BusinessesSelfManage->value,
+                PermissionName::PsychometricSubmit->value,
+                PermissionName::PaymentsSimulateInject->value,
+                PermissionName::ApplicationsSelfRead->value,
+                PermissionName::ValuationsRun->value,
+                PermissionName::ValuationsRead->value,
+                PermissionName::ConsentsManage->value,
+                PermissionName::PrivacyErasureRequest->value,
+            ],
+            RoleName::LoanOfficer->value => [
+                PermissionName::AuthLogout->value,
+                PermissionName::ApplicationsPipelineView->value,
+                PermissionName::ApplicationsDetailView->value,
+                PermissionName::ApplicationsDecide->value,
+                PermissionName::ApplicationsRejectWithReason->value,
+                PermissionName::ValuationsRun->value,
+                PermissionName::ValuationsRead->value,
+                PermissionName::FairnessAuditRead->value,
+                PermissionName::DriftMetricsRead->value,
+            ],
+            RoleName::SuperAdmin->value => PermissionName::values(),
+        ];
 
-        Role::firstOrCreate(['name' => 'loan_officer'])->syncPermissions([
-            'view applications',
-            'evaluate applications',
-            'decide applications',
-        ]);
+        foreach (['api', 'web'] as $guard) {
+            foreach ($rolePermissions as $roleName => $permissions) {
+                $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => $guard]);
+                $role->syncPermissions(
+                    Permission::query()
+                        ->whereIn('name', $permissions)
+                        ->where('guard_name', $guard)
+                        ->get()
+                );
+            }
+        }
 
-        Role::firstOrCreate(['name' => 'super_admin'])->syncPermissions($permissions);
+        $aliases = [
+            'sme-owner' => RoleName::SmeOwner->value,
+            'loan-provider' => RoleName::LoanOfficer->value,
+            'super-admin' => RoleName::SuperAdmin->value,
+        ];
+
+        foreach (['api', 'web'] as $guard) {
+            foreach ($aliases as $alias => $canonical) {
+                $aliasRole = Role::firstOrCreate(['name' => $alias, 'guard_name' => $guard]);
+                $canonicalRole = Role::query()->where(['name' => $canonical, 'guard_name' => $guard])->firstOrFail();
+                $aliasRole->syncPermissions($canonicalRole->permissions);
+            }
+        }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }
-
