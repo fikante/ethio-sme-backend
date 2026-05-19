@@ -8,6 +8,8 @@ use App\Http\Controllers\Api\V1\Compliance\ConsentController;
 use App\Http\Controllers\Api\V1\Compliance\ErasureRequestController;
 use App\Http\Controllers\Api\V1\Governance\DriftMetricsController;
 use App\Http\Controllers\Api\V1\Governance\FairnessAuditController;
+use App\Http\Controllers\Api\V1\Governance\TrainingJobController;
+use App\Http\Controllers\Api\V1\Valuation\AiHealthController;
 use App\Http\Controllers\Api\V1\Lending\LoanApplicationController;
 use App\Http\Controllers\Api\V1\Lending\LoanDecisionController;
 use App\Http\Controllers\Api\V1\Payments\ChapaSimulatorController;
@@ -25,6 +27,8 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::prefix('v1')->group(function (): void {
+    Route::get('ai/health', AiHealthController::class);
+
     Route::prefix('auth')->group(function (): void {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);
@@ -99,6 +103,14 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('audit-logs', [AuditLogController::class, 'index'])
                 ->middleware('permission:audit.read');
+
+            Route::get('training/jobs', [TrainingJobController::class, 'index'])
+                ->middleware('permission:fairness.audit.run');
+            Route::post('training/jobs', [TrainingJobController::class, 'store'])
+                ->middleware('permission:fairness.audit.run');
+            Route::get('training/jobs/{jobId}', [TrainingJobController::class, 'show'])
+                ->whereUuid('jobId')
+                ->middleware('permission:fairness.audit.run');
         });
     });
 });

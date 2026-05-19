@@ -17,6 +17,7 @@ use App\Domain\Psychometric\Policies\PsychometricPolicy;
 use App\Domain\Psychometric\Support\PsychometricNormalizer;
 use App\Domain\Psychometric\Support\QuestionBank;
 use App\Domain\Valuation\Policies\ValuationPolicy;
+use App\Domain\Valuation\Services\AiEngineClient;
 use App\Domain\Valuation\Support\ReasonCodeBuilder;
 use App\Models\AuditLog;
 use App\Models\Business;
@@ -42,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(QuestionBank::class);
         $this->app->singleton(PsychometricNormalizer::class);
         $this->app->singleton(ReasonCodeBuilder::class);
+        $this->app->singleton(AiEngineClient::class);
         $this->app->singleton(AuditLogger::class);
     }
 

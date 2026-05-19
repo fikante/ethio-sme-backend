@@ -24,5 +24,17 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (\App\Domain\Valuation\Exceptions\AiEngineException $e, $request) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'contract_version' => config('services.ai_engine.contract_version', 'v2'),
+                    'request_id' => $e->requestId ?? 'unknown',
+                    'error' => [
+                        'code' => $e->errorCode,
+                        'message' => $e->getMessage(),
+                        'details' => $e->details,
+                    ],
+                ], $e->httpStatus >= 400 ? $e->httpStatus : 502);
+            }
+        });
     })->create();

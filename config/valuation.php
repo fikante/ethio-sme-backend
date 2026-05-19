@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'inference_lookback_days' => (int) env('VALUATION_INFERENCE_LOOKBACK_DAYS', 60),
+    'inference_horizon_days' => (int) env('VALUATION_INFERENCE_HORIZON_DAYS', 30),
     'base_risk_premium' => env('VALUATION_BASE_RISK_PREMIUM', 0.08),
     'psychometric_relief' => env('VALUATION_PSYCHOMETRIC_RELIEF', 0.05),
     'xgboost_uplift' => env('VALUATION_XGBOOST_UPLIFT', 0.06),

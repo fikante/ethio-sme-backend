@@ -36,8 +36,11 @@ return [
     ],
 
     'ai_engine' => [
-        'url'     => env('AI_SERVICE_URL', 'http://localhost:8001'),
-        'timeout' => env('AI_SERVICE_TIMEOUT', 30),
+        'url' => env('AI_SERVICE_URL', 'http://localhost:8000'),
+        'token' => env('AI_SERVICE_TOKEN'),
+        'timeout' => (int) env('AI_SERVICE_TIMEOUT', 30),
+        'retries' => (int) env('AI_SERVICE_RETRIES', 1),
+        'contract_version' => env('AI_SERVICE_CONTRACT_VERSION', 'v2'),
     ],
 
 ];

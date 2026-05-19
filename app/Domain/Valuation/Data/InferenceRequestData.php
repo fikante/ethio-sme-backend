@@ -4,28 +4,41 @@ namespace App\Domain\Valuation\Data;
 
 use Spatie\LaravelData\Data;
 
+/**
+ * Selector-based inference request for FastAPI contract v2.
+ * The ML service loads transaction history from shared Postgres.
+ */
 class InferenceRequestData extends Data
 {
     public function __construct(
-        public readonly int $businessId,
-        public readonly array $businessProfile,
-        public readonly array $heartbeatWindow,
-        public readonly array $psychometric,
-        public readonly array $exogenousFactors,
-        public readonly int $tenureMonths,
-        public readonly array $cohortAttributes = [],
+        public readonly string $requestId,
+        public readonly string $businessUuid,
+        public readonly string $asOfDate,
+        public readonly array $historyWindow,
+        public readonly int $horizonDays,
+        public readonly array $psychometricRef,
+        public readonly array $macroRef,
+        public readonly ?int $seed = null,
+        public readonly string $contractVersion = 'v2',
     ) {}
 
     public function toPayload(): array
     {
-        return [
-            'business_id' => $this->businessId,
-            'business_profile' => $this->businessProfile,
-            'heartbeat_window' => $this->heartbeatWindow,
-            'psychometric' => $this->psychometric,
-            'exogenous' => $this->exogenousFactors,
-            'tenure_months' => $this->tenureMonths,
-            'cohort' => $this->cohortAttributes,
+        $payload = [
+            'contract_version' => $this->contractVersion,
+            'request_id' => $this->requestId,
+            'business_uuid' => $this->businessUuid,
+            'as_of_date' => $this->asOfDate,
+            'history_window' => $this->historyWindow,
+            'horizon_days' => $this->horizonDays,
+            'psychometric_ref' => $this->psychometricRef,
+            'macro_ref' => $this->macroRef,
         ];
+
+        if ($this->seed !== null) {
+            $payload['seed'] = $this->seed;
+        }
+
+        return $payload;
     }
 }

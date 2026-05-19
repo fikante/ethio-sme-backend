@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -17,6 +18,7 @@ class Business extends Model implements Auditable
     use SoftDeletes;
 
     protected $fillable = [
+        'uuid',
         'owner_id',
         'business_name',
         'sector',
@@ -25,6 +27,15 @@ class Business extends Model implements Auditable
         'monthly_revenue_estimate',
         'status',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Business $business): void {
+            if (empty($business->uuid)) {
+                $business->uuid = (string) Str::uuid();
+            }
+        });
+    }
 
     public function owner(): BelongsTo
     {

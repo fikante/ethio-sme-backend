@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Web\Admin\ModelTrainingController;
+use App\Http\Controllers\Web\Borrower\SmeValuationController;
+use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -28,15 +31,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('psychometrics');
         Route::get('/integrations', fn () => Inertia::render('Placeholders/Integrations'))
             ->name('integrations');
-        Route::get('/sme-valuation', fn () => Inertia::render('Placeholders/SMEValuation'))
+        Route::get('/sme-valuation', [SmeValuationController::class, 'index'])
             ->name('sme.valuation');
+        Route::post('/sme-valuation/{business}/run', [SmeValuationController::class, 'run'])
+            ->name('sme.valuation.run');
     });
 
     // Loan Provider (Lender) portal
     Route::middleware('role:loan-provider|super-admin')->group(function () {
         Route::get('/applications-pipeline', fn () => Inertia::render('Placeholders/ApplicationsPipeline'))
             ->name('applications.pipeline');
-        Route::get('/risk-forecast', fn () => Inertia::render('Placeholders/RiskAndForecast'))
+        Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])
             ->name('risk.forecast');
         Route::get('/decisioning-xai', fn () => Inertia::render('Placeholders/DecisioningAndXAI'))
             ->name('decisioning.xai');
@@ -48,6 +53,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('admin.macroeconomic');
         Route::get('/admin/fairness-audit', fn () => Inertia::render('Placeholders/FairnessAudit'))
             ->name('admin.fairness');
+        Route::get('/admin/model-training', [ModelTrainingController::class, 'index'])
+            ->name('admin.model-training');
+        Route::post('/admin/model-training', [ModelTrainingController::class, 'store'])
+            ->name('admin.model-training.store');
+        Route::post('/admin/model-training/{jobId}/sync', [ModelTrainingController::class, 'sync'])
+            ->name('admin.model-training.sync');
     });
 });
 

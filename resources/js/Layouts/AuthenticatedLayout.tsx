@@ -334,6 +334,26 @@ export default function Authenticated({
                         ),
                     },
                     {
+                        name: "Model Training",
+                href: safeRoute("admin.model-training"),
+                active: safeCurrent("admin.model-training"),
+                        icon: (
+                            <svg
+                                viewBox="0 0 24 24"
+                                className="h-5 w-5"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                            >
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M12 3v4m0 10v4M5 8h14M7 16h10M9 12h6"
+                                />
+                            </svg>
+                        ),
+                    },
+                    {
                         name: "Fairness Audit",
                 href: safeRoute("admin.fairness"),
                 active: safeCurrent("admin.fairness"),

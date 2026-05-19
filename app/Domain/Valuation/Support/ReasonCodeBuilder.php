@@ -36,6 +36,31 @@ class ReasonCodeBuilder
     ];
 
     /**
+     * Prefer canonical reason codes returned by the ML service (v2 explainability).
+     *
+     * @param  list<array<string, mixed>>  $mlReasonCodes
+     * @return list<array{code:string, feature:?string, shap:?float, direction:?string, message:?string}>
+     */
+    public function fromMlResponse(array $mlReasonCodes, int $limit = 3): array
+    {
+        $mapped = [];
+        foreach ($mlReasonCodes as $row) {
+            if (! is_array($row) || empty($row['code'])) {
+                continue;
+            }
+            $mapped[] = [
+                'code' => (string) $row['code'],
+                'feature' => isset($row['feature']) ? (string) $row['feature'] : null,
+                'shap' => null,
+                'direction' => isset($row['direction']) ? (string) $row['direction'] : null,
+                'message' => isset($row['message']) ? (string) $row['message'] : null,
+            ];
+        }
+
+        return array_slice($mapped, 0, $limit);
+    }
+
+    /**
      * @param  array<string, float>  $shapValues
      * @return list<array{code:string, feature:string, shap:float}>
      */

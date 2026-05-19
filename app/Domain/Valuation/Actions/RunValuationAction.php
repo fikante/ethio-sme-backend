@@ -93,7 +93,9 @@ class RunValuationAction
             xgboostRiskScore: $response->xgboostScore,
         ));
 
-        $reasonCodes = $this->reasonCodes->build($response->shapValues);
+        $reasonCodes = $response->reasonCodes !== []
+            ? $this->reasonCodes->fromMlResponse($response->reasonCodes)
+            : $this->reasonCodes->build($response->shapValues);
 
         return DB::transaction(function () use (
             $application,
