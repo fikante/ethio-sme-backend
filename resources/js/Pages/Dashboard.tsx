@@ -1,3 +1,4 @@
+import SmeLatestApplicationCard from '@/Components/Sme/SmeLatestApplicationCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import type { PageProps } from '@/types';
 import type {
@@ -430,47 +431,6 @@ function SmeOwnerDashboard({
         app &&
         ['evaluated', 'approved', 'rejected'].includes(app.status);
 
-    const checklistItems = [
-        {
-            done: stats.checklist.businessRegistered,
-            label: 'Business registered',
-            detail: stats.business?.name,
-            href: null as string | null,
-            action: null as string | null,
-        },
-        {
-            done: stats.checklist.heartbeatLoaded,
-            label: 'Transaction data loaded',
-            detail: stats.heartbeatDays > 0 ? `${stats.heartbeatDays} days` : null,
-            href: null,
-            action: null,
-        },
-        {
-            done: stats.checklist.assessmentCompleted,
-            label: 'Psychometric assessment',
-            href: route('psychometrics'),
-            action: 'Complete now',
-        },
-        {
-            done: stats.checklist.applicationSubmitted,
-            label: 'Loan application submitted',
-            href: route('sme.valuation'),
-            action: 'Apply now',
-        },
-        {
-            done: stats.checklist.aiEvaluated,
-            label: 'AI evaluation complete',
-            href: null,
-            action: null,
-        },
-        {
-            done: stats.checklist.decisionReceived,
-            label: 'Decision received',
-            href: null,
-            action: null,
-        },
-    ];
-
     return (
         <>
             <header className="mb-8">
@@ -525,139 +485,16 @@ function SmeOwnerDashboard({
                 />
             </div>
 
-            <div className="mt-6 grid gap-6 lg:grid-cols-2">
-                <div
-                    className={`${cardClass} border-l-4 border-l-gray-400 p-6 dark:border-l-zinc-500`}
-                >
-                    <h2 className="text-sm font-semibold text-[#0F1A16] dark:text-[#F0FDF4]">
-                        Your Application Journey
-                    </h2>
-                    <ul className="mt-5 space-y-3">
-                        {checklistItems.map((item, i) => (
-                            <li
-                                key={item.label}
-                                className="flex items-start gap-3 opacity-0 translate-y-1 animate-[fadeIn_0.4s_ease_forwards]"
-                                style={{
-                                    animationDelay: `${i * 50}ms`,
-                                    animationFillMode: 'forwards',
-                                }}
-                            >
-                                <span
-                                    className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-                                        item.done
-                                            ? 'bg-[#16A34A] text-white'
-                                            : 'border-2 border-gray-300 bg-transparent dark:border-zinc-600'
-                                    }`}
-                                >
-                                    {item.done && (
-                                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                                    )}
-                                </span>
-                                <div className="min-w-0 flex-1 text-sm">
-                                    <span
-                                        className={
-                                            item.done
-                                                ? 'text-gray-900 dark:text-zinc-100'
-                                                : mutedClass
-                                        }
-                                    >
-                                        {item.label}
-                                    </span>
-                                    {item.detail && (
-                                        <span className={`ml-2 text-xs ${mutedClass}`}>
-                                            ({item.detail})
-                                        </span>
-                                    )}
-                                    {!item.done && item.href && item.action && (
-                                        <Link
-                                            href={item.href}
-                                            className="ml-2 text-xs font-medium text-gray-900 hover:underline dark:text-white"
-                                        >
-                                            → {item.action}
-                                        </Link>
-                                    )}
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </div>
-
-                <div className={`${cardClass} p-6`}>
-                    <h2 className="text-sm font-semibold">Latest Application</h2>
-                    {app ? (
-                        <div className="mt-4 space-y-4 text-sm">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                                <StatusBadge status={app.status} />
-                                <span className={`text-xs ${mutedClass}`}>
-                                    Submitted {formatDate(app.created_at)}
-                                </span>
-                            </div>
-                            <dl className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <dt className={`text-xs ${mutedClass}`}>
-                                        Requested
-                                    </dt>
-                                    <dd className="font-semibold tabular-nums">
-                                        {formatEtb(app.requested_amount)}
-                                    </dd>
-                                </div>
-                                <div>
-                                    <dt className={`text-xs ${mutedClass}`}>
-                                        Tenure
-                                    </dt>
-                                    <dd className="font-semibold">
-                                        {app.tenure_months} months
-                                    </dd>
-                                </div>
-                            </dl>
-                            {showResults && (
-                                <dl className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 dark:border-zinc-800">
-                                    <div>
-                                        <dt className={`text-xs ${mutedClass}`}>
-                                            NPV Limit
-                                        </dt>
-                                        <dd className="font-semibold text-gray-900 dark:text-white">
-                                            {formatEtb(app.npv_credit_limit)}
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt className={`text-xs ${mutedClass}`}>
-                                            APR
-                                        </dt>
-                                        <dd className="font-semibold">
-                                            {formatApr(app.apr)}
-                                        </dd>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <dt className={`text-xs ${mutedClass}`}>
-                                            Risk band
-                                        </dt>
-                                        <dd className="mt-1">
-                                            <RiskBandBadge band={app.ai_risk_band} />
-                                        </dd>
-                                    </div>
-                                </dl>
-                            )}
-                            <Link
-                                href={route('sme.valuation')}
-                                className="inline-flex items-center gap-1 text-sm font-medium text-gray-900 hover:underline dark:text-white"
-                            >
-                                View Full Result
-                                <ChevronRight className="h-4 w-4" />
-                            </Link>
-                        </div>
-                    ) : (
-                        <EmptyState
-                            icon={
-                                <FileText className="h-8 w-8 text-gray-600 dark:text-zinc-300" />
-                            }
-                            title="No application yet"
-                            description="Start your loan application to unlock AI-powered credit scoring."
-                            actionHref={route('sme.valuation')}
-                            actionLabel="Start Your Application"
-                        />
-                    )}
-                </div>
+            <div className="mt-6">
+                <SmeLatestApplicationCard
+                    app={app}
+                    showResults={!!showResults}
+                    formatDate={formatDate}
+                    formatEtb={formatEtb}
+                    formatApr={formatApr}
+                    statusBadge={(status) => <StatusBadge status={status} />}
+                    riskBadge={(band) => <RiskBandBadge band={band} />}
+                />
             </div>
         </>
     );

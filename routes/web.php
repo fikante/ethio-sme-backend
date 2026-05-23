@@ -1,7 +1,9 @@
 <?php
 
+use App\Domain\Auth\Support\WebRoleAlias;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\Admin\ModelTrainingController;
+use App\Http\Controllers\Web\Borrower\LoanApplicationWebController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\Lender\RiskAndForecastController;
@@ -27,7 +29,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // SME Owner (Borrower) portal
-    Route::middleware('role:sme-owner|super-admin')->group(function () {
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('sme-owner', 'super-admin')))->group(function () {
+        Route::get('/loan-application', [LoanApplicationWebController::class, 'index'])
+            ->name('loan-application');
+        Route::post('/loan-application', [LoanApplicationWebController::class, 'store'])
+            ->name('loan-application.store');
+
         Route::get('/psychometrics', fn () => Inertia::render('Placeholders/Psychometrics'))
             ->name('psychometrics');
         Route::get('/integrations', fn () => Inertia::render('Placeholders/Integrations'))
@@ -39,7 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Loan Provider (Lender) portal
-    Route::middleware('role:loan-provider|super-admin')->group(function () {
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan-provider', 'super-admin')))->group(function () {
         Route::get('/applications-pipeline', fn () => Inertia::render('Placeholders/ApplicationsPipeline'))
             ->name('applications.pipeline');
         Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])
@@ -49,7 +56,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Super admin / audit
-    Route::middleware('role:super-admin')->group(function () {
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('super-admin')))->group(function () {
         Route::get('/admin/macroeconomic-factors', fn () => Inertia::render('Placeholders/MacroeconomicFactors'))
             ->name('admin.macroeconomic');
         Route::get('/admin/fairness-audit', fn () => Inertia::render('Placeholders/FairnessAudit'))

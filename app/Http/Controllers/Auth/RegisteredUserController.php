@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Domain\Auth\Enums\RoleName;
+use App\Domain\Auth\Support\WebRoleAlias;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
@@ -44,7 +45,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $user->syncRoles([RoleName::SmeOwner->value]);
+        $user->syncRoles([WebRoleAlias::registrationRoleName(RoleName::SmeOwner)]);
 
         event(new Registered($user));
 

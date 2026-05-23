@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Domain\Auth\Support\WebRoleAlias;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -38,7 +39,7 @@ class HandleInertiaRequests extends Middleware
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'roles' => $user->getRoleNames()->values(),
+                    'roles' => WebRoleAlias::namesForFrontend($user),
                     'permissions' => $user->getAllPermissions()->pluck('name')->values(),
                 ] : null,
             ],
