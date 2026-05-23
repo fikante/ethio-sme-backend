@@ -104,12 +104,12 @@ function useCountUp(target: number, duration = 800): number {
 
 const cardClass =
     'rounded-2xl border shadow-sm transition-shadow duration-200 hover:shadow-md ' +
-    'bg-white border-[#D1E8DF] dark:bg-[#162820] dark:border-[#1E3A2F]';
+    'bg-white border-gray-200 dark:bg-zinc-900 dark:border-zinc-800';
 
 const pageClass =
-    'min-h-full bg-[#F0F7F4] p-6 text-[#0F1A16] dark:bg-[#0F1A16] dark:text-[#F0FDF4]';
+    'min-h-full bg-gray-50 p-6 text-gray-900 dark:bg-zinc-950 dark:text-zinc-100';
 
-const mutedClass = 'text-[#4B7A64] dark:text-[#6EBF9A]';
+const mutedClass = 'text-gray-500 dark:text-zinc-400';
 
 // ─── Status & risk badges ─────────────────────────────────────────────────────
 
@@ -218,13 +218,13 @@ function RiskBandBadge({ band }: { band: string | null | undefined }) {
 function SectionDivider({ title }: { title: string }) {
     return (
         <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#D1E8DF] dark:bg-[#1E3A2F]" />
+            <div className="h-px flex-1 bg-gray-200 dark:bg-zinc-800" />
             <span
                 className={`text-xs font-semibold uppercase tracking-widest ${mutedClass}`}
             >
                 {title}
             </span>
-            <div className="h-px flex-1 bg-[#D1E8DF] dark:bg-[#1E3A2F]" />
+            <div className="h-px flex-1 bg-gray-200 dark:bg-zinc-800" />
         </div>
     );
 }
@@ -244,16 +244,16 @@ function EmptyState({
 }) {
     return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#085041]/10">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 dark:bg-zinc-800">
                 {icon}
             </div>
-            <p className="text-sm font-medium text-[#0F1A16] dark:text-[#F0FDF4]">
+            <p className="text-sm font-medium text-gray-900 dark:text-zinc-100">
                 {title}
             </p>
             <p className={`mt-1 mb-4 text-xs ${mutedClass}`}>{description}</p>
             <Link
                 href={actionHref}
-                className="inline-flex items-center gap-1 rounded-lg bg-[#085041] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#085041]/90 dark:bg-[#5DCAA5] dark:text-[#0F1A16] dark:hover:bg-[#5DCAA5]/90"
+                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-gray-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
                 {actionLabel}
                 <ChevronRight className="h-4 w-4" />
@@ -265,8 +265,8 @@ function EmptyState({
 function SkeletonCard() {
     return (
         <div className={`${cardClass} animate-pulse p-5`}>
-            <div className="h-4 w-24 rounded bg-[#D1E8DF] dark:bg-[#1E3A2F]" />
-            <div className="mt-4 h-8 w-32 rounded bg-[#D1E8DF] dark:bg-[#1E3A2F]" />
+            <div className="h-4 w-24 rounded bg-gray-200 dark:bg-zinc-800" />
+            <div className="mt-4 h-8 w-32 rounded bg-gray-200 dark:bg-zinc-800" />
         </div>
     );
 }
@@ -323,18 +323,18 @@ function KpiCard({
 
     const valueContent =
         numericValue !== undefined ? (
-            <span className="text-3xl font-bold tabular-nums text-[#0F1A16] dark:text-[#F0FDF4]">
+            <span className="text-3xl font-bold tabular-nums text-gray-900 dark:text-zinc-100">
                 {etbFormatter.format(animated)}
             </span>
         ) : (
-            <div className="text-2xl font-bold text-[#0F1A16] dark:text-[#F0FDF4]">
+            <div className="text-2xl font-bold text-gray-900 dark:text-zinc-100">
                 {displayValue}
             </div>
         );
 
     return (
         <div
-            className={`${cardClass} border ${styles.border} bg-gradient-to-br from-white to-[#F0F7F4]/50 p-5 dark:from-[#162820] dark:to-[#085041]/5`}
+            className={`${cardClass} border ${styles.border} bg-gradient-to-br from-white to-gray-50/80 p-5 dark:from-zinc-900 dark:to-zinc-800/50`}
         >
             <div className="flex items-start gap-4">
                 <div
@@ -527,7 +527,7 @@ function SmeOwnerDashboard({
 
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
                 <div
-                    className={`${cardClass} border-l-4 border-l-[#5DCAA5] p-6`}
+                    className={`${cardClass} border-l-4 border-l-gray-400 p-6 dark:border-l-zinc-500`}
                 >
                     <h2 className="text-sm font-semibold text-[#0F1A16] dark:text-[#F0FDF4]">
                         Your Application Journey
@@ -546,7 +546,7 @@ function SmeOwnerDashboard({
                                     className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
                                         item.done
                                             ? 'bg-[#16A34A] text-white'
-                                            : 'border-2 border-[#D1E8DF] bg-transparent dark:border-[#1E3A2F]'
+                                            : 'border-2 border-gray-300 bg-transparent dark:border-zinc-600'
                                     }`}
                                 >
                                     {item.done && (
@@ -557,7 +557,7 @@ function SmeOwnerDashboard({
                                     <span
                                         className={
                                             item.done
-                                                ? 'text-[#0F1A16] dark:text-[#F0FDF4]'
+                                                ? 'text-gray-900 dark:text-zinc-100'
                                                 : mutedClass
                                         }
                                     >
@@ -571,7 +571,7 @@ function SmeOwnerDashboard({
                                     {!item.done && item.href && item.action && (
                                         <Link
                                             href={item.href}
-                                            className="ml-2 text-xs font-medium text-[#085041] hover:underline dark:text-[#5DCAA5]"
+                                            className="ml-2 text-xs font-medium text-gray-900 hover:underline dark:text-white"
                                         >
                                             → {item.action}
                                         </Link>
@@ -611,12 +611,12 @@ function SmeOwnerDashboard({
                                 </div>
                             </dl>
                             {showResults && (
-                                <dl className="grid grid-cols-2 gap-3 border-t border-[#D1E8DF] pt-4 dark:border-[#1E3A2F]">
+                                <dl className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-4 dark:border-zinc-800">
                                     <div>
                                         <dt className={`text-xs ${mutedClass}`}>
                                             NPV Limit
                                         </dt>
-                                        <dd className="font-semibold text-[#085041] dark:text-[#5DCAA5]">
+                                        <dd className="font-semibold text-gray-900 dark:text-white">
                                             {formatEtb(app.npv_credit_limit)}
                                         </dd>
                                     </div>
@@ -640,7 +640,7 @@ function SmeOwnerDashboard({
                             )}
                             <Link
                                 href={route('sme.valuation')}
-                                className="inline-flex items-center gap-1 text-sm font-medium text-[#085041] hover:underline dark:text-[#5DCAA5]"
+                                className="inline-flex items-center gap-1 text-sm font-medium text-gray-900 hover:underline dark:text-white"
                             >
                                 View Full Result
                                 <ChevronRight className="h-4 w-4" />
@@ -649,7 +649,7 @@ function SmeOwnerDashboard({
                     ) : (
                         <EmptyState
                             icon={
-                                <FileText className="h-8 w-8 text-[#085041] dark:text-[#5DCAA5]" />
+                                <FileText className="h-8 w-8 text-gray-600 dark:text-zinc-300" />
                             }
                             title="No application yet"
                             description="Start your loan application to unlock AI-powered credit scoring."
@@ -717,7 +717,7 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                     <h2 className="text-sm font-semibold">Recent Applications</h2>
                     <Link
                         href={route('applications.pipeline')}
-                        className="text-xs font-medium text-[#085041] hover:underline dark:text-[#5DCAA5]"
+                        className="text-xs font-medium text-gray-900 hover:underline dark:text-white"
                     >
                         View All →
                     </Link>
@@ -725,7 +725,7 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                 <div className="-mx-4 overflow-x-auto sm:mx-0">
                     <table className="w-full min-w-[640px] text-left text-sm">
                         <thead>
-                            <tr className={`border-b border-[#D1E8DF] text-xs uppercase tracking-wide ${mutedClass} dark:border-[#1E3A2F]`}>
+                            <tr className={`border-b border-gray-200 text-xs uppercase tracking-wide ${mutedClass} dark:border-zinc-800`}>
                                 <th className="px-4 py-3 font-medium">Business</th>
                                 <th className="px-4 py-3 font-medium">Sector</th>
                                 <th className="px-4 py-3 font-medium">Amount</th>
@@ -749,7 +749,7 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                                 stats.recentApps.map((row) => (
                                     <tr
                                         key={row.id}
-                                        className="border-b border-[#D1E8DF]/60 transition-colors duration-150 hover:bg-[#085041]/5 dark:border-[#1E3A2F]/60"
+                                        className="border-b border-gray-200/80 transition-colors duration-150 hover:bg-gray-100 dark:border-zinc-800/80 dark:hover:bg-zinc-800/50"
                                     >
                                         <td className="px-4 py-3 font-medium">
                                             {row.business_name ?? '—'}
@@ -792,7 +792,7 @@ function PipelineAction({ status }: { status: string }) {
         return (
             <Link
                 href={route('risk.forecast')}
-                className="inline-flex items-center gap-1 rounded-lg bg-[#085041] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#085041]/90 dark:bg-[#5DCAA5] dark:text-[#0F1A16]"
+                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
             >
                 Run AI →
             </Link>
@@ -820,7 +820,7 @@ function PipelineAction({ status }: { status: string }) {
         return (
             <Link
                 href={route('applications.pipeline')}
-                className="text-xs font-medium text-[#4B7A64] hover:underline dark:text-[#6EBF9A]"
+                className="text-xs font-medium text-gray-600 hover:underline dark:text-zinc-400"
             >
                 View
             </Link>
@@ -895,7 +895,7 @@ function ApplicationBreakdown({
                         />
                         <span className={mutedClass}>
                             {seg.label}:{' '}
-                            <strong className="text-[#0F1A16] dark:text-[#F0FDF4]">
+                            <strong className="text-gray-900 dark:text-zinc-100">
                                 {seg.count}
                             </strong>
                         </span>
@@ -983,7 +983,7 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         </li>
                         <li className="flex items-center justify-between gap-4">
                             <span className="flex items-center gap-2">
-                                <Database className="h-4 w-4 text-[#5DCAA5]" />
+                                <Database className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
                                 Database
                             </span>
                             <span className="flex items-center gap-2 font-medium text-green-600 dark:text-green-400">
@@ -1047,7 +1047,7 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         {stats.recentActivity.map((entry, i) => (
                             <li
                                 key={`${entry.created_at}-${i}`}
-                                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[#D1E8DF]/50 py-2 text-sm last:border-0 dark:border-[#1E3A2F]/50"
+                                className="flex flex-wrap items-baseline justify-between gap-2 border-b border-gray-200/80 py-2 text-sm last:border-0 dark:border-zinc-800/80"
                             >
                                 <div>
                                     <span className="font-medium">
@@ -1112,7 +1112,7 @@ export default function Dashboard() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold tracking-tight text-[#0F1A16] dark:text-[#F0FDF4]">
+                <h2 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-zinc-100">
                     Dashboard
                 </h2>
             }

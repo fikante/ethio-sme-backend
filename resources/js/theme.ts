@@ -1,67 +1,53 @@
-export type ThemeMode = 'light' | 'dark' | 'system';
+export type ThemeMode = 'light' | 'dark';
 
 const STORAGE_KEY = 'ui.theme';
 
-function prefersDark(): boolean {
-    return (
-        typeof window !== 'undefined' &&
-        window.matchMedia?.('(prefers-color-scheme: dark)').matches === true
-    );
-}
+/** Default theme for new visitors and when no preference is stored. */
+export const DEFAULT_THEME: ThemeMode = 'light';
 
 export function getStoredTheme(): ThemeMode {
     if (typeof window === 'undefined') {
-        return 'system';
+        return DEFAULT_THEME;
     }
 
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw === 'light' || raw === 'dark' || raw === 'system') {
-        return raw;
+
+    if (raw === 'dark') {
+        return 'dark';
     }
 
-    return 'system';
+    // `light`, legacy `system`, or missing → light (product default)
+    return 'light';
 }
 
-export function setStoredTheme(theme: ThemeMode) {
+export function setStoredTheme(theme: ThemeMode): void {
     window.localStorage.setItem(STORAGE_KEY, theme);
 }
 
-export function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
-    if (theme === 'system') {
-        return prefersDark() ? 'dark' : 'light';
-    }
-
-    return theme;
+export function resolveTheme(theme: ThemeMode): ThemeMode {
+    return theme === 'dark' ? 'dark' : 'light';
 }
 
-export function applyThemeClass(theme: ThemeMode) {
+export function applyThemeClass(theme: ThemeMode): void {
     if (typeof document === 'undefined') {
         return;
     }
 
     const resolved = resolveTheme(theme);
     document.documentElement.classList.toggle('dark', resolved === 'dark');
+    document.documentElement.style.colorScheme = resolved;
 }
 
-export function initTheme() {
+export function initTheme(): void {
     if (typeof window === 'undefined') {
         return;
     }
 
-    const current = getStoredTheme();
-    applyThemeClass(current);
+    applyThemeClass(getStoredTheme());
 
-    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
-    if (!media) {
-        return;
-    }
-
-    const onChange = () => {
-        if (getStoredTheme() === 'system') {
-            applyThemeClass('system');
+    window.addEventListener('storage', (event) => {
+        if (event.key === STORAGE_KEY) {
+            applyThemeClass(getStoredTheme());
         }
-    };
-
-    media.addEventListener?.('change', onChange);
+    });
 }
-

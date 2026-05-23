@@ -1,27 +1,42 @@
+import {
+    applyThemeClass,
+    getStoredTheme,
+    resolveTheme,
+    setStoredTheme,
+    type ThemeMode,
+} from '@/theme';
 import { useEffect, useState } from 'react';
-import { applyThemeClass, getStoredTheme, resolveTheme, setStoredTheme } from '@/theme';
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
     const [isDark, setIsDark] = useState(false);
 
     useEffect(() => {
-        const stored = getStoredTheme();
-        setIsDark(resolveTheme(stored) === 'dark');
+        const sync = () => {
+            setIsDark(resolveTheme(getStoredTheme()) === 'dark');
+        };
+
+        sync();
+
+        window.addEventListener('storage', sync);
+        return () => window.removeEventListener('storage', sync);
     }, []);
+
+    const setTheme = (mode: ThemeMode) => {
+        setStoredTheme(mode);
+        applyThemeClass(mode);
+        setIsDark(mode === 'dark');
+    };
 
     return (
         <button
             type="button"
-            onClick={() => {
-                const nextIsDark = !isDark;
-                setIsDark(nextIsDark);
-                setStoredTheme(nextIsDark ? 'dark' : 'light');
-                applyThemeClass(nextIsDark ? 'dark' : 'light');
-            }}
+            onClick={() => setTheme(isDark ? 'light' : 'dark')}
             className={[
-                'relative inline-flex h-9 w-14 items-center rounded-full border border-black/10 bg-gray-100 p-1 shadow-sm transition',
-                'hover:bg-gray-200/70 focus:outline-none focus:ring-2 focus:ring-gray-900',
-                'dark:border-white/10 dark:bg-white/10 dark:hover:bg-white/15 dark:focus:ring-white/40',
+                'relative inline-flex h-9 w-14 items-center rounded-full border p-1 shadow-sm transition',
+                'border-gray-200 bg-white hover:bg-gray-100',
+                'focus:outline-none focus:ring-2 focus:ring-gray-400/50',
+                'dark:border-zinc-700 dark:bg-zinc-800 dark:hover:bg-zinc-700',
+                'dark:focus:ring-zinc-500/50',
                 className,
             ].join(' ')}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -29,8 +44,9 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
         >
             <span
                 className={[
-                    'pointer-events-none grid h-7 w-7 place-items-center rounded-full bg-white text-gray-700 shadow transition-transform duration-300',
-                    'dark:bg-black dark:text-white/80',
+                    'pointer-events-none grid h-7 w-7 place-items-center rounded-full shadow transition-transform duration-300',
+                    'bg-gray-100 text-gray-700',
+                    'dark:bg-zinc-950 dark:text-zinc-200',
                     isDark ? 'translate-x-5' : 'translate-x-0',
                 ].join(' ')}
             >
@@ -71,4 +87,3 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
         </button>
     );
 }
-

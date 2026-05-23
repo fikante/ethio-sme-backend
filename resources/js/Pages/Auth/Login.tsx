@@ -2,9 +2,17 @@ import Checkbox from '@/Components/Checkbox';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
+import PublicPageChrome from '@/Components/PublicPageChrome';
 import TextInput from '@/Components/TextInput';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { FormEventHandler } from 'react';
+
+const labelClass = 'text-gray-600 dark:text-zinc-300';
+const inputClass =
+    'mt-2 block w-full border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 focus:border-gray-500 focus:ring-gray-500/30 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-zinc-500 dark:focus:ring-zinc-500/30';
+const mutedClass = 'text-gray-500 dark:text-zinc-400';
+const linkClass =
+    'font-semibold text-gray-900 underline-offset-4 hover:underline dark:text-white';
 
 export default function Login({
     status,
@@ -31,17 +39,11 @@ export default function Login({
         <>
             <Head title="Log in" />
 
-            <div className="relative min-h-screen bg-black text-white">
-                <div className="pointer-events-none absolute inset-0 overflow-hidden">
-                    <div className="absolute left-1/2 top-[-10rem] h-[26rem] w-[52rem] -translate-x-1/2 rounded-full bg-white/10 blur-3xl" />
-                    <div className="absolute left-1/2 top-[-2rem] h-[18rem] w-[18rem] -translate-x-1/2 rounded-full bg-white/10 blur-2xl [animation:slowPulse_6s_ease-in-out_infinite]" />
-                    <div className="absolute bottom-[-10rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-white/5 blur-3xl" />
-                </div>
-
-                <div className="relative mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 sm:px-6 lg:px-8">
+            <PublicPageChrome>
+                <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-7xl items-center justify-center px-4 pb-12 sm:px-6 lg:px-8">
                     <div className="w-full max-w-md">
                         <div className="mb-6 text-center">
-                            <div className="inline-flex items-center justify-center rounded-2xl bg-white/5 p-3 ring-1 ring-inset ring-white/10">
+                            <div className="inline-flex items-center justify-center rounded-2xl bg-gray-100 p-3 ring-1 ring-inset ring-gray-200 dark:bg-zinc-800 dark:ring-zinc-700">
                                 <svg
                                     viewBox="0 0 24 24"
                                     fill="none"
@@ -49,7 +51,7 @@ export default function Login({
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
-                                    className="h-6 w-6 text-white/85"
+                                    className="h-6 w-6 text-gray-700 dark:text-zinc-200"
                                     aria-hidden="true"
                                 >
                                     <path d="M12 2v4" />
@@ -61,31 +63,27 @@ export default function Login({
                                 </svg>
                             </div>
 
-                            <h1 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-white">
+                            <h1 className="mt-5 text-balance text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
                                 Sign in to Ethio‑SME Valuation System
                             </h1>
-                            <p className="mt-2 text-sm text-white/60">
+                            <p className={`mt-2 text-sm ${mutedClass}`}>
                                 Secure access for banks, SME owners, and auditors.
                             </p>
                         </div>
 
-                        <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.05)] backdrop-blur sm:p-8">
-                            <div className="pointer-events-none absolute inset-0 opacity-40">
-                                <div className="absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/20 to-transparent [animation:sheen_3.6s_ease-in-out_infinite]" />
-                            </div>
-
+                        <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
                             {status && (
-                                <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/75">
+                                <div className="mb-4 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                     {status}
                                 </div>
                             )}
 
-                            <form onSubmit={submit} className="relative">
+                            <form onSubmit={submit}>
                                 <div>
                                     <InputLabel
                                         htmlFor="email"
                                         value="Email"
-                                        className="text-white/80"
+                                        className={labelClass}
                                     />
 
                                     <TextInput
@@ -93,21 +91,24 @@ export default function Login({
                                         type="email"
                                         name="email"
                                         value={data.email}
-                                        className="mt-2 block w-full border-white/10 bg-black/30 text-white placeholder:text-white/30 focus:border-white/30 focus:ring-white/30"
+                                        className={inputClass}
                                         autoComplete="username"
                                         isFocused={true}
                                         onChange={(e) => setData('email', e.target.value)}
                                         placeholder="you@bank.com"
                                     />
 
-                                    <InputError message={errors.email} className="mt-2 text-red-300" />
+                                    <InputError
+                                        message={errors.email}
+                                        className="mt-2 text-red-600 dark:text-red-400"
+                                    />
                                 </div>
 
                                 <div className="mt-4">
                                     <InputLabel
                                         htmlFor="password"
                                         value="Password"
-                                        className="text-white/80"
+                                        className={labelClass}
                                     />
 
                                     <TextInput
@@ -115,21 +116,26 @@ export default function Login({
                                         type="password"
                                         name="password"
                                         value={data.password}
-                                        className="mt-2 block w-full border-white/10 bg-black/30 text-white placeholder:text-white/30 focus:border-white/30 focus:ring-white/30"
+                                        className={inputClass}
                                         autoComplete="current-password"
                                         onChange={(e) => setData('password', e.target.value)}
                                         placeholder="••••••••"
                                     />
 
-                                    <InputError message={errors.password} className="mt-2 text-red-300" />
+                                    <InputError
+                                        message={errors.password}
+                                        className="mt-2 text-red-600 dark:text-red-400"
+                                    />
                                 </div>
 
                                 <div className="mt-5 flex items-center justify-between gap-3">
-                                    <label className="flex items-center gap-2 text-sm text-white/70">
+                                    <label
+                                        className={`flex items-center gap-2 text-sm ${mutedClass}`}
+                                    >
                                         <Checkbox
                                             name="remember"
                                             checked={data.remember}
-                                            className="border-white/20 bg-black/30 text-white focus:ring-white/30"
+                                            className="border-gray-300 text-gray-900 focus:ring-gray-500/30 dark:border-zinc-600 dark:bg-zinc-900 dark:text-white dark:focus:ring-zinc-500/30"
                                             onChange={(e) =>
                                                 setData(
                                                     'remember',
@@ -143,7 +149,7 @@ export default function Login({
                                     {canResetPassword && (
                                         <Link
                                             href={route('password.request')}
-                                            className="text-sm text-white/70 underline-offset-4 hover:text-white hover:underline focus:outline-none focus:ring-2 focus:ring-white/40 focus:ring-offset-2 focus:ring-offset-black"
+                                            className={`text-sm underline-offset-4 hover:underline ${mutedClass}`}
                                         >
                                             Forgot password?
                                         </Link>
@@ -152,19 +158,16 @@ export default function Login({
 
                                 <div className="mt-6">
                                     <PrimaryButton
-                                        className="w-full justify-center border border-white/15 bg-white/10 text-white hover:bg-white/15 focus:ring-white/40 focus:ring-offset-black active:bg-white/20"
+                                        className="w-full justify-center bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-500/40 focus:ring-offset-gray-50 dark:border dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:focus:ring-zinc-500/40 dark:focus:ring-offset-zinc-950"
                                         disabled={processing}
                                     >
                                         Log in
                                     </PrimaryButton>
                                 </div>
 
-                                <div className="mt-6 text-center text-sm text-white/60">
+                                <div className={`mt-6 text-center text-sm ${mutedClass}`}>
                                     New to the system?{' '}
-                                    <Link
-                                        href={route('register')}
-                                        className="font-semibold text-white underline-offset-4 hover:underline"
-                                    >
+                                    <Link href={route('register')} className={linkClass}>
                                         Create an account
                                     </Link>
                                 </div>
@@ -172,7 +175,7 @@ export default function Login({
                         </div>
                     </div>
                 </div>
-            </div>
+            </PublicPageChrome>
         </>
     );
 }
