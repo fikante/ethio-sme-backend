@@ -919,7 +919,7 @@ export default function Dashboard() {
     const { role, user, stats } = usePage<Props>().props;
 
     const content = useMemo(() => {
-        if (role === 'sme_owner') {
+        if (role === 'sme_owner' || role === 'sme-owner') {
             return (
                 <SmeOwnerDashboard
                     userName={user.name}
@@ -927,12 +927,12 @@ export default function Dashboard() {
                 />
             );
         }
-        if (role === 'loan_officer') {
+        if (role === 'loan_officer' || role === 'loan-provider') {
             return (
                 <LoanOfficerDashboard stats={stats as LoanOfficerStats} />
             );
         }
-        if (role === 'super_admin') {
+        if (role === 'super_admin' || role === 'super-admin') {
             return (
                 <SuperAdminDashboard stats={stats as SuperAdminStats} />
             );

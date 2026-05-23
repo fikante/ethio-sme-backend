@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domain\Auth\Support\WebRoleAlias;
+use App\Domain\Dashboard\Services\DashboardStatsService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -42,6 +43,7 @@ class HandleInertiaRequests extends Middleware
                     'roles' => WebRoleAlias::namesForFrontend($user),
                     'permissions' => $user->getAllPermissions()->pluck('name')->values(),
                 ] : null,
+                'primaryRole' => $user ? DashboardStatsService::resolveRole($user) : null,
             ],
         ];
     }

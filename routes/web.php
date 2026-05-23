@@ -29,7 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // SME Owner (Borrower) portal
-    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('sme-owner', 'super-admin')))->group(function () {
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('sme-owner')))->group(function () {
         Route::get('/loan-application', [LoanApplicationWebController::class, 'index'])
             ->name('loan-application');
         Route::post('/loan-application', [LoanApplicationWebController::class, 'store'])
@@ -46,7 +46,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Loan Provider (Lender) portal
-    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan-provider', 'super-admin')))->group(function () {
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan-provider')))->group(function () {
         Route::get('/applications-pipeline', fn () => Inertia::render('Placeholders/ApplicationsPipeline'))
             ->name('applications.pipeline');
         Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])

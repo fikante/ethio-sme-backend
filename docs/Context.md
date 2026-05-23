@@ -427,419 +427,603 @@ Create `app/Domain/Dashboard/Services/DashboardStatsService.php` with a static m
 
 **Expected output:** When logged in as each role, the dashboard shows relevant KPI cards with real data from the DB.
 
----
-
-# ═══════════════════════════════════════════════
-# MODULE 2 — SME OWNER FLOW (4 tasks)
-# ═══════════════════════════════════════════════
-# Complete in order: 2.1 → 2.2 → 2.3 → 2.4
-# ═══════════════════════════════════════════════
+Here is the redesigned module structure and the full Cursor prompt for it.
 
 ---
 
-## TASK 2.1 — Psychometric Quiz Page
+## What changes from the original plan
 
-**What this task does:**
-Builds the full psychometric assessment UI.
-The SME owner answers 15 questions on a 1–5 scale.
-The answers are submitted and normalized scores are stored.
+The original plan had 4 separate pages (`/psychometrics`, `/integrations`, `/apply`, `/sme-valuation`). **Throw that away for the input flow.** Replace it with one beautiful multi-step wizard modal that lives on top of the dashboard. The result page (`/sme-valuation`) stays as its own page — that's fine because it's a read-only view after the decision.
 
-**Backend already exists:**
-- `GET /api/v1/psychometric/questions` → returns the 15 questions
-- `POST /api/v1/businesses/{businessId}/psychometric-assessments` → stores answers
+**New structure:**
 
-**The problem:** The frontend uses Inertia (not direct API calls).
-We need a web controller that proxies this.
+| Step | What happens | Backend route |
+|------|-------------|---------------|
+| 1 | Personal info confirmation | `PATCH /profile` |
+| 2 | Business info | `POST /web/businesses` |
+| 3 | Psychometric test | `POST /psychometrics` (idle placeholder now) |
+| 4 | Transaction data | `POST /integrations/simulate` |
+| 5 | Submit application | `POST /apply` |
 
-**Step 1 — Create web controller:**
-Create `app/Http/Controllers/Web/PsychometricWebController.php`:
+---
 
+## The Cursor Prompt
+
+```
+## PROJECT CONTEXT
+[paste master context here as always]
+
+---
+
+## CURRENT TASK — Module 2: SME Owner Loan Application Wizard
+
+---
+
+## WHAT WE ARE BUILDING
+
+A single full-screen modal wizard that guides the SME owner through
+the entire loan application process in 5 sequential steps.
+
+This replaces the original separate pages for psychometrics, integrations,
+and apply. Those separate pages can still exist as routes but the PRIMARY
+experience is this modal.
+
+The modal is triggered by a button on the dashboard.
+It covers the full screen with a blurred backdrop.
+Inside is a centered card with a beautiful step-by-step form.
+
+---
+
+## DESIGN SYSTEM (same as dashboard — use these exact values)
+
+Colors:
+  Primary green dark:   #085041
+  Primary green light:  #5DCAA5
+  Navy dark:            #0C447C
+  Navy light:           #85B7EB
+  Gold:                 #D4A017
+  Surface dark:         #0F1A16
+  Surface light:        #F0F7F4
+  Card dark:            #162820
+  Card light:           #FFFFFF
+  Border dark:          #1E3A2F
+  Border light:         #D1E8DF
+  Text muted dark:      #6EBF9A
+  Text muted light:     #4B7A64
+
+Modal backdrop: backdrop-blur-md bg-black/60
+Modal card: max-w-2xl w-full mx-auto rounded-3xl shadow-2xl
+  dark: bg-[#162820] border border-[#1E3A2F]
+  light: bg-white border border-[#D1E8DF]
+
+All colors must support dark: variant.
+Use lucide-react for all icons.
+
+---
+
+## FILES TO CREATE
+
+1. resources/js/Components/LoanApplicationModal.tsx  ← the entire wizard
+2. app/Http/Controllers/Web/BusinessWebController.php
+3. app/Http/Controllers/Web/PsychometricWebController.php
+4. app/Http/Controllers/Web/IntegrationsWebController.php
+5. app/Http/Controllers/Web/LoanApplicationWebController.php
+
+## FILES TO EDIT
+
+1. resources/js/Pages/Dashboard.tsx
+   → add the "Apply for Loan" trigger button
+   → import and render <LoanApplicationModal />
+2. routes/web.php
+   → add all new web routes
+
+---
+
+## THE MODAL ARCHITECTURE
+
+The modal is managed entirely with React local state.
+No Inertia router.visit() between steps — the page does NOT reload between steps.
+Each step submits its data to its own Laravel web route via fetch() with
+the CSRF token from the page props, then on success moves to the next step locally.
+
+Exception: Step 4 (transaction simulation) and Step 5 (submit application)
+use Inertia's router.post() because they need a full redirect after completion.
+
+State shape inside the modal:
+```tsx
+const [isOpen, setIsOpen] = useState(false)
+const [currentStep, setCurrentStep] = useState(1)
+const [completedSteps, setCompletedSteps] = useState<number[]>([])
+const [formData, setFormData] = useState({
+  // Step 1
+  name: '',
+  phone: '',
+  // Step 2
+  businessName: '',
+  sector: '',
+  subCity: '',
+  establishedYear: '',
+  description: '',
+  // Step 3 — psychometric answers (15 items)
+  answers: {} as Record<number, number>,
+  // Step 4 — no input, just a trigger
+  // Step 5
+  requestedAmount: '',
+  tenureMonths: 12,
+  purpose: '',
+})
+```
+
+---
+
+## STEP INDICATOR (top of modal, always visible)
+
+Design:
+```
+  ①────②────③────④────⑤
+Personal Business Psych  Data   Apply
+```
+
+Each step circle:
+- Completed: solid bg-[#5DCAA5] with white checkmark icon, circle w-9 h-9
+- Current: ring-2 ring-[#5DCAA5] bg-[#085041] text-white font-bold, circle w-9 h-9
+- Future: bg-[#1E3A2F] text-[#6EBF9A], circle w-9 h-9
+
+Connecting line between circles:
+- Completed segment: bg-[#5DCAA5] h-0.5
+- Incomplete segment: bg-[#1E3A2F] h-0.5
+
+Labels below each circle: text-[10px] uppercase tracking-wider
+- Current: text-[#5DCAA5] font-semibold
+- Others: text-[#6EBF9A]
+
+Step indicator is sticky at the top of the modal card.
+Below it: a thin progress bar (h-1 bg-[#1E3A2F]) with a green fill
+that animates width from 0% to 100% as steps complete.
+Width = (currentStep - 1) / 4 * 100 + '%'
+
+---
+
+## MODAL HEADER (below step indicator)
+
+Left side: step title + subtitle
+Right side: X close button (only allow close on step 1; other steps show
+a warning "You will lose your progress" confirmation)
+
+Step titles:
+1. "Personal Information" / "Confirm your identity"
+2. "Business Details" / "Tell us about your business"
+3. "Creditworthiness Assessment" / "15 questions · Takes 3 minutes"
+4. "Transaction Data" / "Connect your CBE payment history"
+5. "Loan Application" / "Final step — submit your request"
+
+---
+
+## STEP 1 — Personal Information
+
+Purpose: confirm/update user's name and phone number.
+
+Pre-fill from the `auth.user` Inertia prop.
+
+Fields:
+- Full Name (text input, required)
+- Phone Number (text input, placeholder: +251 9XX XXX XXX)
+- Email (disabled/read-only, shown as info — cannot be changed here)
+
+Submit behavior:
+- PATCH to `/profile` using fetch() with CSRF header
+- On success: mark step 1 complete, move to step 2
+- Show inline validation errors if any
+
+Visual:
+- Show a circular avatar placeholder with the user's initials in
+  bg-[#085041] text-[#5DCAA5] font-bold at the top of this step
+- Below avatar: the two fields
+
+Button row (bottom of every step):
+- Left: "Cancel" ghost button (step 1 only) or "Back" ghost button (steps 2-5)
+- Right: solid brand-green "Continue →" button
+  When loading: disabled + spinner inside button
+
+---
+
+## STEP 2 — Business Details
+
+Purpose: create or update the business record.
+
+Fields:
+- Business Name (text, required)
+- Sector (select, required):
+  Options:
+  - 5411 - Grocery
+  - 5812 - Food / Cafe
+  - 5912 - Pharmacy
+  - 5732 - Electronics
+  - 5651 - Retail Apparel
+- Sub-city / Location (select, required):
+  Options: Addis Ketema, Akaki Kaliti, Arada, Bole, Gullele,
+           Kirkos, Kolfe Keranio, Lideta, Nifas Silk-Lafto, Yeka
+- Year Established (number input, min: 1990, max: current year)
+- Business Description (textarea, max 300 chars, optional)
+  Show character counter: "243 / 300"
+
+Submit behavior:
+- POST to `/web/businesses` using fetch() with CSRF
+- Laravel controller creates Business record linked to current user
+- On success: mark step 2 complete, move to step 3
+
+Create app/Http/Controllers/Web/BusinessWebController.php:
 ```php
-public function show(): Response
+public function store(Request $request): JsonResponse
 {
-    $user = auth()->user();
-    $business = $user->businesses()->first();
-    $questions = app(QuestionBank::class)->all(); // already exists
-
-    $existingAssessment = $business?->psychometricAssessments()->latest()->first();
-
-    return Inertia::render('Borrower/Psychometrics', [
-        'questions' => $questions,
-        'business' => $business,
-        'existingAssessment' => $existingAssessment ? [
-            'integrity' => $existingAssessment->integrity,
-            'conscientiousness' => $existingAssessment->conscientiousness,
-            'risk_tolerance' => $existingAssessment->risk_tolerance,
-            'completed_at' => $existingAssessment->created_at,
-        ] : null,
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'sector' => 'required|string',
+        'sub_city' => 'required|string',
+        'established_year' => 'required|integer|min:1990|max:' . date('Y'),
+        'description' => 'nullable|string|max:300',
     ]);
-}
 
-public function store(Request $request): RedirectResponse
-{
     $user = auth()->user();
-    $business = $user->businesses()->firstOrFail();
 
-    // Call the existing action
-    app(StorePsychometricAssessmentAction::class)->execute(
-        $business,
-        $request->validated()
+    // Create or update (one business per user)
+    $business = Business::updateOrCreate(
+        ['owner_id' => $user->id],
+        array_merge($validated, ['uuid' => (string) Str::uuid()])
     );
 
-    return redirect()->route('psychometrics')->with('success', 'Assessment completed.');
+    return response()->json(['success' => true, 'business_id' => $business->id]);
 }
 ```
 
-**Step 2 — Add web routes** in `routes/web.php`:
-```php
-Route::middleware(['auth', 'role:sme-owner'])->group(function () {
-    Route::get('/psychometrics', [PsychometricWebController::class, 'show'])->name('psychometrics');
-    Route::post('/psychometrics', [PsychometricWebController::class, 'store']);
-});
-```
+Add route: POST /web/businesses → BusinessWebController@store (auth middleware)
 
-**Step 3 — Build `resources/js/Pages/Borrower/Psychometrics.tsx`:**
-
-UI structure:
-- If `existingAssessment` prop is not null: show a "Already Completed" card
-  with the three scores (integrity, conscientiousness, risk tolerance) as percentage bars.
-  Show a "Retake Assessment" button.
-- If not completed: show the quiz form.
-  - Display questions one section at a time (5 questions per page, 3 pages)
-  - Each question: text + radio buttons labeled 1 (Strongly Disagree) to 5 (Strongly Agree)
-  - Progress bar at top showing "Step 1 of 3"
-  - "Next" and "Back" buttons
-  - On final page: "Submit Assessment" button
-  - Use Inertia `useForm` hook to submit
-
-**Question format from backend:**
-```json
-{ "id": 1, "text": "I always pay my debts on time", "dimension": "integrity" }
-```
-
-Group questions by `dimension` for display purposes.
-
-**Expected output:** SME owner visits `/psychometrics`, completes 15 questions in 3 steps,
-submits, and sees their scores displayed as bars.
+Visual notes:
+- The sector select: show a small colored emoji/icon next to each option
+  🛒 Grocery  ☕ Cafe  💊 Pharmacy  📱 Electronics  👕 Retail
+- On selecting sector, show a subtle animated highlight on the selected card
+  (make the select look like clickable icon cards, not a plain dropdown)
 
 ---
 
-## TASK 2.2 — Transaction Data Integration Page (Integrations)
+## STEP 3 — Psychometric Assessment (PLACEHOLDER — build shell only)
 
-**What this task does:**
-Builds the "Connect Your Transactions" page.
-Since we use synthetic data (not live Chapa), this page triggers the
-Chapa simulator to generate 60 days of synthetic transactions for this business,
-then aggregates them into the daily heartbeat table that the AI reads.
+⚠️ THIS STEP IS IDLE FOR NOW. Build the shell but show a placeholder.
+The full psychometric UI will be built in a separate dedicated task after this.
 
-**Backend already exists:**
-- `POST /api/v1/payments/chapa/simulate` → generates synthetic transactions
-- `RebuildDailyHeartbeatAction` → aggregates raw transactions into `sme_daily_heartbeat`
-- `heartbeat:aggregate` artisan command → runs the above
+What to build NOW:
+- Show a card with a lock icon in brand green
+- Title: "Creditworthiness Assessment"
+- Description: "This 15-question assessment evaluates your integrity,
+  financial conscientiousness, and risk tolerance. Your answers help our
+  AI make a fairer credit decision."
+- Three dimension pills:
+  [🤝 Integrity] [📊 Conscientiousness] [⚖️ Risk Tolerance]
+- A "Begin Assessment" button that is DISABLED and shows tooltip:
+  "Assessment module coming soon"
+- A small "Skip for now →" text link that moves to step 4
 
-**Step 1 — Create web controller:**
-Create `app/Http/Controllers/Web/IntegrationsWebController.php`:
+The "Skip for now" should be the ONLY way to advance from step 3 for now.
+Mark step 3 as completed when skipped (we will replace this logic later).
 
+---
+
+## STEP 4 — Transaction Data
+
+Purpose: load 60 days of synthetic CBE transaction data.
+
+This step has no text input — it's an action step.
+
+Layout:
+- Explanation box (rounded-xl bg-[#085041]/10 border border-[#5DCAA5]/20 p-4):
+  Icon: Database
+  Title: "Why do we need this?"
+  Text: "Your daily transaction history is the primary input to our AI
+  forecasting model. We use 60 days of inflow and outflow data to predict
+  your future cash flow and calculate a fair credit limit."
+
+- Status card (changes based on heartbeatDaysLoaded prop):
+
+  If 0 days:
+  ```
+  ┌─────────────────────────────────────────┐
+  │  ⚠️  No transaction data found          │
+  │  Click below to load your CBE history   │
+  └─────────────────────────────────────────┘
+  ```
+  Red/amber border.
+
+  If >= 45 days:
+  ```
+  ┌─────────────────────────────────────────┐
+  │  ✅  60 days of data loaded             │
+  │  Your data is ready for AI analysis     │
+  └─────────────────────────────────────────┘
+  ```
+  Green border.
+
+- "Load Transaction Data" button:
+  - Full width, large (py-4)
+  - Brand green background
+  - Icon: Zap (lightning bolt) on the left
+  - Label: "Load 60 Days of CBE Transaction Data"
+  - When clicked: button shows spinner + "Loading data..." text
+  - Uses Inertia router.post('/integrations/simulate') — NOT fetch()
+    because this is a slow operation and we want the page to update
+  - After redirect back (Inertia), if heartbeatDaysLoaded >= 45:
+    show the green status and auto-advance to step 5 after 1.5 seconds
+
+- Mini data preview (show after data is loaded):
+  5 rows of fake transaction previews:
+  ```
+  May 20   Inflow   ETB 3,240   ●
+  May 19   Outflow  ETB 1,890   ●
+  May 18   Inflow   ETB 4,100   ●
+  ...
+  ```
+  These are visual decoration only — hardcoded fake rows.
+  They give the impression the real data loaded.
+
+Create IntegrationsWebController:
 ```php
-public function show(): Response
-{
-    $user = auth()->user();
-    $business = $user->businesses()->first();
+public function show(): Response {
+    $business = auth()->user()->businesses()->first();
     $heartbeatCount = $business
         ? SmeDailyHeartbeat::where('business_id', $business->id)->count()
         : 0;
-
-    return Inertia::render('Borrower/Integrations', [
-        'business' => $business,
+    return Inertia::render('Dashboard', [ // returns to dashboard with modal state
         'heartbeatDaysLoaded' => $heartbeatCount,
-        'hasEnoughData' => $heartbeatCount >= 45,
+        'openModalAtStep' => 4,
     ]);
 }
 
-public function simulate(Request $request): RedirectResponse
-{
-    $user = auth()->user();
-    $business = $user->businesses()->firstOrFail();
-
-    // Call existing Chapa simulator
-    app(SyntheticStatementGeneratorService::class)->generateForBusiness(
-        $business,
-        days: 60
-    );
-
-    // Aggregate into heartbeat table
+public function simulate(): RedirectResponse {
+    $business = auth()->user()->businesses()->firstOrFail();
+    app(SyntheticStatementGeneratorService::class)->generateForBusiness($business, days: 60);
     app(RebuildDailyHeartbeatAction::class)->execute($business);
-
-    return redirect()->route('integrations')
-        ->with('success', '60 days of transaction data loaded successfully.');
+    return redirect()->route('dashboard')
+        ->with('openModalAtStep', 4)
+        ->with('heartbeatSuccess', true);
 }
 ```
 
-**Step 2 — Add web routes** in `routes/web.php`:
-```php
-Route::middleware(['auth', 'role:sme-owner'])->group(function () {
-    Route::get('/integrations', [IntegrationsWebController::class, 'show'])->name('integrations');
-    Route::post('/integrations/simulate', [IntegrationsWebController::class, 'simulate'])->name('integrations.simulate');
-});
-```
-
-**Step 3 — Build `resources/js/Pages/Borrower/Integrations.tsx`:**
-
-UI structure:
-- Page title: "Connect Your Transaction Data"
-- Explanation card: "We use your CBE transaction history to forecast your cash flow.
-  Since this is a proof-of-concept, we simulate 60 days of realistic transaction data
-  for your business."
-- Status indicator:
-  - If `heartbeatDaysLoaded === 0`: Red indicator "No data loaded yet"
-  - If `heartbeatDaysLoaded > 0 && < 45`: Yellow "Data loading incomplete ({n} / 45 minimum days)"
-  - If `heartbeatDaysLoaded >= 45`: Green "✓ {n} days of data ready"
-- Big button: "Load 60 Days of Transaction Data" (POST to `/integrations/simulate`)
-- Show a loading spinner while submitting (Inertia's `processing` state)
-- After success: show green success banner from `$page.props.flash.success`
-
-**Expected output:** SME owner clicks the button, sees spinner, then green confirmation.
-Heartbeat count updates on reload.
+Route: POST /integrations/simulate → IntegrationsWebController@simulate
 
 ---
 
-## TASK 2.3 — Submit Loan Application Page
+## STEP 5 — Submit Application
 
-**What this task does:**
-Builds the page where the SME owner fills in their loan request:
-how much they want to borrow and for how long.
-On submission, a `loan_application` record is created with status `queued_for_ai`.
+Purpose: final form — loan amount, duration, purpose.
 
-**Backend already exists:**
-- `POST /api/v1/applications` → creates loan application
+Fields:
 
-**Step 1 — Create web controller:**
-Create `app/Http/Controllers/Web/LoanApplicationWebController.php`:
+**Loan Amount:**
+- Label: "How much do you need? (ETB)"
+- Slider + number input combined:
+  - Show a range slider from 10,000 to 5,000,000
+  - Below slider: a large formatted number display: "ETB 250,000"
+  - The number is also editable directly
+  - Slider thumb: brand green (#5DCAA5), track filled in green
+
+**Loan Duration:**
+- Label: "Repayment Period"
+- NOT a select dropdown — use 4 clickable cards in a 2x2 grid:
+  ```
+  ┌──────────┐  ┌──────────┐
+  │ 6 months │  │ 12 months│
+  └──────────┘  └──────────┘
+  ┌──────────┐  ┌──────────┐
+  │18 months │  │ 24 months│
+  └──────────┘  └──────────┘
+  ```
+  Selected card: bg-[#085041] border-[#5DCAA5] text-white
+  Unselected: bg-transparent border-[#1E3A2F] text-muted
+
+**Purpose of Loan:**
+- Textarea, 4 rows
+- Placeholder: "e.g., Purchase additional inventory for the upcoming holiday season"
+- Character counter: "0 / 500"
+
+**Summary box** (above submit button):
+Show a read-only summary of everything entered:
+```
+┌─────────────────────────────────────────┐
+│  Application Summary                    │
+│  Business:     Ato Girma's Retail       │
+│  Amount:       ETB 250,000              │
+│  Duration:     12 months                │
+│  Sector:       Retail Apparel           │
+│  Data:         ✅ 60 days loaded        │
+└─────────────────────────────────────────┘
+```
+
+Submit button:
+- Full width, extra large (py-5)
+- Background: linear gradient from #085041 to #0C447C
+  (use style={{ background: 'linear-gradient(135deg, #085041, #0C447C)' }})
+- Icon: Send on the right
+- Label: "Submit Application for AI Evaluation"
+- When loading: "Submitting..." + spinner, fully disabled
+
+Submit behavior:
+- Inertia router.post('/apply', formData)
+- On success: close modal, show a full-page success state on dashboard:
+  A centered card with:
+  - Large checkmark animation (use CSS: scale 0→1 with bounce easing)
+  - "Application Submitted!" in large text
+  - "Your application is now queued for AI evaluation.
+     The loan officer will review your results shortly."
+  - A status tracker showing: Submitted ✓ → AI Processing → Officer Review → Decision
+
+---
+
+## CREATE LoanApplicationWebController.php
 
 ```php
-public function create(): Response
-{
-    $user = auth()->user();
-    $business = $user->businesses()->firstOrFail();
-    $heartbeatCount = SmeDailyHeartbeat::where('business_id', $business->id)->count();
-    $hasAssessment = $business->psychometricAssessments()->exists();
-
-    // Check prerequisites
-    $canApply = $heartbeatCount >= 45 && $hasAssessment;
-
-    $existingApplication = LoanApplication::where('business_id', $business->id)
-        ->latest()->first();
-
-    return Inertia::render('Borrower/Apply', [
-        'business' => $business,
-        'canApply' => $canApply,
-        'prerequisites' => [
-            'heartbeatReady' => $heartbeatCount >= 45,
-            'psychometricReady' => $hasAssessment,
-        ],
-        'existingApplication' => $existingApplication ? [
-            'id' => $existingApplication->id,
-            'status' => $existingApplication->status,
-            'requested_amount' => $existingApplication->requested_amount,
-            'tenure_months' => $existingApplication->tenure_months,
-            'npv_credit_limit' => $existingApplication->npv_credit_limit,
-            'apr' => $existingApplication->apr,
-            'ai_risk_band' => $existingApplication->ai_risk_band,
-            'created_at' => $existingApplication->created_at,
-        ] : null,
-    ]);
-}
-
 public function store(Request $request): RedirectResponse
 {
     $request->validate([
         'requested_amount' => 'required|numeric|min:10000|max:5000000',
-        'tenure_months' => 'required|integer|in:6,12,18,24',
-        'purpose' => 'required|string|max:500',
+        'tenure_months'    => 'required|integer|in:6,12,18,24',
+        'purpose'          => 'required|string|max:500',
     ]);
 
-    $user = auth()->user();
-    $business = $user->businesses()->firstOrFail();
-
+    $business = auth()->user()->businesses()->firstOrFail();
     app(CreateLoanApplicationAction::class)->execute($business, $request->all());
 
-    return redirect()->route('apply')->with('success', 'Application submitted. Awaiting AI evaluation.');
+    return redirect()->route('dashboard')->with('applicationSubmitted', true);
 }
 ```
 
-**Step 2 — Add routes** in `routes/web.php`:
-```php
-Route::middleware(['auth', 'role:sme-owner'])->group(function () {
-    Route::get('/apply', [LoanApplicationWebController::class, 'create'])->name('apply');
-    Route::post('/apply', [LoanApplicationWebController::class, 'store']);
-});
-```
-
-**Step 3 — Build `resources/js/Pages/Borrower/Apply.tsx`:**
-
-UI structure:
-- **If `existingApplication` exists:** Show application status card instead of the form.
-  - Status badge (color by status: queued_for_ai=blue, evaluated=yellow, approved=green, rejected=red)
-  - Show requested amount and tenure
-  - If status is `evaluated`, `approved`, or `rejected`: show NPV limit, APR, risk band
-  - Button: "View Full Result" (links to `/sme-valuation`)
-
-- **If no existing application:**
-  - Prerequisites checklist at top:
-    - ✓ or ✗ "Transaction data loaded (45+ days)"
-    - ✓ or ✗ "Psychometric assessment completed"
-    - If either is ✗: show links to those pages, disable submit button
-  - Form fields:
-    - "Requested Loan Amount (ETB)" — number input, min 10,000, max 5,000,000
-    - "Loan Duration" — select: 6 months / 12 months / 18 months / 24 months
-    - "Purpose of Loan" — textarea
-  - Submit button: "Submit Application for AI Evaluation"
-
-**Expected output:** SME owner can submit a loan application.
-If they return to the page, they see their application status.
+Route: POST /apply → LoanApplicationWebController@store
 
 ---
 
-## TASK 2.4 — SME Valuation Result Page (with charts)
+## MODAL OPEN/CLOSE BEHAVIOR
 
-**What this task does:**
-The SME owner's result page. After the loan officer triggers the AI evaluation,
-the SME can see their credit limit, risk score, and the SHAP explanation
-(which factors helped or hurt their score).
+Open trigger: "Apply for Loan" button on dashboard
+  - Only show this button if role === 'sme_owner'
+  - If application already exists and status is not 'draft': show
+    "View Application Status" button instead, linking to /sme-valuation
 
-**File to EDIT (already exists, needs upgrading):** `resources/js/Pages/Borrower/SmeValuation.tsx`
-**Laravel controller to EDIT:** `app/Http/Controllers/Web/SmeValuationController.php`
+Close behavior:
+  - Step 1: close immediately
+  - Steps 2-5: show a small inline warning inside the modal:
+    "Are you sure? Your progress will be saved." with "Stay" and "Exit" buttons
+  - On close: animate the modal out (opacity 0 + scale 0.95, 200ms)
 
-**Step 1 — Update SmeValuationController to pass all needed data:**
+Open animation: backdrop fades in (opacity 0→1, 150ms),
+card slides up (translateY 20px→0 + opacity 0→1, 250ms, ease-out)
+
+---
+
+## TRANSITIONS BETWEEN STEPS
+
+When moving forward (Next):
+  - Current step content: slides left (translateX 0→-40px + opacity 1→0, 200ms)
+  - Next step content: slides in from right (translateX 40px→0 + opacity 0→1, 250ms)
+
+When moving backward (Back):
+  - Current step content: slides right (translateX 0→40px + opacity 1→0, 200ms)
+  - Prev step content: slides in from left (translateX -40px→0 + opacity 0→1, 250ms)
+
+Implement this with a simple useState for animationDirection ('forward'|'backward')
+and CSS transition classes applied to the step content wrapper.
+
+---
+
+## DASHBOARD INTEGRATION
+
+In Dashboard.tsx, add:
+
+```tsx
+// State
+const [modalOpen, setModalOpen] = useState(false)
+const [initialStep, setInitialStep] = useState(1)
+
+// Check if we should auto-open modal at a specific step (from redirect)
+// Read from Inertia page props: openModalAtStep
+useEffect(() => {
+  if (props.openModalAtStep) {
+    setInitialStep(props.openModalAtStep)
+    setModalOpen(true)
+  }
+}, [])
+
+// Render
+<LoanApplicationModal
+  isOpen={modalOpen}
+  onClose={() => setModalOpen(false)}
+  initialStep={initialStep}
+  heartbeatDaysLoaded={props.stats?.heartbeatDays ?? 0}
+  user={props.user}
+  stats={props.stats}
+/>
+```
+
+The trigger button (for sme_owner role, in the KPI section or header):
+```tsx
+<button
+  onClick={() => setModalOpen(true)}
+  className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm
+             bg-[#085041] hover:bg-[#0a6350] text-white
+             transition-all duration-200 shadow-lg
+             hover:shadow-[0_0_20px_rgba(93,202,165,0.3)]"
+>
+  <Plus className="w-4 h-4" />
+  Apply for Loan
+</button>
+```
+
+---
+
+## RESULT PAGE (existing, keep as separate page)
+
+DO NOT touch resources/js/Pages/Borrower/SmeValuation.tsx in this task.
+That page is upgraded in Task 2.4 separately.
+Just make sure the "View Full Result" link goes to /sme-valuation.
+
+---
+
+## ROUTES SUMMARY (add all to routes/web.php)
 
 ```php
-public function show(): Response
-{
-    $user = auth()->user();
-    $business = $user->businesses()->firstOrFail();
-
-    $application = LoanApplication::where('business_id', $business->id)
-        ->with(['valuations.shapExplanations'])
-        ->latest()->firstOrFail();
-
-    $valuation = $application->valuations()->latest()->first();
-
-    $forecastData = null;
-    $shapData = [];
-
-    if ($valuation) {
-        // P10/P50/P90 arrays from valuation
-        $forecastData = [
-            'p10' => $valuation->p10_net_inflow_etb ?? [],
-            'p50' => $valuation->p50_net_inflow_etb ?? [],
-            'p90' => $valuation->p90_net_inflow_etb ?? [],
-            'horizon_days' => $valuation->horizon_days ?? 30,
-        ];
-
-        // SHAP values sorted by |value| descending
-        $shapData = $valuation->shapExplanations()
-            ->orderByDesc('sort_order')
-            ->get()
-            ->map(fn($s) => [
-                'feature' => $s->feature_key,
-                'value' => $s->shap_value,
-                'direction' => $s->shap_value >= 0 ? 'positive' : 'negative',
-            ])->toArray();
-    }
-
-    return Inertia::render('Borrower/SmeValuation', [
-        'application' => [
-            'status' => $application->status,
-            'requested_amount' => $application->requested_amount,
-            'npv_credit_limit' => $application->npv_credit_limit,
-            'apr' => $application->apr,
-            'ai_risk_band' => $application->ai_risk_band,
-            'prob_default' => $application->prob_default,
-        ],
-        'forecast' => $forecastData,
-        'shapDrivers' => $shapData,
-        'reasonCodes' => $application->reason_codes ?? [],
-    ]);
-}
+// SME Owner routes (session auth, sme-owner role)
+Route::middleware(['auth', 'role:sme-owner'])->group(function () {
+    Route::post('/web/businesses', [BusinessWebController::class, 'store']);
+    Route::get('/psychometrics', [PsychometricWebController::class, 'show'])->name('psychometrics');
+    Route::post('/psychometrics', [PsychometricWebController::class, 'store']);
+    Route::get('/integrations', [IntegrationsWebController::class, 'show'])->name('integrations');
+    Route::post('/integrations/simulate', [IntegrationsWebController::class, 'simulate'])->name('integrations.simulate');
+    Route::get('/apply', [LoanApplicationWebController::class, 'create'])->name('apply');
+    Route::post('/apply', [LoanApplicationWebController::class, 'store'])->name('apply.store');
+    Route::get('/sme-valuation', [SmeValuationController::class, 'show'])->name('sme-valuation');
+});
 ```
 
-**Step 2 — Update `SmeValuation.tsx` to show charts:**
+---
 
-Replace the existing content with:
+## QUALITY BAR — every item must be checked before you finish
 
-**A) Summary Cards (top row, already exists but improve):**
-- NPV Credit Limit (in ETB, formatted: 1,234,567 ETB)
-- Risk Band (low=green badge, medium=yellow, high=red)
-- Probability of Default (as percentage)
-- Application Status (badge)
+[ ] Modal opens and closes with smooth animation
+[ ] Step indicator updates correctly as user moves through steps
+[ ] Progress bar width animates between steps
+[ ] Step 1 pre-fills user's existing name
+[ ] Step 2 sector selection uses icon cards, not plain select
+[ ] Step 3 shows placeholder with "Skip for now" that advances to step 4
+[ ] Step 4 shows correct status indicator based on heartbeatDaysLoaded prop
+[ ] Step 5 loan amount slider and number input stay in sync
+[ ] Step 5 duration uses clickable cards, not a select
+[ ] Submit button has the gradient background
+[ ] After submission: success state shows on dashboard with status tracker
+[ ] Dark mode and light mode both look correct on every step
+[ ] No TypeScript errors
+[ ] Back button works on every step
+[ ] Closing from step 2+ shows confirmation before closing
 
-**B) Forecast Chart (ECharts line chart with bands):**
-```tsx
-import ReactECharts from 'echarts-for-react';
+---
 
-// Build chart option:
-const forecastOption = {
-  title: { text: '30-Day Cash Flow Forecast' },
-  xAxis: {
-    type: 'category',
-    data: Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`),
-  },
-  yAxis: { type: 'value', name: 'ETB' },
-  series: [
-    {
-      name: 'Pessimistic (P10)',
-      type: 'line',
-      data: forecast.p10,
-      lineStyle: { color: '#ef4444' },
-      areaStyle: { color: 'rgba(239, 68, 68, 0.1)' },
-    },
-    {
-      name: 'Expected (P50)',
-      type: 'line',
-      data: forecast.p50,
-      lineStyle: { color: '#3b82f6', width: 2 },
-    },
-    {
-      name: 'Optimistic (P90)',
-      type: 'line',
-      data: forecast.p90,
-      lineStyle: { color: '#22c55e' },
-      areaStyle: { color: 'rgba(34, 197, 94, 0.1)' },
-    },
-  ],
-  legend: { show: true },
-  tooltip: { trigger: 'axis' },
-};
+## AFTER YOU FINISH, TELL ME
+
+1. Every file created or modified (with full path)
+2. Command to run: php artisan serve + npm run dev
+3. Whether any migration needs to run
+4. Any prop types I should define in resources/js/types/index.ts
 ```
 
-**C) SHAP Waterfall Chart (horizontal bar chart):**
-Show top 8 SHAP features. Positive values = green bars (right). Negative = red bars (left).
-```tsx
-const shapOption = {
-  title: { text: 'What Influenced Your Score' },
-  xAxis: { type: 'value', name: 'SHAP Impact' },
-  yAxis: {
-    type: 'category',
-    data: shapDrivers.map(s => s.feature),
-  },
-  series: [{
-    type: 'bar',
-    data: shapDrivers.map(s => ({
-      value: s.value,
-      itemStyle: { color: s.value >= 0 ? '#22c55e' : '#ef4444' },
-    })),
-  }],
-};
+---
+
+**Three things before you run this:**
+
+Step 3 is intentionally a placeholder. Tell Cursor this explicitly when it asks — otherwise it will try to build the full psychometric UI inside the modal and get confused. The psychometric quiz is complex enough to deserve its own dedicated task where you wire it into step 3 after.
+
+The slider in step 5 is the most impressive UI element in the whole form. If Cursor uses a plain `<input type="range">`, ask it to style the thumb and track using this exact CSS:
+```css
+input[type=range]::-webkit-slider-thumb { background: #5DCAA5; }
+input[type=range]::-webkit-slider-runnable-track { background: #1E3A2F; }
 ```
 
-**D) Reason Codes (plain text cards below charts):**
-For each reason code, show a card with:
-- Direction icon (↑ green for positive, ↓ red for negative)
-- The `message` field
-
-**Expected output:** SME owner sees their credit limit, a 3-band forecast chart,
-a SHAP bar chart explaining the score, and text reason codes.
-
+After Cursor finishes, test by logging in as the creditworthy SME owner (`ato-girma-merkato-retail@test.et`) and clicking "Apply for Loan". Walk through all 5 steps. If step 4 redirect back to the modal at step 4 works — everything is wired correctly.
 ---
 
 # ═══════════════════════════════════════════════

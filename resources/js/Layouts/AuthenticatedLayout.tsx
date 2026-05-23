@@ -21,19 +21,18 @@ export default function Authenticated({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const user = usePage().props.auth.user as
-        | {
-              id: number;
-              name: string;
-              email: string;
-              roles?: string[];
-              permissions?: string[];
-          }
-        | null;
-    const roles = user?.roles ?? [];
-    const isSuperAdmin = roles.includes("super-admin");
-    const isSmeOwner = roles.includes("sme-owner");
-    const isLoanProvider = roles.includes("loan-provider");
+    const auth = usePage().props.auth as {
+        user?: {
+            id: number;
+            name: string;
+            email: string;
+            roles?: string[];
+            permissions?: string[];
+        } | null;
+        primaryRole?: string | null;
+    };
+    const user = auth.user ?? null;
+    const primaryRole = auth.primaryRole ?? null;
     const userName = user?.name ?? "User";
     const userEmail = user?.email ?? "";
 
@@ -119,16 +118,8 @@ export default function Authenticated({
         [],
     );
 
-    const sections: NavSection[] = useMemo(
-        () => [
-            {
-                label: "Overview",
-                items: [...navigation],
-            },
-            ...(isSuperAdmin || isSmeOwner
-                ? ([
-                      {
-                label: "Borrower (SME Owner)",
+    const borrowerSection: NavSection = {
+                label: "SME Portal",
                 items: [
                     {
                         name: "Loan Application",
@@ -226,13 +217,10 @@ export default function Authenticated({
                         ),
                     },
                 ],
-                      },
-                  ] satisfies NavSection[])
-                : []),
-            ...(isSuperAdmin || isLoanProvider
-                ? ([
-                      {
-                label: "Lender (Loan Officer)",
+    };
+
+    const lenderSection: NavSection = {
+                label: "Lending",
                 items: [
                     {
                         name: "Applications Pipeline",
@@ -320,13 +308,10 @@ export default function Authenticated({
                         ),
                     },
                 ],
-                      },
-                  ] satisfies NavSection[])
-                : []),
-            ...(isSuperAdmin
-                ? ([
-                      {
-                label: "Admin / Audit",
+    };
+
+    const adminSection: NavSection = {
+                label: "Administration",
                 items: [
                     {
                         name: "Macroeconomic Factors",
@@ -409,19 +394,26 @@ export default function Authenticated({
                         ),
                     },
                 ],
-                      },
-                  ] satisfies NavSection[])
-                : []),
-        ],
-        [
-            navigation,
-            isSuperAdmin,
-            isSmeOwner,
-            isLoanProvider,
-            safeCurrent,
-            safeRoute,
-        ],
-    );
+    };
+
+    const sections: NavSection[] = useMemo(() => {
+        const overview: NavSection = {
+            label: "Overview",
+            items: [...navigation],
+        };
+
+        if (primaryRole === "sme_owner") {
+            return [overview, borrowerSection];
+        }
+        if (primaryRole === "loan_officer") {
+            return [overview, lenderSection];
+        }
+        if (primaryRole === "super_admin") {
+            return [overview, adminSection];
+        }
+
+        return [overview];
+    }, [primaryRole, navigation]);
 
     const SidebarNav = ({ className = "" }: { className?: string }) => (
         <nav
