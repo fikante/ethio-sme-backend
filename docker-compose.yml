@@ -14,8 +14,13 @@ services:
     depends_on:
       - postgres
     environment:
-      - APP_ENV=local
-      - DB_HOST=postgres
+      APP_ENV: local
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: ethio_sme
+      DB_USERNAME: postgres
+      DB_PASSWORD: secret
 
   postgres:
     image: postgres:16-alpine
