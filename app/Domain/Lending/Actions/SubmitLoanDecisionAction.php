@@ -34,9 +34,14 @@ class SubmitLoanDecisionAction
             }
         }
 
-        return DB::transaction(function () use ($application, $decision): LoanApplication {
+        $terminalStatus = match ($decision->outcome) {
+            DecisionOutcome::Approved => LoanApplication::STATUS_APPROVED,
+            DecisionOutcome::Rejected => LoanApplication::STATUS_REJECTED,
+        };
+
+        return DB::transaction(function () use ($application, $decision, $terminalStatus): LoanApplication {
             $application->update([
-                'status' => $decision->outcome->value,
+                'status' => $terminalStatus,
                 'reviewed_by' => $decision->officerId,
                 'rejection_narrative' => $decision->narrative,
                 'reason_codes' => $decision->reasonCodes,

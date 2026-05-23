@@ -18,6 +18,8 @@ class LoanApplication extends Model implements Auditable
 
     public const STATUS_DRAFT = 'draft';
 
+    public const STATUS_SUBMITTED = 'submitted';
+
     public const STATUS_PENDING_PSYCHOMETRIC = 'pending_psychometric';
 
     public const STATUS_PENDING_DATA_SYNC = 'pending_data_sync';
@@ -25,6 +27,8 @@ class LoanApplication extends Model implements Auditable
     public const STATUS_QUEUED_FOR_AI = 'queued_for_ai';
 
     public const STATUS_PROCESSING = 'processing';
+
+    public const STATUS_EVALUATED = 'evaluated';
 
     public const STATUS_APPROVED = 'approved';
 
@@ -41,6 +45,8 @@ class LoanApplication extends Model implements Auditable
         'idempotency_key',
         'npv_credit_limit',
         'ai_risk_score',
+        'ai_risk_band',
+        'prob_default',
         'snapshot_risk_score',
         'effective_discount_rate',
         'p10_cashflow_forecast',
@@ -62,6 +68,7 @@ class LoanApplication extends Model implements Auditable
         'decided_at' => 'datetime',
         'npv_credit_limit' => 'decimal:2',
         'ai_risk_score' => 'decimal:4',
+        'prob_default' => 'decimal:4',
         'snapshot_risk_score' => 'decimal:4',
         'effective_discount_rate' => 'decimal:4',
         'apr' => 'decimal:4',

@@ -122,13 +122,13 @@ class RunValuationAction
             $this->persistShap->execute($valuation, $response->shapValues);
 
             $application->update([
-                'status' => $application->status === LoanApplication::STATUS_PROCESSING
-                    ? LoanApplication::STATUS_PROCESSING
-                    : $application->status,
+                'status' => LoanApplication::STATUS_EVALUATED,
                 'npv_credit_limit' => $npvResult->mappedLimitEtb,
                 'effective_discount_rate' => $npvResult->effectiveDiscountRate,
                 'apr' => $npvResult->apr,
                 'ai_risk_score' => $response->xgboostScore,
+                'ai_risk_band' => $response->xgboostClass,
+                'prob_default' => $response->probDefault,
                 'snapshot_risk_score' => $response->xgboostScore,
                 'p10_cashflow_forecast' => $response->p10Series,
                 'p50_cashflow_forecast' => $response->p50Series,
