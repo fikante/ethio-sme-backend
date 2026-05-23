@@ -3,8 +3,8 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import PublicPageChrome from '@/Components/PublicPageChrome';
 import TextInput from '@/Components/TextInput';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { FormEventHandler } from 'react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
+import { FormEventHandler, useEffect, useState } from 'react';
 
 const labelClass = 'text-gray-600 dark:text-zinc-300';
 const inputClass =
@@ -14,18 +14,71 @@ const linkClass =
     'font-semibold text-gray-900 underline-offset-4 hover:underline dark:text-white';
 
 export default function Register() {
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const [submitting, setSubmitting] = useState(false);
+    const { data, setData, errors, reset } = useForm({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
     });
 
+    const pageErrors = (usePage().props.errors ?? {}) as Record<string, string>;
+    const fieldErrors = { ...pageErrors, ...errors };
+
+    /** Sync browser/password-manager autofill into React state (Chrome often skips onChange). */
+    const syncAutofillFromDom = () => {
+        const passwordEl = document.getElementById('password') as HTMLInputElement | null;
+        const confirmEl = document.getElementById(
+            'password_confirmation',
+        ) as HTMLInputElement | null;
+
+        if (passwordEl?.value && passwordEl.value !== data.password) {
+            setData('password', passwordEl.value);
+        }
+        if (confirmEl?.value && confirmEl.value !== data.password_confirmation) {
+            setData('password_confirmation', confirmEl.value);
+        }
+    };
+
+    useEffect(() => {
+        const timers = [100, 300, 600].map((ms) => window.setTimeout(syncAutofillFromDom, ms));
+        const onAnimation = (event: AnimationEvent) => {
+            if (event.animationName === 'onAutoFillStart') {
+                syncAutofillFromDom();
+            }
+        };
+        document.addEventListener('animationstart', onAnimation);
+
+        return () => {
+            timers.forEach((id) => window.clearTimeout(id));
+            document.removeEventListener('animationstart', onAnimation);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- run on mount for autofill detection
+    }, []);
+
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
 
-        post(route('register'), {
-            onFinish: () => reset('password', 'password_confirmation'),
+        const form = e.currentTarget as HTMLFormElement;
+        const formData = new FormData(form);
+
+        const payload = {
+            name: String(formData.get('name') ?? data.name).trim(),
+            email: String(formData.get('email') ?? data.email).trim(),
+            password: String(formData.get('password') ?? data.password),
+            password_confirmation: String(
+                formData.get('password_confirmation') ?? data.password_confirmation,
+            ),
+        };
+
+        setData(payload);
+
+        router.post(route('register'), payload, {
+            onStart: () => setSubmitting(true),
+            onFinish: () => {
+                setSubmitting(false);
+                reset('password', 'password_confirmation');
+            },
         });
     };
 
@@ -66,7 +119,7 @@ export default function Register() {
                         </div>
 
                         <div className="relative overflow-hidden rounded-3xl border border-gray-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 sm:p-8">
-                            <form onSubmit={submit}>
+                            <form onSubmit={submit} autoComplete="on">
                                 <div>
                                     <InputLabel
                                         htmlFor="name"
@@ -87,7 +140,7 @@ export default function Register() {
                                     />
 
                                     <InputError
-                                        message={errors.name}
+                                        message={fieldErrors.name}
                                         className="mt-2 text-red-600 dark:text-red-300"
                                     />
                                 </div>
@@ -112,7 +165,7 @@ export default function Register() {
                                     />
 
                                     <InputError
-                                        message={errors.email}
+                                        message={fieldErrors.email}
                                         className="mt-2 text-red-600 dark:text-red-300"
                                     />
                                 </div>
@@ -132,13 +185,17 @@ export default function Register() {
                                         className={inputClass}
                                         autoComplete="new-password"
                                         onChange={(e) => setData('password', e.target.value)}
-                                        placeholder="••••••••"
+                                        onInput={(e) =>
+                                            setData('password', e.currentTarget.value)
+                                        }
+                                        placeholder="At least 8 characters"
                                         required
+                                        minLength={8}
                                     />
 
                                     <InputError
-                                        message={errors.password}
-                                        className="mt-2 text-red-600 dark:text-red-300"
+                                        message={fieldErrors.password}
+                                        className="mt-2 text-red-600 dark:text-red-400"
                                     />
                                 </div>
 
@@ -155,24 +212,31 @@ export default function Register() {
                                         name="password_confirmation"
                                         value={data.password_confirmation}
                                         className={inputClass}
-                                        autoComplete="new-password"
+                                        autoComplete="off"
                                         onChange={(e) =>
                                             setData('password_confirmation', e.target.value)
                                         }
-                                        placeholder="••••••••"
+                                        onInput={(e) =>
+                                            setData(
+                                                'password_confirmation',
+                                                e.currentTarget.value,
+                                            )
+                                        }
+                                        placeholder="Repeat your password"
                                         required
+                                        minLength={8}
                                     />
 
                                     <InputError
-                                        message={errors.password_confirmation}
-                                        className="mt-2 text-red-600 dark:text-red-300"
+                                        message={fieldErrors.password_confirmation}
+                                        className="mt-2 text-red-600 dark:text-red-400"
                                     />
                                 </div>
 
                                 <div className="mt-6">
                                     <PrimaryButton
                                         className="w-full justify-center bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-500/40 focus:ring-offset-gray-50 dark:border dark:border-zinc-600 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 dark:focus:ring-zinc-500/40 dark:focus:ring-offset-zinc-950"
-                                        disabled={processing}
+                                        disabled={submitting}
                                     >
                                         Sign up
                                     </PrimaryButton>

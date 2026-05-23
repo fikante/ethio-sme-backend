@@ -10,6 +10,19 @@ html {
         sans-serif;
 }
 
+/* Lets React detect Chrome/Safari password autofill (see Register.tsx). */
+@keyframes onAutoFillStart {
+    from {
+    }
+    to {
+    }
+}
+
+input:-webkit-autofill {
+    animation-name: onAutoFillStart;
+    animation-duration: 0.001s;
+}
+
 @keyframes fadeUp {
     0% {
         opacity: 0;
