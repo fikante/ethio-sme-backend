@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\Admin\ModelTrainingController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
 use App\Http\Controllers\Web\LoanApplicationWebController;
+use App\Http\Controllers\Web\PsychometricWebController;
 use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -23,8 +24,11 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-Route::get('/psychometric-test', fn () => Inertia::render('Borrower/PsychometricTest'))
-    ->name('psychometric-test');
+Route::get('/psychometric-test', [PsychometricWebController::class, 'show'])
+    ->name('psychometric.test');
+
+Route::post('/psychometric-test/submit', [PsychometricWebController::class, 'storeFromToken'])
+    ->name('psychometric.submit');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -37,6 +41,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('loan-application');
         Route::post('/loan-application/submit', [LoanApplicationWebController::class, 'store'])
             ->name('loan-application.submit');
+        Route::post('/loan-application/ensure-business', [LoanApplicationWebController::class, 'ensureBusiness'])
+            ->name('loan-application.ensure-business');
 
         Route::get('/psychometrics', fn () => Inertia::render('Placeholders/Psychometrics'))
             ->name('psychometrics');

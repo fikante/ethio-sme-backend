@@ -6,11 +6,17 @@ use App\Domain\Psychometric\Data\PsychometricResultData;
 use App\Domain\Psychometric\Enums\AssessmentVersion;
 
 /**
- * Pure function that normalises raw 1-5 Likert answers into [0,1] dimension scores.
- * Stateless and side-effect free; used by ScorePsychometricAssessmentAction.
+ * Normalises raw answers into [0,1] dimension scores.
+ * Scoring aligned with psychometric-app Assessment::calculateScores().
  */
 class PsychometricNormalizer
 {
+    private const SCORED_DIMENSIONS = [
+        'integrity',
+        'conscientiousness',
+        'risk_tolerance',
+    ];
+
     public function __construct(private readonly QuestionBank $bank) {}
 
     /**
@@ -18,14 +24,29 @@ class PsychometricNormalizer
      */
     public function normalize(array $rawAnswers, AssessmentVersion $version): PsychometricResultData
     {
+        $questions = $this->bank->forVersion($version);
         $dimensions = [];
+
         foreach ($this->bank->dimensionMap($version) as $dimension => $questionKeys) {
+            if (! in_array($dimension, self::SCORED_DIMENSIONS, true)) {
+                continue;
+            }
+
             $values = [];
+
             foreach ($questionKeys as $key) {
                 if (! isset($rawAnswers[$key])) {
                     continue;
                 }
-                $values[] = ($rawAnswers[$key] - 1) / 4;
+
+                $question = $questions[$key];
+                $value = (int) $rawAnswers[$key];
+
+                if (($question['type'] ?? 'likert') === 'likert' && ($question['is_reverse_scored'] ?? false)) {
+                    $value = 6 - $value;
+                }
+
+                $values[] = $value / 5;
             }
 
             $dimensions[$dimension] = count($values) > 0

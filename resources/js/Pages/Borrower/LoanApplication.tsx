@@ -25,6 +25,7 @@ type Props = PageProps<{
     existingApplication: ExistingApplication | null;
     hasBusiness: boolean;
     heartbeatDays: number;
+    businessUuid: string | null;
 }>;
 
 const etbFormatter = new Intl.NumberFormat('en-ET', {
@@ -56,7 +57,7 @@ const statusLabels: Record<string, string> = {
 
 function StatusBadge({ status }: { status: string }) {
     return (
-        <span className="inline-flex rounded-full border border-white/40 px-3 py-1 text-xs font-semibold text-white">
+        <span className="inline-flex rounded-full border border-gray-300 px-3 py-1 text-xs font-semibold text-gray-900 dark:border-zinc-600 dark:text-zinc-100">
             {statusLabels[status] ?? status.replace(/_/g, ' ')}
         </span>
     );
@@ -67,6 +68,7 @@ export default function LoanApplication() {
         transactions = [],
         existingApplication = null,
         heartbeatDays = 0,
+        businessUuid = null,
     } = usePage<Props>().props;
     const flash = usePage().props.flash as { success?: string; error?: string };
     const authUser = usePage().props.auth.user;
@@ -87,35 +89,35 @@ export default function LoanApplication() {
     return (
         <AuthenticatedLayout
             header={
-                <h2 className="text-xl font-semibold tracking-tight text-white">
+                <h2 className="text-xl font-semibold tracking-tight text-gray-900 dark:text-zinc-100">
                     Loan Application
                 </h2>
             }
         >
             <Head title="Loan Application" />
 
-            <div className="space-y-6 text-white">
+            <div className="space-y-6">
                 {flash?.success && (
-                    <div className="rounded-xl border border-white/30 px-4 py-3 text-sm text-white">
+                    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100">
                         {flash.success}
                     </div>
                 )}
                 {flash?.error && (
-                    <div className="rounded-xl border border-white/30 px-4 py-3 text-sm text-white/80">
+                    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
                         {flash.error}
                     </div>
                 )}
 
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-white">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100">
                             Loan Application
                         </h1>
-                        <p className="mt-1 text-sm text-white/60">
+                        <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
                             Apply for AI-powered credit scoring
                         </p>
                         {heartbeatDays > 0 && (
-                            <p className="mt-1 text-xs text-white/50">
+                            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
                                 {heartbeatDays} days of transaction data on file
                             </p>
                         )}
@@ -126,7 +128,7 @@ export default function LoanApplication() {
                         <button
                             type="button"
                             onClick={() => setModalOpen(true)}
-                            className="inline-flex items-center gap-2 rounded-xl border border-white bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-white/90"
+                            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-gray-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                         >
                             <Plus className="h-4 w-4" />
                             Apply Now
@@ -134,16 +136,16 @@ export default function LoanApplication() {
                     )}
                 </div>
 
-                <div className="overflow-hidden rounded-2xl border border-white/20 bg-black">
-                    <div className="border-b border-white/20 px-6 py-4">
-                        <h2 className="text-sm font-semibold text-white">
+                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="border-b border-gray-200 px-6 py-4 dark:border-zinc-800">
+                        <h2 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
                             Your Past Transactions
                         </h2>
                     </div>
 
                     {transactions.length === 0 ? (
                         <div className="px-6 py-12 text-center">
-                            <p className="text-sm text-white/60">
+                            <p className="text-sm text-gray-500 dark:text-zinc-400">
                                 No transaction history yet. Load your data in
                                 the application form.
                             </p>
@@ -152,7 +154,7 @@ export default function LoanApplication() {
                         <div className="overflow-x-auto">
                             <table className="w-full min-w-[640px] text-left text-sm">
                                 <thead>
-                                    <tr className="border-b border-white/20 text-xs uppercase tracking-wide text-white/50">
+                                    <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
                                         <th className="px-6 py-3 font-medium">
                                             Date
                                         </th>
@@ -174,21 +176,25 @@ export default function LoanApplication() {
                                     {transactions.map((row, i) => (
                                         <tr
                                             key={`${row.date}-${i}`}
-                                            className="border-b border-white/10"
+                                            className={`border-b border-gray-100 dark:border-zinc-800/80 ${
+                                                i % 2 === 0
+                                                    ? 'bg-white dark:bg-zinc-900'
+                                                    : 'bg-gray-50/80 dark:bg-zinc-800/30'
+                                            }`}
                                         >
-                                            <td className="px-6 py-3 text-white/80">
+                                            <td className="px-6 py-3 text-gray-700 dark:text-zinc-300">
                                                 {formatDate(row.date)}
                                             </td>
-                                            <td className="px-6 py-3 tabular-nums text-white">
+                                            <td className="px-6 py-3 tabular-nums text-gray-900 dark:text-zinc-100">
                                                 {formatEtb(row.inflow)}
                                             </td>
-                                            <td className="px-6 py-3 tabular-nums text-white">
+                                            <td className="px-6 py-3 tabular-nums text-gray-900 dark:text-zinc-100">
                                                 {formatEtb(row.outflow)}
                                             </td>
-                                            <td className="px-6 py-3 font-medium tabular-nums text-white">
+                                            <td className="px-6 py-3 font-medium tabular-nums text-gray-900 dark:text-zinc-100">
                                                 {formatEtb(row.net)}
                                             </td>
-                                            <td className="px-6 py-3 tabular-nums text-white/70">
+                                            <td className="px-6 py-3 tabular-nums text-gray-600 dark:text-zinc-400">
                                                 {row.txn_count}
                                             </td>
                                         </tr>
@@ -207,6 +213,7 @@ export default function LoanApplication() {
                     setShowSuccess(false);
                 }}
                 userName={authUser?.name ?? ''}
+                businessUuid={businessUuid}
                 initialSuccess={showSuccess}
             />
         </AuthenticatedLayout>

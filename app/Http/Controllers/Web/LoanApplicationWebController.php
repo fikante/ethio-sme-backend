@@ -24,7 +24,7 @@ class LoanApplicationWebController extends Controller
     {
         /** @var User $user */
         $user = auth()->user();
-        $business = $user->businesses()->first();
+        $business = $this->ensureDraftBusiness($user);
 
         $transactions = $business
             ? SmeDailyHeartbeat::query()
@@ -62,6 +62,7 @@ class LoanApplicationWebController extends Controller
             'heartbeatDays' => $business
                 ? SmeDailyHeartbeat::query()->where('business_id', $business->id)->count()
                 : 0,
+            'businessUuid' => $business?->uuid,
         ]);
     }
 
@@ -146,5 +147,53 @@ class LoanApplicationWebController extends Controller
         return redirect()
             ->route('loan-application')
             ->with('success', 'Application submitted successfully. Awaiting AI evaluation.');
+    }
+
+    public function ensureBusiness(Request $request): \Illuminate\Http\JsonResponse
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'business_name' => ['nullable', 'string', 'max:255'],
+            'sector' => ['nullable', 'string'],
+            'sub_city' => ['nullable', 'string'],
+            'established_year' => ['nullable', 'integer', 'min:1990', 'max:'.date('Y')],
+        ]);
+
+        $business = $this->ensureDraftBusiness($user);
+
+        $updates = array_filter([
+            'business_name' => $validated['business_name'] ?? null,
+            'sector' => $validated['sector'] ?? null,
+            'sub_city' => $validated['sub_city'] ?? null,
+            'established_year' => $validated['established_year'] ?? null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        if ($updates !== []) {
+            $business->update($updates);
+        }
+
+        return response()->json(['businessUuid' => $business->uuid]);
+    }
+
+    private function ensureDraftBusiness(User $user): Business
+    {
+        $existing = $user->businesses()->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $label = trim($user->name) !== '' ? "{$user->name}'s Business" : 'My Business';
+
+        return Business::create([
+            'owner_id' => $user->id,
+            'business_name' => $label,
+            'sector' => '5411',
+            'sub_city' => 'Addis Ababa',
+            'established_year' => (int) date('Y') - 3,
+            'status' => 'under_review',
+        ]);
     }
 }
