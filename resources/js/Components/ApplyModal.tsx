@@ -475,10 +475,11 @@ function Step3({ data, businessUuid, ghostBtn, primaryBtn, onChange, onBack, onN
                 {opening ? 'Opening test…' : 'Take Psychometric Test'}
             </button>
             {openError && <p className="text-xs text-gray-500 dark:text-zinc-400">{openError}</p>}
-            <label className="flex items-center justify-center gap-2 text-sm text-gray-500 dark:text-zinc-400">
-                <input type="checkbox" checked={data.psychometricDone} onChange={(e) => onChange('psychometricDone', e.target.checked)} className="rounded border-gray-300 text-gray-900 focus:ring-gray-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100" />
-                I have completed the test in the other tab
-            </label>
+            {!data.psychometricDone && (
+                <p className="text-xs text-gray-500 dark:text-zinc-400">
+                    Finish the psychometric test in the opened tab to continue.
+                </p>
+            )}
             <StepActions left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>} right={<button type="button" onClick={onNext} disabled={!data.psychometricDone} className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}>Continue →</button>} />
         </div>
     );

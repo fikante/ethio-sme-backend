@@ -510,29 +510,6 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
         [assessment, isDark, showRadar],
     );
 
-    const legendItems: {
-        label: string;
-        score: number;
-        key: TraitKey | "composite";
-    }[] = [
-        {
-            label: "Integrity",
-            score: assessment.integrity,
-            key: "integrity",
-        },
-        {
-            label: "Conscientiousness",
-            score: assessment.conscientiousness,
-            key: "conscientiousness",
-        },
-        {
-            label: "Risk Tolerance",
-            score: assessment.risk_tolerance,
-            key: "risk_tolerance",
-        },
-        { label: "Overall Score", score: composite, key: "composite" },
-    ];
-
     return (
         <div className="space-y-8">
             {/* Header */}
@@ -611,45 +588,13 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
                     Compared across all three dimensions
                 </p>
-                <div className="mt-6 flex flex-col gap-8 lg:flex-row lg:items-center">
-                    <div className="lg:w-1/2">
+                <div className="mt-6 flex justify-center">
+                    <div className="w-full max-w-md">
                         <ReactECharts
                             option={radarOption}
                             style={{ height: 320 }}
                             opts={{ renderer: "svg" }}
                         />
-                    </div>
-                    <div className="space-y-4 lg:w-1/2">
-                        {legendItems.map((item) => {
-                            const color = getScoreColor(item.score);
-                            return (
-                                <div
-                                    key={item.key}
-                                    className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-3 last:border-0 dark:border-zinc-700"
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <span
-                                            className={`h-2.5 w-2.5 rounded-full ${color.bar}`}
-                                        />
-                                        <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                                            {item.label}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span
-                                            className={`text-sm font-semibold tabular-nums ${color.text}`}
-                                        >
-                                            {item.score}%
-                                        </span>
-                                        <span
-                                            className={`rounded-full border px-2 py-0.5 text-xs font-medium ${color.badge}`}
-                                        >
-                                            {color.label}
-                                        </span>
-                                    </div>
-                                </div>
-                            );
-                        })}
                     </div>
                 </div>
             </section>
