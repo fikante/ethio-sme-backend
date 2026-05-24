@@ -235,7 +235,7 @@ export default function Landing() {
                                     </div>
 
                                     <div className="mt-10 flex flex-wrap gap-3 text-xs text-[#525252] dark:text-[#E5E5E5]">
-                                        <span className="rounded-full border border-[#E5E5E5] bg-[#E5E5E5]/50 px-3 py-2 ring-1 ring-inset ring-[#E5E5E5] dark:border-[#E5E5E5]/20 dark:bg-[#111111] dark:ring-[#E5E5E5]/20">
+                                        <span className="rounded-full border border-[#E5E5E5] bg-[#E5E5E5]/50 px-3 py-2                                                                                                                                                                     `````````````````````````````````-1 ring-inset ring-[#E5E5E5] dark:border-[#E5E5E5]/20 dark:bg-[#111111] dark:ring-[#E5E5E5]/20">
                                             probabilistic cash‑flow
                                             forecasting{" "}
                                         </span>

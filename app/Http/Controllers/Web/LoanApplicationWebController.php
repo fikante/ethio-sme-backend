@@ -7,6 +7,7 @@ use App\Domain\Lending\Data\CreateLoanApplicationData;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\LoanApplication;
+use App\Models\PsychometricAssessment;
 use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -67,6 +68,12 @@ class LoanApplicationWebController extends Controller
                 ? SmeDailyHeartbeat::query()->forBusiness($business)->count()
                 : 0,
             'businessUuid' => $business?->uuid,
+            'psychometricCompleted' => $business
+                ? PsychometricAssessment::query()
+                    ->where('business_id', $business->id)
+                    ->whereNotNull('completed_at')
+                    ->exists()
+                : false,
         ]);
     }
 
@@ -179,7 +186,13 @@ class LoanApplicationWebController extends Controller
             $business->update($updates);
         }
 
-        return response()->json(['businessUuid' => $business->uuid]);
+        return response()->json([
+            'businessUuid' => $business->uuid,
+            'psychometricCompleted' => PsychometricAssessment::query()
+                ->where('business_id', $business->id)
+                ->whereNotNull('completed_at')
+                ->exists(),
+        ]);
     }
 
     private function ensureDraftBusiness(User $user): Business

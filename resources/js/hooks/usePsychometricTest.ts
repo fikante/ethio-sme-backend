@@ -6,8 +6,14 @@ export type PsychometricQuestion = {
     text: string;
     dimension: string;
     type: 'likert' | 'choice';
+    section?: 'A' | 'B' | null;
     is_reverse_scored?: boolean;
     options?: Array<{ text: string; score: number }> | null;
+};
+
+export const SECTION_INTRO: Record<'A' | 'B', string> = {
+    A: 'For each situation, choose the answer that best describes what you would do.',
+    B: 'For each statement, indicate how much you agree or disagree.',
 };
 
 export type PsychometricScreen = 'intro' | 'questions' | 'submitted' | 'complete';
@@ -88,6 +94,16 @@ export function usePsychometricTest({
 
     const totalQuestions = shuffledQuestions.length;
     const currentQuestion = shuffledQuestions[currentIndex] ?? null;
+    const previousQuestion =
+        currentIndex > 0 ? (shuffledQuestions[currentIndex - 1] ?? null) : null;
+    const showSectionIntro = Boolean(
+        currentQuestion?.section &&
+            currentQuestion.section !== previousQuestion?.section,
+    );
+    const sectionIntroText =
+        currentQuestion?.section === 'A' || currentQuestion?.section === 'B'
+            ? SECTION_INTRO[currentQuestion.section]
+            : null;
 
     const progress =
         screen === 'questions' && totalQuestions > 0
@@ -235,6 +251,8 @@ export function usePsychometricTest({
         direction,
         progress,
         totalQuestions,
+        showSectionIntro,
+        sectionIntroText,
         submitError,
         startTest,
         selectAnswer,

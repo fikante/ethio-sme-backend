@@ -47,9 +47,24 @@ class DevDemoSeeder extends Seeder
         ];
 
         $psychometricByProfile = [
-            'creditworthy' => ['integrity' => 0.88, 'conscientiousness' => 0.82, 'risk_tolerance' => 0.65],
-            'borderline' => ['integrity' => 0.60, 'conscientiousness' => 0.55, 'risk_tolerance' => 0.50],
-            'high_risk' => ['integrity' => 0.35, 'conscientiousness' => 0.30, 'risk_tolerance' => 0.80],
+            'creditworthy' => [
+                'integrity' => 0.88,
+                'conscientiousness' => 0.82,
+                'delayed_gratification' => 0.78,
+                'financial_risk' => 0.65,
+            ],
+            'borderline' => [
+                'integrity' => 0.60,
+                'conscientiousness' => 0.55,
+                'delayed_gratification' => 0.50,
+                'financial_risk' => 0.50,
+            ],
+            'high_risk' => [
+                'integrity' => 0.35,
+                'conscientiousness' => 0.30,
+                'delayed_gratification' => 0.25,
+                'financial_risk' => 0.75,
+            ],
         ];
 
         foreach ($scenarios as $index => $scenario) {
@@ -82,14 +97,15 @@ class DevDemoSeeder extends Seeder
 
             $scores = $psychometricByProfile[$scenario['profile']];
 
-            PsychometricAssessment::firstOrCreate(
+            PsychometricAssessment::updateOrCreate(
                 ['business_id' => $business->id],
                 [
                     'integrity_score' => $scores['integrity'],
                     'conscientiousness_score' => $scores['conscientiousness'],
-                    'risk_tolerance_score' => $scores['risk_tolerance'],
+                    'delayed_gratification_score' => $scores['delayed_gratification'],
+                    'financial_risk_score' => $scores['financial_risk'],
                     'raw_answers' => [],
-                    'assessment_version' => 'v1',
+                    'assessment_version' => 'v2',
                     'completed_at' => now(),
                 ]
             );

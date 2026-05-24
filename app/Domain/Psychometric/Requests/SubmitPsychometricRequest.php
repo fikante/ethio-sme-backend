@@ -2,6 +2,8 @@
 
 namespace App\Domain\Psychometric\Requests;
 
+use App\Domain\Psychometric\Enums\AssessmentVersion;
+use App\Domain\Psychometric\Support\QuestionBank;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SubmitPsychometricRequest extends FormRequest
@@ -13,9 +15,11 @@ class SubmitPsychometricRequest extends FormRequest
 
     public function rules(): array
     {
+        $count = app(QuestionBank::class)->questionCount(AssessmentVersion::current());
+
         return [
-            'answers' => ['required', 'array', 'min:15'],
-            'answers.*' => ['required', 'integer', 'min:1', 'max:5'],
+            'answers' => ['required', 'array', 'min:'.$count],
+            'answers.*' => ['required', 'integer', 'min:0', 'max:5'],
         ];
     }
 }

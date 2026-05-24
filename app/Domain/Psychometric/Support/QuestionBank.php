@@ -5,7 +5,7 @@ namespace App\Domain\Psychometric\Support;
 use App\Domain\Psychometric\Enums\AssessmentVersion;
 
 /**
- * Full 36-question bank from psychometric-app QuestionSeeder (v1).
+ * Psychometric question banks: v1 (36 questions, legacy) and v2 (30 questions, EFL/WEDP).
  */
 class QuestionBank
 {
@@ -19,6 +19,7 @@ class QuestionBank
      *     text: string,
      *     dimension: string,
      *     type: string,
+     *     section?: string,
      *     is_reverse_scored?: bool,
      *     options?: list<array{text: string, score: int}>
      * }>
@@ -27,6 +28,7 @@ class QuestionBank
     {
         return match ($version) {
             AssessmentVersion::V1 => $this->v1Questions(),
+            AssessmentVersion::V2 => V2Questions::all(),
         };
     }
 

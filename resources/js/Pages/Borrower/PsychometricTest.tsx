@@ -1,6 +1,7 @@
 import {
     ANSWER_LABELS,
-    PsychometricQuestion,
+    type PsychometricQuestion,
+    SECTION_INTRO,
     usePsychometricTest,
 } from '@/hooks/usePsychometricTest';
 import {
@@ -43,6 +44,8 @@ export default function PsychometricTest({
         selectAnswer,
         goBack,
         continueManual,
+        showSectionIntro,
+        sectionIntroText,
     } = usePsychometricTest({ questions, submitUrl, alreadyCompleted });
 
     useEffect(() => {
@@ -134,12 +137,18 @@ export default function PsychometricTest({
                                         Question {currentIndex + 1} of{' '}
                                         {totalQuestions}
                                     </p>
-                                    {currentQuestion.type === 'choice' && (
+                                    {currentQuestion.section && (
                                         <span className="rounded-full border border-[#E5E5E5] px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#737373] uppercase dark:border-[#262626] dark:text-[#A3A3A3]">
-                                            Scenario
+                                            Section {currentQuestion.section}
                                         </span>
                                     )}
                                 </div>
+
+                                {showSectionIntro && sectionIntroText && (
+                                    <p className="mb-6 rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] px-4 py-3 text-sm leading-relaxed text-[#737373] dark:border-[#262626] dark:bg-[#171717] dark:text-[#A3A3A3]">
+                                        {sectionIntroText}
+                                    </p>
+                                )}
 
                                 <h2 className="mb-8 text-2xl leading-snug font-semibold text-[#0A0A0A] dark:text-[#FAFAFA]">
                                     {currentQuestion.text}
@@ -149,19 +158,19 @@ export default function PsychometricTest({
                                     {currentQuestion.type === 'choice' &&
                                     currentQuestion.options ? (
                                         currentQuestion.options.map(
-                                            (option) => {
+                                            (option, optionIndex) => {
                                                 const selected =
                                                     selectedAnswer ===
-                                                    option.score;
+                                                    optionIndex;
 
                                                 return (
                                                     <button
-                                                        key={option.text}
+                                                        key={`${currentQuestion.id}-${optionIndex}`}
                                                         type="button"
                                                         onClick={() =>
                                                             selectAnswer(
                                                                 currentQuestion.id,
-                                                                option.score,
+                                                                optionIndex,
                                                             )
                                                         }
                                                         className={[

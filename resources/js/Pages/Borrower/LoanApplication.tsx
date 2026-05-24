@@ -26,6 +26,7 @@ type Props = PageProps<{
     hasBusiness: boolean;
     heartbeatDays: number;
     businessUuid: string | null;
+    psychometricCompleted: boolean;
 }>;
 
 const etbFormatter = new Intl.NumberFormat('en-ET', {
@@ -69,6 +70,7 @@ export default function LoanApplication() {
         existingApplication = null,
         heartbeatDays = 0,
         businessUuid = null,
+        psychometricCompleted = false,
     } = usePage<Props>().props;
     const flash = usePage().props.flash as { success?: string; error?: string };
     const authUser = usePage().props.auth.user;
@@ -214,6 +216,7 @@ export default function LoanApplication() {
                 }}
                 userName={authUser?.name ?? ''}
                 businessUuid={businessUuid}
+                psychometricCompleted={psychometricCompleted}
                 initialSuccess={showSuccess}
             />
         </AuthenticatedLayout>

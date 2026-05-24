@@ -55,9 +55,16 @@ class RunValuationAction
         $factors = ExogenousFactor::latestRow();
         $assessment = $application->business?->psychometricAssessment;
 
-        $compositeScore = $assessment !== null
-            ? (float) (($assessment->integrity_score * 0.4) + ($assessment->conscientiousness_score * 0.4) + ($assessment->risk_tolerance_score * 0.2))
-            : 0.5;
+        $compositeScore = 0.5;
+        if ($assessment !== null) {
+            $compositeScore = $assessment->isV2()
+                ? (float) $assessment->composite_score
+                : (float) (
+                    ($assessment->integrity_score * 0.4)
+                    + ($assessment->conscientiousness_score * 0.4)
+                    + ($assessment->financial_risk_score * 0.2)
+                );
+        }
 
         $npvResult = $this->calculateNpv->execute(new NpvInputsData(
             p10CashFlows: $response->p10Series,

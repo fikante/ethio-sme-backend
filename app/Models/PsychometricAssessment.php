@@ -11,8 +11,10 @@ class PsychometricAssessment extends Model
         'business_id',
         'integrity_score',
         'conscientiousness_score',
-        'risk_tolerance_score',
+        'delayed_gratification_score',
+        'financial_risk_score',
         'raw_answers',
+        'social_desirability_flagged',
         'assessment_version',
         'completed_at',
         'expiry_date',
@@ -24,12 +26,19 @@ class PsychometricAssessment extends Model
         'expiry_date' => 'datetime',
         'integrity_score' => 'decimal:4',
         'conscientiousness_score' => 'decimal:4',
-        'risk_tolerance_score' => 'decimal:4',
+        'delayed_gratification_score' => 'decimal:4',
+        'financial_risk_score' => 'decimal:4',
         'composite_score' => 'decimal:4',
+        'social_desirability_flagged' => 'boolean',
     ];
 
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function isV2(): bool
+    {
+        return ($this->assessment_version ?? 'v1') === 'v2';
     }
 }

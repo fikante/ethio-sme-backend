@@ -1,5 +1,8 @@
 import { Link, router } from '@inertiajs/react';
-import { isPsychometricComplete } from '@/lib/psychometricCompletion';
+import {
+    isPsychometricComplete,
+    markPsychometricComplete,
+} from '@/lib/psychometricCompletion';
 import {
     Brain,
     Check,
@@ -65,10 +68,18 @@ type Props = {
     onClose: () => void;
     userName: string;
     businessUuid?: string | null;
+    psychometricCompleted?: boolean;
     initialSuccess?: boolean;
 };
 
-export default function ApplyModal({ isOpen, onClose, userName, businessUuid = null, initialSuccess = false }: Props) {
+export default function ApplyModal({
+    isOpen,
+    onClose,
+    userName,
+    businessUuid = null,
+    psychometricCompleted = false,
+    initialSuccess = false,
+}: Props) {
     const [visible, setVisible] = useState(false);
     const [animating, setAnimating] = useState(false);
     const [step, setStep] = useState<number | 'success'>(1);
@@ -97,15 +108,28 @@ export default function ApplyModal({ isOpen, onClose, userName, businessUuid = n
     useEffect(() => {
         if (isOpen) {
             setVisible(true);
-            setStep(initialSuccess ? 'success' : 1);
-            setData((prev) => ({ ...prev, fullName: userName }));
+            if (initialSuccess) {
+                setStep('success');
+            } else if (psychometricCompleted) {
+                setStep(4);
+                if (businessUuid) {
+                    markPsychometricComplete(businessUuid);
+                }
+            } else {
+                setStep(1);
+            }
+            setData((prev) => ({
+                ...prev,
+                fullName: userName,
+                psychometricDone: psychometricCompleted || prev.psychometricDone,
+            }));
             requestAnimationFrame(() => setAnimating(true));
         } else {
             setAnimating(false);
             const timer = setTimeout(() => setVisible(false), 200);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, userName, initialSuccess]);
+    }, [isOpen, userName, initialSuccess, psychometricCompleted, businessUuid]);
 
     const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
         setData((prev) => ({ ...prev, [key]: value }));
@@ -228,14 +252,46 @@ export default function ApplyModal({ isOpen, onClose, userName, businessUuid = n
                                         <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">
                                             {step === 1 && 'Personal Information'}
                                             {step === 2 && 'Business Details'}
-                                            {step === 3 && 'Psychometric Assessment'}
                                             {step === 4 && 'Submit Application'}
                                         </h2>
                                         <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 transition hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-100"><X className="h-5 w-5" /></button>
                                     </div>
                                     {step === 1 && <Step1 data={data} errors={errors} inputClass={inputClass} labelClass={labelClass} ghostBtn={ghostBtn} primaryBtn={primaryBtn} onChange={update} onNext={() => validateStep1() && setStep(2)} onCancel={onClose} />}
-                                    {step === 2 && <Step2 data={data} errors={errors} inputClass={inputClass} labelClass={labelClass} ghostBtn={ghostBtn} primaryBtn={primaryBtn} onChange={update} onBack={() => setStep(1)} onNext={() => validateStep2() && setStep(3)} />}
-                                    {step === 3 && <Step3 data={data} businessUuid={businessUuid} ghostBtn={ghostBtn} primaryBtn={primaryBtn} onChange={update} onBack={() => setStep(2)} onNext={() => setStep(4)} />}
+                                    {step === 2 && (
+                                        <Step2
+                                            data={data}
+                                            errors={errors}
+                                            inputClass={inputClass}
+                                            labelClass={labelClass}
+                                            ghostBtn={ghostBtn}
+                                            primaryBtn={primaryBtn}
+                                            onChange={update}
+                                            onBack={() => setStep(1)}
+                                            onNext={() => {
+                                                if (!validateStep2()) {
+                                                    return;
+                                                }
+                                                setStep(
+                                                    psychometricCompleted || data.psychometricDone
+                                                        ? 4
+                                                        : 3,
+                                                );
+                                            }}
+                                        />
+                                    )}
+                                    {step === 3 && (
+                                        <Step3
+                                            data={data}
+                                            businessUuid={businessUuid}
+                                            psychometricCompleted={psychometricCompleted}
+                                            ghostBtn={ghostBtn}
+                                            primaryBtn={primaryBtn}
+                                            onChange={update}
+                                            onBack={() => setStep(2)}
+                                            onNext={() => setStep(4)}
+                                            onSkipToSubmit={() => setStep(4)}
+                                        />
+                                    )}
                                     {step === 4 && (
                                         <Step4
                                             data={data} errors={errors} submitting={submitting} dragOver={dragOver}
@@ -369,18 +425,78 @@ function Step2({ data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onC
     );
 }
 
-function Step3({ data, businessUuid, ghostBtn, primaryBtn, onChange, onBack, onNext }: {
-    data: FormState; businessUuid: string | null; ghostBtn: string; primaryBtn: string;
+function Step3({
+    data,
+    businessUuid,
+    psychometricCompleted,
+    ghostBtn,
+    primaryBtn,
+    onChange,
+    onBack,
+    onNext,
+    onSkipToSubmit,
+}: {
+    data: FormState;
+    businessUuid: string | null;
+    psychometricCompleted: boolean;
+    ghostBtn: string;
+    primaryBtn: string;
     onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-    onBack: () => void; onNext: () => void;
+    onBack: () => void;
+    onNext: () => void;
+    onSkipToSubmit: () => void;
 }) {
     const [opening, setOpening] = useState(false);
     const [openError, setOpenError] = useState<string | null>(null);
+    const alreadyDone = psychometricCompleted || data.psychometricDone;
 
     useEffect(() => {
-        const syncCompletion = () => {
+        if (psychometricCompleted) {
+            onChange('psychometricDone', true);
+            if (businessUuid) {
+                markPsychometricComplete(businessUuid);
+            }
+        }
+    }, [psychometricCompleted, businessUuid, onChange]);
+
+    useEffect(() => {
+        const syncCompletion = async () => {
             if (businessUuid && isPsychometricComplete(businessUuid)) {
                 onChange('psychometricDone', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(route('loan-application.ensure-business'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN':
+                            document
+                                .querySelector('meta[name="csrf-token"]')
+                                ?.getAttribute('content') ?? '',
+                    },
+                    body: JSON.stringify({}),
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const payload = (await response.json()) as {
+                    psychometricCompleted?: boolean;
+                    businessUuid?: string;
+                };
+
+                if (payload.psychometricCompleted) {
+                    onChange('psychometricDone', true);
+                    if (payload.businessUuid) {
+                        markPsychometricComplete(payload.businessUuid);
+                    }
+                }
+            } catch {
+                // ignore polling errors
             }
         };
 
@@ -388,17 +504,19 @@ function Step3({ data, businessUuid, ghostBtn, primaryBtn, onChange, onBack, onN
 
         const onStorage = (event: StorageEvent) => {
             if (event.key?.startsWith('psychometric-completed:')) {
-                syncCompletion();
+                void syncCompletion();
             }
         };
 
+        const onPsychometricCompleted = () => void syncCompletion();
+
         window.addEventListener('storage', onStorage);
-        window.addEventListener('psychometric-completed', syncCompletion);
-        const intervalId = window.setInterval(syncCompletion, 1500);
+        window.addEventListener('psychometric-completed', onPsychometricCompleted);
+        const intervalId = window.setInterval(() => void syncCompletion(), 1500);
 
         return () => {
             window.removeEventListener('storage', onStorage);
-            window.removeEventListener('psychometric-completed', syncCompletion);
+            window.removeEventListener('psychometric-completed', onPsychometricCompleted);
             window.clearInterval(intervalId);
         };
     }, [businessUuid, onChange]);
@@ -433,8 +551,18 @@ function Step3({ data, businessUuid, ghostBtn, primaryBtn, onChange, onBack, onN
                     throw new Error('Could not prepare your business profile.');
                 }
 
-                const payload = (await response.json()) as { businessUuid?: string };
+                const payload = (await response.json()) as {
+                    businessUuid?: string;
+                    psychometricCompleted?: boolean;
+                };
                 token = payload.businessUuid ?? null;
+
+                if (payload.psychometricCompleted) {
+                    onChange('psychometricDone', true);
+                    if (token) {
+                        markPsychometricComplete(token);
+                    }
+                }
             }
 
             if (!token) {
@@ -461,26 +589,62 @@ function Step3({ data, businessUuid, ghostBtn, primaryBtn, onChange, onBack, onN
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-gray-200 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-800">
                 <Shield className="h-8 w-8 text-gray-900 dark:text-zinc-100" />
             </div>
-            <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Creditworthiness Assessment</h3>
-                <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500 dark:text-zinc-400">This test evaluates your integrity, conscientiousness, and risk tolerance. It takes about 3 minutes.</p>
-            </div>
-            <div className="flex flex-wrap justify-center gap-2">
-                {['🤝 Integrity', '📊 Conscientiousness', '⚖️ Risk Tolerance'].map((pill) => (
-                    <span key={pill} className="rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 dark:border-zinc-600 dark:text-zinc-400">{pill}</span>
-                ))}
-            </div>
-            <button type="button" onClick={() => void openPsychometricTest()} disabled={opening} className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-900 bg-gray-900 py-4 text-sm font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-60">
-                {opening ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}
-                {opening ? 'Opening test…' : 'Take Psychometric Test'}
-            </button>
-            {openError && <p className="text-xs text-gray-500 dark:text-zinc-400">{openError}</p>}
-            {!data.psychometricDone && (
-                <p className="text-xs text-gray-500 dark:text-zinc-400">
-                    Finish the psychometric test in the opened tab to continue.
-                </p>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
+                Creditworthiness Assessment
+            </h3>
+            {alreadyDone ? (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <div className="flex items-center justify-center gap-2 font-semibold">
+                        <CheckCircle className="h-5 w-5" />
+                        Assessment already completed
+                    </div>
+                    <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400/90">
+                        Your psychometric results are saved. Continue to submit your loan
+                        application.
+                    </p>
+                </div>
+            ) : (
+                <>
+                    <button
+                        type="button"
+                        onClick={() => void openPsychometricTest()}
+                        disabled={opening}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-900 bg-gray-900 py-4 text-sm font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-60"
+                    >
+                        {opening ? (
+                            <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                            <Brain className="h-5 w-5" />
+                        )}
+                        {opening ? 'Opening test…' : 'Take Psychometric Test'}
+                    </button>
+                    {openError && (
+                        <p className="text-xs text-gray-500 dark:text-zinc-400">
+                            {openError}
+                        </p>
+                    )}
+                    <p className="text-xs text-gray-500 dark:text-zinc-400">
+                        Finish the psychometric test in the opened tab to continue.
+                    </p>
+                </>
             )}
-            <StepActions left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>} right={<button type="button" onClick={onNext} disabled={!data.psychometricDone} className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}>Continue →</button>} />
+            <StepActions
+                left={
+                    <button type="button" onClick={onBack} className={ghostBtn}>
+                        Back
+                    </button>
+                }
+                right={
+                    <button
+                        type="button"
+                        onClick={alreadyDone ? onSkipToSubmit : onNext}
+                        disabled={!alreadyDone}
+                        className={`${primaryBtn} disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                        Continue →
+                    </button>
+                }
+            />
         </div>
     );
 }

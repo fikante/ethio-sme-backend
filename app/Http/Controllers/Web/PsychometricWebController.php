@@ -28,15 +28,48 @@ class PsychometricWebController extends Controller
                 ->first()
             : null;
 
+        if ($assessment === null) {
+            return Inertia::render('Borrower/PsychometricResults', [
+                'assessment' => null,
+            ]);
+        }
+
+        $completedAt = ($assessment->completed_at ?? $assessment->created_at)
+            ->format('M d, Y · h:i A');
+
+        if ($assessment->isV2()) {
+            return Inertia::render('Borrower/PsychometricResults', [
+                'assessment' => [
+                    'version' => 'v2',
+                    'integrity' => round((float) $assessment->integrity_score * 100, 1),
+                    'conscientiousness' => round((float) $assessment->conscientiousness_score * 100, 1),
+                    'delayed_gratification' => round((float) $assessment->delayed_gratification_score * 100, 1),
+                    'financial_risk' => round((float) $assessment->financial_risk_score * 100, 1),
+                    'composite' => round((float) $assessment->composite_score * 100, 1),
+                    'social_desirability_flagged' => (bool) $assessment->social_desirability_flagged,
+                    'completed_at' => $completedAt,
+                    'raw_answers' => $assessment->raw_answers,
+                ],
+            ]);
+        }
+
         return Inertia::render('Borrower/PsychometricResults', [
-            'assessment' => $assessment ? [
+            'assessment' => [
+                'version' => 'v1',
                 'integrity' => round((float) $assessment->integrity_score * 100, 1),
                 'conscientiousness' => round((float) $assessment->conscientiousness_score * 100, 1),
-                'risk_tolerance' => round((float) $assessment->risk_tolerance_score * 100, 1),
-                'completed_at' => ($assessment->completed_at ?? $assessment->created_at)
-                    ->format('M d, Y · h:i A'),
+                'risk_tolerance' => round((float) $assessment->financial_risk_score * 100, 1),
+                'composite' => round(
+                    (
+                        ((float) $assessment->integrity_score * 0.4)
+                        + ((float) $assessment->conscientiousness_score * 0.4)
+                        + ((float) $assessment->financial_risk_score * 0.2)
+                    ) * 100,
+                    1,
+                ),
+                'completed_at' => $completedAt,
                 'raw_answers' => $assessment->raw_answers,
-            ] : null,
+            ],
         ]);
     }
 
@@ -48,6 +81,7 @@ class PsychometricWebController extends Controller
                 'text' => $question['text'],
                 'dimension' => $question['dimension'],
                 'type' => $question['type'] ?? 'likert',
+                'section' => $question['section'] ?? null,
                 'is_reverse_scored' => $question['is_reverse_scored'] ?? false,
                 'options' => $question['options'] ?? null,
             ])
@@ -81,7 +115,7 @@ class PsychometricWebController extends Controller
         $validated = $request->validate([
             'business_token' => ['required', 'string', 'exists:businesses,uuid'],
             'answers' => ['required', 'array', 'min:'.$questionCount],
-            'answers.*' => ['required', 'integer', 'min:1', 'max:5'],
+            'answers.*' => ['required', 'integer', 'min:0', 'max:5'],
         ]);
 
         $business = Business::query()

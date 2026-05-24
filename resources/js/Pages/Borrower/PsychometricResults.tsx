@@ -13,32 +13,57 @@ import {
     BarChart3,
     Brain,
     ClipboardList,
-    Info,
+    Hourglass,
     Lock,
     Scale,
     ShieldCheck,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-type AssessmentData = {
+type V1AssessmentData = {
+    version: "v1";
     integrity: number;
     conscientiousness: number;
     risk_tolerance: number;
+    composite: number;
     completed_at: string;
     raw_answers: Record<string, number> | null;
 };
+
+type V2AssessmentData = {
+    version: "v2";
+    integrity: number;
+    conscientiousness: number;
+    delayed_gratification: number;
+    financial_risk: number;
+    composite: number;
+    social_desirability_flagged: boolean;
+    completed_at: string;
+    raw_answers: Record<string, number> | null;
+};
+
+type AssessmentData = V1AssessmentData | V2AssessmentData;
 
 type Props = PageProps<{
     assessment: AssessmentData | null;
 }>;
 
-const BENCHMARK_AVG = {
+const BENCHMARK_V1 = {
     integrity: 68,
     conscientiousness: 62,
     risk_tolerance: 58,
 } as const;
 
-type TraitKey = "integrity" | "conscientiousness" | "risk_tolerance";
+const BENCHMARK_V2 = {
+    integrity: 68,
+    conscientiousness: 62,
+    delayed_gratification: 60,
+    financial_risk: 58,
+} as const;
+
+type V1TraitKey = keyof typeof BENCHMARK_V1;
+type V2TraitKey = keyof typeof BENCHMARK_V2;
+type TraitKey = V1TraitKey | V2TraitKey;
 
 const TRAIT_META: Record<
     TraitKey,
@@ -85,6 +110,30 @@ const TRAIT_META: Record<
                 "A lower risk tolerance may limit loan product options but signals conservative financial behavior.",
         },
     },
+    delayed_gratification: {
+        title: "Delayed Gratification & Control",
+        displayName: "DELAYED GRATIFICATION",
+        icon: Hourglass,
+        descriptions: {
+            Strong: "You prioritize long-term business stability over short-term spending — a strong credit signal.",
+            Moderate:
+                "You balance present needs with future goals. Strengthening savings habits would improve your profile.",
+            Developing:
+                "Improving patience and internal locus of control would strengthen your creditworthiness assessment.",
+        },
+    },
+    financial_risk: {
+        title: "Financial Risk Awareness",
+        displayName: "FINANCIAL RISK AWARENESS",
+        icon: Scale,
+        descriptions: {
+            Strong: "You evaluate financial risks carefully before committing — lenders view this favorably.",
+            Moderate:
+                "You show reasonable caution with loans and investments. Continue verifying terms before signing.",
+            Developing:
+                "Taking time to understand loan terms and investment risks would improve your credit profile.",
+        },
+    },
 };
 
 function useIsDark(): boolean {
@@ -115,6 +164,24 @@ function scoreHex(color: ScoreColor): string {
     return "#ef4444";
 }
 
+/** Weighted composite on 0–100 scale (matches trait cards and v2 DB weights). */
+function computeComposite(assessment: AssessmentData): number {
+    if (assessment.version === "v2") {
+        return Math.round(
+            assessment.integrity * 0.35 +
+                assessment.conscientiousness * 0.3 +
+                assessment.delayed_gratification * 0.2 +
+                assessment.financial_risk * 0.15,
+        );
+    }
+
+    return Math.round(
+        assessment.integrity * 0.4 +
+            assessment.conscientiousness * 0.4 +
+            assessment.risk_tolerance * 0.2,
+    );
+}
+
 function DonutChart({
     score,
     animatedScore,
@@ -131,9 +198,7 @@ function DonutChart({
     const option: EChartsOption = useMemo(
         () => ({
             backgroundColor: "transparent",
-            animation: true,
-            animationDuration: 1200,
-            animationEasing: "cubicOut",
+            animation: false,
             series: [
                 {
                     type: "pie",
@@ -170,7 +235,7 @@ function DonutChart({
                 <span
                     className={`text-5xl font-bold tabular-nums ${color.text}`}
                 >
-                    {Math.round(animatedScore)}%
+                    {Math.round(score)}%
                 </span>
             </div>
         </div>
@@ -351,109 +416,160 @@ function EmptyState() {
 
 function ResultsView({ assessment }: { assessment: AssessmentData }) {
     const isDark = useIsDark();
+    const isV2 = assessment.version === "v2";
     const composite = useMemo(
-        () =>
-            Math.round(
-                (assessment.integrity +
-                    assessment.conscientiousness +
-                    assessment.risk_tolerance) /
-                    3,
-            ),
+        () => computeComposite(assessment),
         [assessment],
     );
     const compositeColor = getScoreColor(composite);
 
+    const traitKeys = useMemo(
+        (): TraitKey[] =>
+            isV2
+                ? [
+                      "integrity",
+                      "conscientiousness",
+                      "delayed_gratification",
+                      "financial_risk",
+                  ]
+                : ["integrity", "conscientiousness", "risk_tolerance"],
+        [isV2],
+    );
+
+    const traitScores = useMemo((): Record<string, number> => {
+        if (isV2) {
+            return {
+                integrity: assessment.integrity,
+                conscientiousness: assessment.conscientiousness,
+                delayed_gratification: assessment.delayed_gratification,
+                financial_risk: assessment.financial_risk,
+            };
+        }
+
+        return {
+            integrity: assessment.integrity,
+            conscientiousness: assessment.conscientiousness,
+            risk_tolerance: assessment.risk_tolerance,
+        };
+    }, [assessment, isV2]);
+
+    const benchmarks: Record<string, number> = isV2
+        ? BENCHMARK_V2
+        : BENCHMARK_V1;
+
+    const animationKey = `${assessment.version}-${assessment.completed_at}-${composite}`;
+
     const [donutScore, setDonutScore] = useState(0);
-    const [barWidths, setBarWidths] = useState({
-        integrity: 0,
-        conscientiousness: 0,
-        risk_tolerance: 0,
-    });
-    const [benchmarkWidths, setBenchmarkWidths] = useState({
-        integrity: { you: 0, avg: 0 },
-        conscientiousness: { you: 0, avg: 0 },
-        risk_tolerance: { you: 0, avg: 0 },
-    });
+    const [barWidths, setBarWidths] = useState<Record<string, number>>({});
+    const [benchmarkWidths, setBenchmarkWidths] = useState<
+        Record<string, { you: number; avg: number }>
+    >({});
     const [showRadar, setShowRadar] = useState(false);
 
     useEffect(() => {
         const timers: ReturnType<typeof setTimeout>[] = [];
+        let rafId = 0;
+        let cancelled = false;
+
+        setDonutScore(0);
+        setBarWidths({});
+        setBenchmarkWidths({});
+        setShowRadar(false);
 
         const donutStart = performance.now();
         const donutDuration = 1200;
         const animateDonut = (now: number) => {
+            if (cancelled) {
+                return;
+            }
             const t = Math.min(1, (now - donutStart) / donutDuration);
             const eased = 1 - (1 - t) ** 3;
             setDonutScore(composite * eased);
             if (t < 1) {
-                requestAnimationFrame(animateDonut);
+                rafId = requestAnimationFrame(animateDonut);
+            } else {
+                setDonutScore(composite);
             }
         };
-        requestAnimationFrame(animateDonut);
+        rafId = requestAnimationFrame(animateDonut);
+
+        traitKeys.forEach((key, index) => {
+            timers.push(
+                setTimeout(
+                    () => {
+                        if (!cancelled) {
+                            setBarWidths((prev) => ({
+                                ...prev,
+                                [key]: traitScores[key],
+                            }));
+                        }
+                    },
+                    200 + index * 200,
+                ),
+            );
+        });
+
         timers.push(
-            setTimeout(
-                () =>
-                    setBarWidths((prev) => ({
-                        ...prev,
-                        integrity: assessment.integrity,
-                    })),
-                200,
-            ),
+            setTimeout(() => {
+                if (!cancelled) {
+                    setShowRadar(true);
+                }
+            }, 800),
         );
         timers.push(
-            setTimeout(
-                () =>
-                    setBarWidths((prev) => ({
-                        ...prev,
-                        conscientiousness: assessment.conscientiousness,
-                    })),
-                400,
-            ),
-        );
-        timers.push(
-            setTimeout(
-                () =>
-                    setBarWidths((prev) => ({
-                        ...prev,
-                        risk_tolerance: assessment.risk_tolerance,
-                    })),
-                600,
-            ),
-        );
-        timers.push(setTimeout(() => setShowRadar(true), 800));
-        timers.push(
-            setTimeout(
-                () =>
-                    setBenchmarkWidths({
-                        integrity: {
-                            you: assessment.integrity,
-                            avg: BENCHMARK_AVG.integrity,
-                        },
-                        conscientiousness: {
-                            you: assessment.conscientiousness,
-                            avg: BENCHMARK_AVG.conscientiousness,
-                        },
-                        risk_tolerance: {
-                            you: assessment.risk_tolerance,
-                            avg: BENCHMARK_AVG.risk_tolerance,
-                        },
-                    }),
-                1000,
-            ),
+            setTimeout(() => {
+                if (cancelled) {
+                    return;
+                }
+                const widths: Record<string, { you: number; avg: number }> = {};
+                traitKeys.forEach((key) => {
+                    widths[key] = {
+                        you: traitScores[key],
+                        avg: benchmarks[key],
+                    };
+                });
+                setBenchmarkWidths(widths);
+            }, 1000),
         );
 
-        return () => timers.forEach(clearTimeout);
-    }, [assessment, composite]);
+        return () => {
+            cancelled = true;
+            cancelAnimationFrame(rafId);
+            timers.forEach(clearTimeout);
+        };
+    }, [animationKey, composite, traitKeys, traitScores, benchmarks]);
+
+    const radarIndicators = isV2
+        ? [
+              { name: "Integrity", max: 100 },
+              { name: "Conscientiousness", max: 100 },
+              { name: "Delayed Gratification", max: 100 },
+              { name: "Financial Risk", max: 100 },
+          ]
+        : [
+              { name: "Integrity", max: 100 },
+              { name: "Conscientiousness", max: 100 },
+              { name: "Risk Tolerance", max: 100 },
+          ];
+
+    const radarValues = isV2
+        ? [
+              assessment.integrity,
+              assessment.conscientiousness,
+              assessment.delayed_gratification,
+              assessment.financial_risk,
+          ]
+        : [
+              assessment.integrity,
+              assessment.conscientiousness,
+              assessment.risk_tolerance,
+          ];
 
     const radarOption: EChartsOption = useMemo(
         () => ({
             backgroundColor: "transparent",
             radar: {
-                indicator: [
-                    { name: "Integrity", max: 100 },
-                    { name: "Conscientiousness", max: 100 },
-                    { name: "Risk Tolerance", max: 100 },
-                ],
+                indicator: radarIndicators,
                 shape: "polygon",
                 splitNumber: 4,
                 axisName: {
@@ -481,13 +597,7 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                     type: "radar",
                     data: [
                         {
-                            value: showRadar
-                                ? [
-                                      assessment.integrity,
-                                      assessment.conscientiousness,
-                                      assessment.risk_tolerance,
-                                  ]
-                                : [0, 0, 0],
+                            value: showRadar ? radarValues : radarValues.map(() => 0),
                             name: "Your Profile",
                             areaStyle: {
                                 color: "rgba(93, 202, 165, 0.15)",
@@ -507,7 +617,7 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                 },
             ],
         }),
-        [assessment, isDark, showRadar],
+        [isDark, showRadar, radarIndicators, radarValues],
     );
 
     return (
@@ -526,14 +636,6 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                     <Lock className="h-3.5 w-3.5" />
                     Locked · Completed {assessment.completed_at}
                 </span>
-            </div>
-
-            <div className="flex items-start gap-3 rounded-xl border border-[#5DCAA5]/20 bg-[#085041]/10 px-4 py-3 text-sm text-[#6EBF9A]">
-                <Info className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>
-                    Your responses have been recorded and submitted to the loan
-                    officer. Results are final and cannot be modified.
-                </p>
             </div>
 
             {/* Composite score */}
@@ -559,25 +661,18 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
             </section>
 
             {/* Trait cards */}
-            <section className="grid gap-6 md:grid-cols-3">
-                <TraitCard
-                    traitKey="integrity"
-                    score={assessment.integrity}
-                    animatedWidth={barWidths.integrity}
-                    delayMs={200}
-                />
-                <TraitCard
-                    traitKey="conscientiousness"
-                    score={assessment.conscientiousness}
-                    animatedWidth={barWidths.conscientiousness}
-                    delayMs={400}
-                />
-                <TraitCard
-                    traitKey="risk_tolerance"
-                    score={assessment.risk_tolerance}
-                    animatedWidth={barWidths.risk_tolerance}
-                    delayMs={600}
-                />
+            <section
+                className={`grid gap-6 ${isV2 ? "md:grid-cols-2" : "md:grid-cols-3"}`}
+            >
+                {traitKeys.map((traitKey, index) => (
+                    <TraitCard
+                        key={traitKey}
+                        traitKey={traitKey}
+                        score={traitScores[traitKey]}
+                        animatedWidth={barWidths[traitKey] ?? 0}
+                        delayMs={200 + index * 200}
+                    />
+                ))}
             </section>
 
             {/* Radar */}
@@ -586,7 +681,7 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                     Your Credit Profile at a Glance
                 </h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Compared across all three dimensions
+                    Compared across all {traitKeys.length} dimensions
                 </p>
                 <div className="mt-6 flex justify-center">
                     <div className="w-full max-w-md">
@@ -608,55 +703,21 @@ function ResultsView({ assessment }: { assessment: AssessmentData }) {
                     Anonymous benchmark against other Ethiopian SME applicants
                 </p>
                 <div className="mt-6 space-y-8">
-                    <BenchmarkBar
-                        label="Integrity"
-                        yourScore={assessment.integrity}
-                        avgScore={BENCHMARK_AVG.integrity}
-                        animatedYour={benchmarkWidths.integrity.you}
-                        animatedAvg={benchmarkWidths.integrity.avg}
-                    />
-                    <BenchmarkBar
-                        label="Conscientiousness"
-                        yourScore={assessment.conscientiousness}
-                        avgScore={BENCHMARK_AVG.conscientiousness}
-                        animatedYour={benchmarkWidths.conscientiousness.you}
-                        animatedAvg={benchmarkWidths.conscientiousness.avg}
-                    />
-                    <BenchmarkBar
-                        label="Risk Tolerance"
-                        yourScore={assessment.risk_tolerance}
-                        avgScore={BENCHMARK_AVG.risk_tolerance}
-                        animatedYour={benchmarkWidths.risk_tolerance.you}
-                        animatedAvg={benchmarkWidths.risk_tolerance.avg}
-                    />
+                    {traitKeys.map((traitKey) => (
+                        <BenchmarkBar
+                            key={traitKey}
+                            label={TRAIT_META[traitKey].title}
+                            yourScore={traitScores[traitKey]}
+                            avgScore={benchmarks[traitKey]}
+                            animatedYour={benchmarkWidths[traitKey]?.you ?? 0}
+                            animatedAvg={benchmarkWidths[traitKey]?.avg ?? 0}
+                        />
+                    ))}
                 </div>
                 <p className="mt-6 text-xs italic text-zinc-500 dark:text-zinc-400">
                     Benchmarks are based on anonymized aggregate data and do not
                     affect your individual score.
                 </p>
-            </section>
-
-            {/* Locked footer */}
-            <section className="rounded-2xl border border-[#1E3A2F] bg-[#F0F7F4] p-6 dark:bg-[#0F1A16]">
-                <div className="flex items-start gap-3">
-                    <Lock className="mt-0.5 h-5 w-5 shrink-0 text-[#6EBF9A]" />
-                    <div>
-                        <h3 className="font-semibold text-zinc-900 dark:text-white">
-                            Assessment Locked
-                        </h3>
-                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            Completed on {assessment.completed_at}
-                        </p>
-                        <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-                            Your responses have been recorded and submitted.
-                            Results are final and used in your loan evaluation.
-                        </p>
-                        <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-500">
-                            Questions about your results? Contact your loan
-                            officer.
-                        </p>
-                    </div>
-                </div>
             </section>
         </div>
     );
