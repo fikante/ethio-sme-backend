@@ -16,7 +16,31 @@ use Inertia\Response;
 
 class PsychometricWebController extends Controller
 {
-    public function show(Request $request, QuestionBank $bank): Response
+    public function show(): Response
+    {
+        $user = auth()->user();
+        $business = $user->businesses()->first();
+
+        $assessment = $business
+            ? $business->psychometricAssessments()
+                ->whereNotNull('completed_at')
+                ->latest()
+                ->first()
+            : null;
+
+        return Inertia::render('Borrower/PsychometricResults', [
+            'assessment' => $assessment ? [
+                'integrity' => round((float) $assessment->integrity_score * 100, 1),
+                'conscientiousness' => round((float) $assessment->conscientiousness_score * 100, 1),
+                'risk_tolerance' => round((float) $assessment->risk_tolerance_score * 100, 1),
+                'completed_at' => ($assessment->completed_at ?? $assessment->created_at)
+                    ->format('M d, Y · h:i A'),
+                'raw_answers' => $assessment->raw_answers,
+            ] : null,
+        ]);
+    }
+
+    public function test(Request $request, QuestionBank $bank): Response
     {
         $questions = collect($bank->current())
             ->map(fn (array $question, string $id) => [

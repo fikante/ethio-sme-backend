@@ -42,7 +42,8 @@ class Business extends Model implements Auditable
                 $business->uuid = (string) Str::uuid();
             }
 
-            $business->tin_number ??= 'PENDING';
+            // Placeholder must be unique (uq_businesses_tin); one shared "PENDING" breaks multi-tenant drafts.
+            $business->tin_number ??= 'PENDING-'.$business->uuid;
             $business->premises_status ??= 'rented';
             $business->data_source ??= 'web';
         });

@@ -142,7 +142,7 @@ export default function Authenticated({
                         ),
                     },
                     {
-                        name: "Psychometrics",
+                        name: "Psychometric Assessment",
                 href: safeRoute("psychometrics"),
                 active: safeCurrent("psychometrics"),
                         icon: (

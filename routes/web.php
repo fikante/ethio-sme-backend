@@ -24,7 +24,7 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
-Route::get('/psychometric-test', [PsychometricWebController::class, 'show'])
+Route::get('/psychometric-test', [PsychometricWebController::class, 'test'])
     ->name('psychometric.test');
 
 Route::post('/psychometric-test/submit', [PsychometricWebController::class, 'storeFromToken'])
@@ -44,7 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/loan-application/ensure-business', [LoanApplicationWebController::class, 'ensureBusiness'])
             ->name('loan-application.ensure-business');
 
-        Route::get('/psychometrics', fn () => Inertia::render('Placeholders/Psychometrics'))
+        Route::get('/psychometrics', [PsychometricWebController::class, 'show'])
             ->name('psychometrics');
         Route::get('/integrations', fn () => Inertia::render('Placeholders/Integrations'))
             ->name('integrations');

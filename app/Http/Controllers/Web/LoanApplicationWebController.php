@@ -92,7 +92,11 @@ class LoanApplicationWebController extends Controller
 
         $user->update(['name' => $validated['full_name']]);
 
-        $existingBusiness = $user->businesses()->first();
+        $existingBusiness = $user->businesses()->withTrashed()->first();
+
+        if ($existingBusiness?->trashed()) {
+            $existingBusiness->restore();
+        }
 
         $business = Business::updateOrCreate(
             ['owner_id' => $user->id],
@@ -180,9 +184,13 @@ class LoanApplicationWebController extends Controller
 
     private function ensureDraftBusiness(User $user): Business
     {
-        $existing = $user->businesses()->first();
+        $existing = $user->businesses()->withTrashed()->first();
 
         if ($existing !== null) {
+            if ($existing->trashed()) {
+                $existing->restore();
+            }
+
             return $existing;
         }
 
