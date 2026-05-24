@@ -11,6 +11,8 @@ class UpsertExogenousFactorsAction
     public function execute(ExogenousFactorsData $data): ExogenousFactor
     {
         return DB::transaction(function () use ($data): ExogenousFactor {
+            ExogenousFactor::query()->update(['is_current' => false]);
+
             return ExogenousFactor::updateOrCreate(
                 ['effective_date' => $data->effectiveDate->toDateString()],
                 $data->toAttributes()

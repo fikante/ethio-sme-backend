@@ -14,7 +14,7 @@ class ExogenousFactorsData extends Data
         public readonly float $nbePolicyRate,
         public readonly float $inflationRate,
         public readonly ?float $usdEtbRate,
-        public readonly ?string $notes,
+        public readonly ?float $fuelPriceRetail,
         public readonly int $updatedBy,
     ) {}
 
@@ -25,7 +25,7 @@ class ExogenousFactorsData extends Data
             nbePolicyRate: (float) $request->input('nbe_policy_rate'),
             inflationRate: (float) $request->input('inflation_rate'),
             usdEtbRate: $request->filled('usd_etb_rate') ? (float) $request->input('usd_etb_rate') : null,
-            notes: $request->filled('notes') ? (string) $request->input('notes') : null,
+            fuelPriceRetail: $request->filled('fuel_price_retail') ? (float) $request->input('fuel_price_retail') : null,
             updatedBy: $updatedBy,
         );
     }
@@ -35,9 +35,12 @@ class ExogenousFactorsData extends Data
         return [
             'effective_date' => $this->effectiveDate->toDateString(),
             'nbe_policy_rate' => $this->nbePolicyRate,
-            'inflation_rate' => $this->inflationRate,
+            'food_inflation' => $this->inflationRate,
+            'non_food_inflation' => $this->inflationRate,
+            'inflation_composite' => $this->inflationRate,
             'usd_etb_rate' => $this->usdEtbRate,
-            'notes' => $this->notes,
+            'fuel_price_retail' => $this->fuelPriceRetail ?? 0,
+            'is_current' => true,
             'updated_by' => $this->updatedBy,
         ];
     }

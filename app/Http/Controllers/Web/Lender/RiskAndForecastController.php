@@ -13,7 +13,7 @@ class RiskAndForecastController extends Controller
     public function index(Request $request): Response
     {
         $applications = LoanApplication::query()
-            ->with(['business', 'latestValuation'])
+            ->with(['business', 'valuation'])
             ->whereIn('status', [
                 LoanApplication::STATUS_PROCESSING,
                 LoanApplication::STATUS_QUEUED_FOR_AI,
@@ -32,8 +32,8 @@ class RiskAndForecastController extends Controller
                 'npv_credit_limit' => $app->npv_credit_limit,
                 'p10' => $app->p10_cashflow_forecast,
                 'p50' => $app->p50_cashflow_forecast,
-                'valuation_status' => $app->latestValuation?->status,
-                'inferred_at' => $app->latestValuation?->inferred_at?->toIso8601String(),
+                'valuation_status' => $app->valuation?->status,
+                'inferred_at' => $app->valuation?->inferred_at?->toIso8601String(),
             ]);
 
         return Inertia::render('Lender/RiskAndForecast', [

@@ -13,12 +13,15 @@ class PsychometricAssessment extends Model
         'conscientiousness_score',
         'risk_tolerance_score',
         'raw_answers',
+        'assessment_version',
         'completed_at',
+        'expiry_date',
     ];
 
     protected $casts = [
         'raw_answers' => 'array',
         'completed_at' => 'datetime',
+        'expiry_date' => 'datetime',
         'integrity_score' => 'decimal:4',
         'conscientiousness_score' => 'decimal:4',
         'risk_tolerance_score' => 'decimal:4',

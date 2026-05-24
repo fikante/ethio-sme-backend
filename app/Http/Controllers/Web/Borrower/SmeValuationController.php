@@ -18,7 +18,7 @@ class SmeValuationController extends Controller
     {
         $businesses = Business::query()
             ->ownedBy($request->user()->id)
-            ->with(['latestValuation.shapExplanations'])
+            ->with(['latestValuation.shapExplanations', 'loanApplications.valuation'])
             ->orderByDesc('created_at')
             ->get();
 
@@ -57,8 +57,8 @@ class SmeValuationController extends Controller
 
         $valuation = $action->execute($application, $request->header('Idempotency-Key'));
 
-        if ($valuation->status === 'failed') {
-            return back()->with('error', $valuation->error_message ?? 'Valuation failed.');
+        if ($valuation->isFailed()) {
+            return back()->with('error', 'Valuation failed.');
         }
 
         return back()->with('success', 'Valuation completed successfully.');

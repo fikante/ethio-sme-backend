@@ -13,12 +13,14 @@ class FairnessAudit extends Model
         'spd',
         'eod',
         'notes',
+        'psychometrics_included',
     ];
 
     protected $casts = [
         'cohort_definition' => 'array',
         'spd' => 'decimal:6',
         'eod' => 'decimal:6',
+        'psychometrics_included' => 'boolean',
     ];
 
     public function runner(): BelongsTo

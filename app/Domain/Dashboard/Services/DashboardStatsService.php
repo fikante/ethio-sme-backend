@@ -52,12 +52,13 @@ class DashboardStatsService
         $business = $user->businesses()->first();
         $application = $business
             ? LoanApplication::query()
+                ->with('valuation')
                 ->where('business_id', $business->id)
                 ->latest()
                 ->first()
             : null;
         $heartbeatCount = $business
-            ? SmeDailyHeartbeat::query()->where('business_id', $business->id)->count()
+            ? SmeDailyHeartbeat::query()->forBusiness($business)->count()
             : 0;
         $hasAssessment = $business
             ? $business->psychometricAssessments()->exists()

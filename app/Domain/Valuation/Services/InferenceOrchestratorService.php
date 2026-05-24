@@ -105,9 +105,9 @@ class InferenceOrchestratorService
     private function resolveAsOfDate(Business $business): string
     {
         $latestHeartbeat = SmeDailyHeartbeat::query()
-            ->where('business_id', $business->id)
-            ->orderByDesc('heartbeat_date')
-            ->value('heartbeat_date');
+            ->forBusiness($business)
+            ->orderByDesc('transaction_date')
+            ->value('transaction_date');
 
         if ($latestHeartbeat !== null) {
             return Carbon::parse($latestHeartbeat)->toDateString();

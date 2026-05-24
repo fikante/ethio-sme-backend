@@ -23,7 +23,7 @@ class LoanApplicationController extends Controller
                 AllowedFilter::exact('status'),
                 AllowedFilter::exact('business_id'),
             ])
-            ->allowedSorts(['created_at', 'snapshot_risk_score', 'ai_risk_score', 'npv_credit_limit'])
+            ->allowedSorts(['created_at', 'snapshot_risk_score', 'snapshot_limit_etb'])
             ->with(['business.owner', 'reviewer']);
 
         if ($user->hasAnyRole(['loan_officer', 'super_admin'])) {

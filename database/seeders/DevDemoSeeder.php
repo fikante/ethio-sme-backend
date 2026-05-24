@@ -7,41 +7,43 @@ use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
 use App\Domain\Macroeconomics\Actions\UpsertExogenousFactorsAction;
 use App\Domain\Macroeconomics\Data\ExogenousFactorsData;
-use App\Domain\Payments\Actions\InjectSyntheticStatementAction;
-use App\Domain\Payments\Data\SimulationRequestData;
-use App\Domain\TimeSeries\Services\DailyHeartbeatAggregatorService;
 use App\Models\Business;
 use App\Models\PsychometricAssessment;
+use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class DevDemoSeeder extends Seeder
 {
     public function run(
-        InjectSyntheticStatementAction $injectStatement,
-        DailyHeartbeatAggregatorService $aggregator,
         CreateLoanApplicationAction $createApplication,
         UpsertExogenousFactorsAction $upsertFactors,
     ): void {
         $admin = User::firstOrCreate(
             ['email' => 'admin@ethiosme.test'],
-            ['name' => 'Super Admin', 'password' => Hash::make('password')]
+            ['name' => 'Super Admin', 'password' => 'password']
         );
         $admin->syncRoles([RoleName::SuperAdmin->value]);
 
         $officer = User::firstOrCreate(
             ['email' => 'officer@ethiosme.test'],
-            ['name' => 'Loan Officer', 'password' => Hash::make('password')]
+            ['name' => 'Loan Officer', 'password' => 'password']
         );
         $officer->syncRoles([RoleName::LoanOfficer->value]);
 
+        $heartbeatUuids = SmeDailyHeartbeat::query()
+            ->select('business_uuid')
+            ->distinct()
+            ->orderBy('business_uuid')
+            ->limit(3)
+            ->pluck('business_uuid')
+            ->all();
+
         $scenarios = [
-            ['name' => 'Ato Girma - Merkato Retail',  'sector' => 'retail',        'sub_city' => 'Addis Ketema', 'profile' => 'creditworthy'],
-            ['name' => 'W/ro Tigist - Bole Coffee',   'sector' => 'food_beverage', 'sub_city' => 'Bole',         'profile' => 'borderline'],
-            ['name' => 'Ato Bereket - Piassa Crafts', 'sector' => 'manufacturing', 'sub_city' => 'Lideta',       'profile' => 'high_risk'],
+            ['name' => 'Ato Girma - Merkato Retail', 'sector' => 'retail', 'sub_city' => 'Addis Ketema', 'profile' => 'creditworthy'],
+            ['name' => 'W/ro Tigist - Bole Coffee', 'sector' => 'food_beverage', 'sub_city' => 'Bole', 'profile' => 'borderline'],
+            ['name' => 'Ato Bereket - Piassa Crafts', 'sector' => 'manufacturing', 'sub_city' => 'Lideta', 'profile' => 'high_risk'],
         ];
 
         $psychometricByProfile = [
@@ -50,23 +52,33 @@ class DevDemoSeeder extends Seeder
             'high_risk' => ['integrity' => 0.35, 'conscientiousness' => 0.30, 'risk_tolerance' => 0.80],
         ];
 
-        foreach ($scenarios as $scenario) {
+        foreach ($scenarios as $index => $scenario) {
             $owner = User::firstOrCreate(
-                ['email' => Str::slug($scenario['name']).'@test.et'],
-                ['name' => $scenario['name'], 'password' => Hash::make('password')]
+                ['email' => str()->slug($scenario['name']).'@test.et'],
+                ['name' => $scenario['name'], 'password' => 'password']
             );
             $owner->syncRoles([RoleName::SmeOwner->value]);
+
+            $uuid = $heartbeatUuids[$index] ?? null;
 
             $business = Business::firstOrCreate(
                 ['owner_id' => $owner->id],
                 [
+                    'uuid' => $uuid ?? (string) str()->uuid(),
                     'business_name' => $scenario['name'],
                     'sector' => $scenario['sector'],
                     'sub_city' => $scenario['sub_city'],
                     'established_year' => 2019,
                     'monthly_revenue_estimate' => 45000,
+                    'tin_number' => 'DEMO-'.str_pad((string) ($index + 1), 4, '0', STR_PAD_LEFT),
+                    'premises_status' => 'rented',
+                    'data_source' => 'demo_seed',
                 ]
             );
+
+            if ($uuid !== null && $business->uuid !== $uuid) {
+                $business->update(['uuid' => $uuid]);
+            }
 
             $scores = $psychometricByProfile[$scenario['profile']];
 
@@ -77,26 +89,19 @@ class DevDemoSeeder extends Seeder
                     'conscientiousness_score' => $scores['conscientiousness'],
                     'risk_tolerance_score' => $scores['risk_tolerance'],
                     'raw_answers' => [],
+                    'assessment_version' => 'v1',
                     'completed_at' => now(),
                 ]
             );
 
-            $injectStatement->execute(
-                $business,
-                new SimulationRequestData(
+            if (SmeDailyHeartbeat::query()->forBusiness($business)->exists()) {
+                $createApplication->execute(new CreateLoanApplicationData(
                     businessId: $business->id,
-                    days: 60,
-                    idempotencyKey: 'seed:'.$business->id.':sim',
-                ),
-            );
-            $aggregator->aggregateWindow($business, 60);
-
-            $createApplication->execute(new CreateLoanApplicationData(
-                businessId: $business->id,
-                requestedAmount: 150000,
-                requestedTenureMonths: 12,
-                idempotencyKey: 'seed:'.$business->id.':app',
-            ));
+                    requestedAmount: 150000,
+                    requestedTenureMonths: 12,
+                    idempotencyKey: 'seed:'.$business->id.':app',
+                ));
+            }
         }
 
         $upsertFactors->execute(new ExogenousFactorsData(
@@ -104,7 +109,7 @@ class DevDemoSeeder extends Seeder
             nbePolicyRate: 0.15,
             inflationRate: 0.28,
             usdEtbRate: 57.50,
-            notes: 'Current NBE policy rate per SBB/95/2025',
+            fuelPriceRetail: null,
             updatedBy: $admin->id,
         ));
     }

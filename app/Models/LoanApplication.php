@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -43,36 +43,33 @@ class LoanApplication extends Model implements Auditable
         'requested_tenure_months',
         'status',
         'idempotency_key',
-        'npv_credit_limit',
-        'ai_risk_score',
+        'valuation_id',
         'ai_risk_band',
         'prob_default',
         'snapshot_risk_score',
+        'snapshot_limit_etb',
         'effective_discount_rate',
-        'p10_cashflow_forecast',
-        'p50_cashflow_forecast',
-        'p90_cashflow_forecast',
-        'shap_values',
         'reason_codes',
         'apr',
         'rejection_narrative',
         'decided_at',
+        'contract_version',
+        'model_versions',
+        'feature_snapshot_hash',
     ];
 
     protected $casts = [
-        'p10_cashflow_forecast' => 'array',
-        'p50_cashflow_forecast' => 'array',
-        'p90_cashflow_forecast' => 'array',
-        'shap_values' => 'array',
         'reason_codes' => 'array',
+        'model_versions' => 'array',
         'decided_at' => 'datetime',
-        'npv_credit_limit' => 'decimal:2',
-        'ai_risk_score' => 'decimal:4',
         'prob_default' => 'decimal:4',
         'snapshot_risk_score' => 'decimal:4',
+        'snapshot_limit_etb' => 'decimal:2',
         'effective_discount_rate' => 'decimal:4',
         'apr' => 'decimal:4',
     ];
+
+    protected $with = [];
 
     public function business(): BelongsTo
     {
@@ -91,17 +88,58 @@ class LoanApplication extends Model implements Auditable
 
     public function valuations(): HasMany
     {
-        return $this->hasMany(Valuation::class);
+        return $this->hasMany(Valuation::class, 'business_id', 'business_id');
     }
 
-    public function latestValuation(): HasOne
+    public function valuation(): BelongsTo
     {
-        return $this->hasOne(Valuation::class)->latestOfMany('inferred_at');
+        return $this->belongsTo(Valuation::class, 'valuation_id');
+    }
+
+    public function latestValuation(): BelongsTo
+    {
+        return $this->valuation();
     }
 
     public function adverseActionNotices(): HasMany
     {
         return $this->hasMany(AdverseActionNotice::class);
+    }
+
+    /** @return Attribute<string|float|null, never> */
+    protected function npvCreditLimit(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->npv_credit_limit ?? $this->snapshot_limit_etb);
+    }
+
+    /** @return Attribute<string|float|null, never> */
+    protected function aiRiskScore(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->ai_risk_score ?? $this->snapshot_risk_score);
+    }
+
+    /** @return Attribute<array|null, never> */
+    protected function p10CashflowForecast(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->p10_cashflow_forecast);
+    }
+
+    /** @return Attribute<array|null, never> */
+    protected function p50CashflowForecast(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->p50_cashflow_forecast);
+    }
+
+    /** @return Attribute<array|null, never> */
+    protected function p90CashflowForecast(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->p90_cashflow_forecast);
+    }
+
+    /** @return Attribute<array|null, never> */
+    protected function shapValues(): Attribute
+    {
+        return Attribute::get(fn () => $this->valuation?->shap_values);
     }
 
     public function scopePending(Builder $query): Builder

@@ -4,11 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 use OwenIt\Auditing\Auditable as AuditableTrait;
 use OwenIt\Auditing\Contracts\Auditable;
 
@@ -25,6 +25,13 @@ class Business extends Model implements Auditable
         'sub_city',
         'established_year',
         'monthly_revenue_estimate',
+        'tin_number',
+        'trade_license_no',
+        'premises_status',
+        'employee_count',
+        'monthly_rent',
+        'data_source',
+        'simulation_seed',
         'status',
     ];
 
@@ -34,6 +41,10 @@ class Business extends Model implements Auditable
             if (empty($business->uuid)) {
                 $business->uuid = (string) Str::uuid();
             }
+
+            $business->tin_number ??= 'PENDING';
+            $business->premises_status ??= 'rented';
+            $business->data_source ??= 'web';
         });
     }
 
@@ -59,7 +70,7 @@ class Business extends Model implements Auditable
 
     public function dailyHeartbeat(): HasMany
     {
-        return $this->hasMany(SmeDailyHeartbeat::class);
+        return $this->hasMany(SmeDailyHeartbeat::class, 'business_uuid', 'uuid');
     }
 
     public function loanApplications(): HasMany
@@ -75,7 +86,8 @@ class Business extends Model implements Auditable
     public function latestValuation(): HasOne
     {
         return $this->hasOne(Valuation::class)
-            ->where('status', 'completed')
+            ->whereNotNull('inferred_at')
+            ->whereNotNull('ai_risk_score')
             ->latestOfMany('inferred_at');
     }
 

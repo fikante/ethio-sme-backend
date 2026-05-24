@@ -4,14 +4,12 @@ namespace App\Http\Controllers\Web;
 
 use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
-use App\Domain\Payments\Actions\InjectSyntheticStatementAction;
-use App\Domain\Payments\Data\SimulationRequestData;
-use App\Domain\TimeSeries\Services\DailyHeartbeatAggregatorService;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\LoanApplication;
 use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -28,16 +26,22 @@ class LoanApplicationWebController extends Controller
 
         $transactions = $business
             ? SmeDailyHeartbeat::query()
-                ->where('business_id', $business->id)
-                ->orderByDesc('heartbeat_date')
+                ->forBusiness($business)
+                ->orderByDesc('transaction_date')
                 ->take(30)
-                ->get(['heartbeat_date', 'inflow_total', 'outflow_total', 'transaction_count'])
+                ->get([
+                    'transaction_date',
+                    'daily_total_inflow',
+                    'daily_total_outflow',
+                    'txn_count',
+                    'net_cashflow',
+                ])
                 ->map(fn (SmeDailyHeartbeat $row) => [
-                    'date' => $row->heartbeat_date?->toDateString(),
-                    'inflow' => $row->inflow_total,
-                    'outflow' => $row->outflow_total,
-                    'net' => (float) $row->inflow_total - (float) $row->outflow_total,
-                    'txn_count' => $row->transaction_count,
+                    'date' => $row->transaction_date?->toDateString(),
+                    'inflow' => $row->daily_total_inflow,
+                    'outflow' => $row->daily_total_outflow,
+                    'net' => $row->net_cashflow ?? ((float) $row->daily_total_inflow - (float) $row->daily_total_outflow),
+                    'txn_count' => $row->txn_count,
                 ])
                 ->values()
                 ->all()
@@ -60,7 +64,7 @@ class LoanApplicationWebController extends Controller
             ] : null,
             'hasBusiness' => (bool) $business,
             'heartbeatDays' => $business
-                ? SmeDailyHeartbeat::query()->where('business_id', $business->id)->count()
+                ? SmeDailyHeartbeat::query()->forBusiness($business)->count()
                 : 0,
             'businessUuid' => $business?->uuid,
         ]);
@@ -68,8 +72,6 @@ class LoanApplicationWebController extends Controller
 
     public function store(
         Request $request,
-        InjectSyntheticStatementAction $injectAction,
-        DailyHeartbeatAggregatorService $aggregator,
         CreateLoanApplicationAction $createApplication,
     ): RedirectResponse {
         $validated = $request->validate([
@@ -103,6 +105,13 @@ class LoanApplicationWebController extends Controller
             ]
         );
 
+        $heartbeatDays = SmeDailyHeartbeat::query()->forBusiness($business)->count();
+        if ($heartbeatDays < 1) {
+            return redirect()
+                ->route('loan-application')
+                ->with('error', 'No transaction history found for this business. Use a business UUID that exists in the AI dataset, or contact support.');
+        }
+
         if ($request->hasFile('transaction_file')) {
             $file = $request->file('transaction_file');
             $file->storeAs(
@@ -111,14 +120,6 @@ class LoanApplicationWebController extends Controller
                 'local'
             );
         }
-
-        $simulation = new SimulationRequestData(
-            businessId: $business->id,
-            days: 60,
-            idempotencyKey: null,
-        );
-        $injectAction->execute($business, $simulation);
-        $aggregator->aggregateWindow($business, 60);
 
         $duplicate = LoanApplication::query()
             ->where('business_id', $business->id)
@@ -149,7 +150,7 @@ class LoanApplicationWebController extends Controller
             ->with('success', 'Application submitted successfully. Awaiting AI evaluation.');
     }
 
-    public function ensureBusiness(Request $request): \Illuminate\Http\JsonResponse
+    public function ensureBusiness(Request $request): JsonResponse
     {
         /** @var User $user */
         $user = auth()->user();

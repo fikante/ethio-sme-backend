@@ -9,10 +9,12 @@ class AiEvaluationLog extends Model
 {
     protected $fillable = [
         'loan_application_id',
+        'valuation_id',
         'request_payload',
         'response_payload',
         'latency_ms',
         'success',
+        'forecaster_mode',
         'error_message',
     ];
 
