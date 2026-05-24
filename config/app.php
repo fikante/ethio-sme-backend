@@ -123,4 +123,6 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'admin_creation_code' => env('ADMIN_CREATION_CODE', 'ETHIOSME-ADMIN-2024'),
+
 ];

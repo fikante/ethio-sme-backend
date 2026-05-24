@@ -1,6 +1,7 @@
 import Dropdown from "@/Components/Dropdown";
 import ThemeToggle from "@/Components/ThemeToggle";
 import { isLoanProviderRole } from "@/lib/roles";
+import { avatarCircleSm } from "@/lib/uiTheme";
 import { Link, usePage } from "@inertiajs/react";
 import {
     Dialog,
@@ -749,7 +750,7 @@ export default function Authenticated({
                                         type="button"
                                         className="inline-flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-900 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10 dark:focus:ring-white/40"
                                     >
-                                        <span className="grid h-9 w-9 place-items-center rounded-full bg-gray-900 text-sm font-semibold text-white">
+                                        <span className={avatarCircleSm}>
                                             {String(userName ?? "U")
                                                 .trim()
                                                 .slice(0, 1)
