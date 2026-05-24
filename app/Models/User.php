@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -17,7 +18,7 @@ class User extends Authenticatable implements Auditable, JWTSubject
     use HasRoles;
     use Notifiable;
 
-    protected $fillable = ['name', 'email', 'password'];
+    protected $fillable = ['name', 'email', 'password', 'loan_provider_id'];
 
     protected $hidden = ['password', 'remember_token'];
 
@@ -37,6 +38,11 @@ class User extends Authenticatable implements Auditable, JWTSubject
             'role' => $this->getRoleNames()->first(),
             'email' => $this->email,
         ];
+    }
+
+    public function loanProvider(): BelongsTo
+    {
+        return $this->belongsTo(LoanProvider::class, 'loan_provider_id');
     }
 
     public function business(): HasOne

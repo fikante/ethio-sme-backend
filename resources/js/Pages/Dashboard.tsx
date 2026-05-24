@@ -527,7 +527,16 @@ function SmeOwnerDashboard({
 // ─── Loan Officer ─────────────────────────────────────────────────────────────
 
 function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
-    const counts = stats.counts;
+    const dbHealth = stats.dbHealth ?? {
+        status: 'error' as const,
+        latency: null,
+        host: 'Supabase',
+    };
+    const aiHealth = stats.aiHealth ?? {
+        status: 'unreachable' as const,
+        latency: null,
+    };
+    const counts = stats.counts ?? {};
     const queued = counts['queued_for_ai'] ?? 0;
     const evaluated = counts['evaluated'] ?? 0;
 
@@ -642,8 +651,8 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
             </div>
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
-                <DbHealthPill health={stats.dbHealth} />
-                <AiHealthPill health={stats.aiHealth} />
+                <DbHealthPill health={dbHealth} />
+                <AiHealthPill health={aiHealth} />
             </div>
         </>
     );
@@ -769,8 +778,17 @@ function ApplicationBreakdown({
 }
 
 function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
-    const aiOk = stats.aiHealth.status === 'healthy';
-    const dbOk = stats.dbHealth.status === 'connected';
+    const aiHealth = stats.aiHealth ?? {
+        status: 'unreachable' as const,
+        latency: null,
+    };
+    const dbHealth = stats.dbHealth ?? {
+        status: 'error' as const,
+        latency: null,
+        host: 'Supabase',
+    };
+    const aiOk = aiHealth.status === 'healthy';
+    const dbOk = dbHealth.status === 'connected';
     const modelsLabel = aiOk ? 'XGBoost + LSTM' : 'Degraded';
 
     return (
@@ -837,9 +855,9 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                                 <span className="font-medium capitalize">
                                     {aiOk ? 'Healthy' : 'Unreachable'}
                                 </span>
-                                {stats.aiHealth.latency !== null && (
+                                {aiHealth.latency !== null && (
                                     <span className={`text-xs ${mutedClass}`}>
-                                        {stats.aiHealth.latency}ms
+                                        {aiHealth.latency}ms
                                     </span>
                                 )}
                             </span>
@@ -847,7 +865,7 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         <li className="flex items-center justify-between gap-4">
                             <span className="flex items-center gap-2">
                                 <Database className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
-                                Database ({stats.dbHealth.host})
+                                Database ({dbHealth.host})
                             </span>
                             <span className="flex items-center gap-2">
                                 <span
@@ -864,9 +882,9 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                                 >
                                     {dbOk ? 'Connected' : 'Error'}
                                 </span>
-                                {stats.dbHealth.latency !== null && (
+                                {dbHealth.latency !== null && (
                                     <span className={`text-xs ${mutedClass}`}>
-                                        {stats.dbHealth.latency}ms
+                                        {dbHealth.latency}ms
                                     </span>
                                 )}
                             </span>
@@ -910,7 +928,7 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                     </h2>
                     <div className="mt-4">
                         <ApplicationBreakdown
-                            appsByStatus={stats.appsByStatus}
+                            appsByStatus={stats.appsByStatus ?? {}}
                         />
                     </div>
                 </div>

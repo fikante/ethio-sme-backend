@@ -173,6 +173,7 @@ class DashboardStatsService
                 'updated_at' => $lastTraining->updated_at->toDateTimeString(),
             ] : null,
             'aiHealth' => self::checkAiHealth(),
+            'dbHealth' => self::checkDbHealth(),
             'recentActivity' => AuditLog::query()
                 ->with('actor')
                 ->orderByDesc('created_at')

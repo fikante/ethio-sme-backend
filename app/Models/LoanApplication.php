@@ -39,6 +39,7 @@ class LoanApplication extends Model implements Auditable
     protected $fillable = [
         'business_id',
         'reviewed_by',
+        'loan_provider_id',
         'requested_amount',
         'requested_tenure_months',
         'status',
@@ -79,6 +80,11 @@ class LoanApplication extends Model implements Auditable
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function loanProvider(): BelongsTo
+    {
+        return $this->belongsTo(LoanProvider::class, 'loan_provider_id');
     }
 
     public function evaluationLogs(): HasMany

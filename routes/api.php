@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\LoanProviderController;
 use App\Http\Controllers\Api\V1\Admin\ExogenousFactorController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Business\BusinessController;
@@ -9,12 +10,12 @@ use App\Http\Controllers\Api\V1\Compliance\ErasureRequestController;
 use App\Http\Controllers\Api\V1\Governance\DriftMetricsController;
 use App\Http\Controllers\Api\V1\Governance\FairnessAuditController;
 use App\Http\Controllers\Api\V1\Governance\TrainingJobController;
-use App\Http\Controllers\Api\V1\Valuation\AiHealthController;
 use App\Http\Controllers\Api\V1\Lending\LoanApplicationController;
 use App\Http\Controllers\Api\V1\Lending\LoanDecisionController;
 use App\Http\Controllers\Api\V1\Payments\ChapaSimulatorController;
 use App\Http\Controllers\Api\V1\Payments\ChapaWebhookController;
 use App\Http\Controllers\Api\V1\Psychometric\PsychometricController;
+use App\Http\Controllers\Api\V1\Valuation\AiHealthController;
 use App\Http\Controllers\Api\V1\Valuation\ValuationController;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,16 @@ Route::prefix('v1')->group(function (): void {
                 ->middleware('permission:payments.simulate.inject');
             Route::post('simulate', [ChapaSimulatorController::class, 'store'])
                 ->middleware('permission:payments.simulate.inject');
+        });
+
+        Route::prefix('loan-providers')->group(function (): void {
+            Route::get('/', [LoanProviderController::class, 'index']);
+            Route::get('/{loanProvider}', [LoanProviderController::class, 'show']);
+
+            Route::middleware('role:super_admin')->group(function (): void {
+                Route::post('/', [LoanProviderController::class, 'store']);
+                Route::patch('/{loanProvider}', [LoanProviderController::class, 'update']);
+            });
         });
 
         Route::prefix('applications')->group(function (): void {
