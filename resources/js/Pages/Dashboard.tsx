@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import type { PageProps } from '@/types';
 import type {
     AiHealth,
+    DbHealth,
     LoanOfficerStats,
     SmeOwnerStats,
     SuperAdminStats,
@@ -417,6 +418,29 @@ function AiHealthPill({ health }: { health: AiHealth }) {
     );
 }
 
+function DbHealthPill({ health }: { health: DbHealth }) {
+    const online = health.status === 'connected';
+    return (
+        <div
+            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                online
+                    ? 'border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400'
+                    : 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400'
+            }`}
+        >
+            <span
+                className={`h-2 w-2 rounded-full ${
+                    online ? 'bg-green-500' : 'bg-red-500'
+                }`}
+            />
+            {online ? `${health.host} Connected` : `${health.host} Error`}
+            {health.latency !== null && online && (
+                <span className={mutedClass}>· {health.latency}ms</span>
+            )}
+        </div>
+    );
+}
+
 // ─── SME Owner ────────────────────────────────────────────────────────────────
 
 function SmeOwnerDashboard({
@@ -617,7 +641,8 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                 </div>
             </div>
 
-            <div className="mt-6 flex justify-end">
+            <div className="mt-6 flex flex-wrap justify-end gap-2">
+                <DbHealthPill health={stats.dbHealth} />
                 <AiHealthPill health={stats.aiHealth} />
             </div>
         </>
@@ -745,6 +770,7 @@ function ApplicationBreakdown({
 
 function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
     const aiOk = stats.aiHealth.status === 'healthy';
+    const dbOk = stats.dbHealth.status === 'connected';
     const modelsLabel = aiOk ? 'XGBoost + LSTM' : 'Degraded';
 
     return (
@@ -821,11 +847,28 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         <li className="flex items-center justify-between gap-4">
                             <span className="flex items-center gap-2">
                                 <Database className="h-4 w-4 text-gray-500 dark:text-zinc-400" />
-                                Database
+                                Database ({stats.dbHealth.host})
                             </span>
-                            <span className="flex items-center gap-2 font-medium text-green-600 dark:text-green-400">
-                                <span className="h-2 w-2 rounded-full bg-green-500" />
-                                Connected
+                            <span className="flex items-center gap-2">
+                                <span
+                                    className={`h-2 w-2 rounded-full ${
+                                        dbOk ? 'bg-green-500' : 'bg-red-500'
+                                    }`}
+                                />
+                                <span
+                                    className={`font-medium capitalize ${
+                                        dbOk
+                                            ? 'text-green-600 dark:text-green-400'
+                                            : 'text-red-600 dark:text-red-400'
+                                    }`}
+                                >
+                                    {dbOk ? 'Connected' : 'Error'}
+                                </span>
+                                {stats.dbHealth.latency !== null && (
+                                    <span className={`text-xs ${mutedClass}`}>
+                                        {stats.dbHealth.latency}ms
+                                    </span>
+                                )}
                             </span>
                         </li>
                         <li className="flex items-center justify-between gap-4">

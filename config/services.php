@@ -41,6 +41,17 @@ return [
         'timeout' => (int) env('AI_SERVICE_TIMEOUT', 30),
         'retries' => (int) env('AI_SERVICE_RETRIES', 1),
         'contract_version' => env('AI_SERVICE_CONTRACT_VERSION', 'v2'),
+        'fallback_enabled' => filter_var(env('AI_SERVICE_FALLBACK_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+        // Connection string for the external Python FastAPI service (same Supabase DB as Laravel).
+        'database_url' => env('DATABASE_URL') ?: sprintf(
+            'postgresql://%s:%s@%s:%s/%s?sslmode=%s',
+            rawurlencode((string) env('DB_USERNAME', '')),
+            rawurlencode((string) env('DB_PASSWORD', '')),
+            env('DB_HOST', '127.0.0.1'),
+            env('DB_PORT', '5432'),
+            env('DB_DATABASE', 'postgres'),
+            env('DB_SSLMODE', 'require'),
+        ),
     ],
 
 ];

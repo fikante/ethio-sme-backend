@@ -12,6 +12,7 @@ use App\Models\LoanApplication;
 use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DashboardStatsService
 {
@@ -146,6 +147,7 @@ class DashboardStatsService
                 ->count(),
             'recentApps' => $recent,
             'aiHealth' => self::checkAiHealth(),
+            'dbHealth' => self::checkDbHealth(),
         ];
     }
 
@@ -202,6 +204,30 @@ class DashboardStatsService
             return [
                 'status' => 'unreachable',
                 'latency' => null,
+            ];
+        }
+    }
+
+    /**
+     * @return array{status: string, latency: int|null, host: string}
+     */
+    private static function checkDbHealth(): array
+    {
+        try {
+            $start = microtime(true);
+            DB::select('SELECT 1');
+            $latency = (int) round((microtime(true) - $start) * 1000);
+
+            return [
+                'status' => 'connected',
+                'latency' => $latency,
+                'host' => 'Supabase',
+            ];
+        } catch (\Throwable) {
+            return [
+                'status' => 'error',
+                'latency' => null,
+                'host' => 'Supabase',
             ];
         }
     }

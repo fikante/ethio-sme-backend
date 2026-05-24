@@ -3,6 +3,12 @@ export type AiHealth = {
     latency: number | null;
 };
 
+export type DbHealth = {
+    status: 'connected' | 'error';
+    latency: number | null;
+    host: string;
+};
+
 export type DashboardUser = {
     name: string;
     email: string;
@@ -49,6 +55,7 @@ export type LoanOfficerStats = {
         created_at: string;
     }>;
     aiHealth: AiHealth;
+    dbHealth: DbHealth;
 };
 
 export type SuperAdminStats = {
@@ -58,6 +65,7 @@ export type SuperAdminStats = {
     lastAuditDate: string | null;
     lastTraining: { status: string; updated_at: string } | null;
     aiHealth: AiHealth;
+    dbHealth: DbHealth;
     recentActivity: Array<{
         created_at: string | null;
         action: string;
