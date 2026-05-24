@@ -57,13 +57,13 @@ class LoanProviderSeeder extends Seeder
             $officer = User::firstOrCreate(
                 ['email' => strtolower($data['short_code']).'-officer@ethiosme.test'],
                 [
-                    'name' => $data['short_code'].' Loan Officer',
+                    'name' => $data['short_code'].' Loan Provider',
                     'password' => Hash::make('password'),
                     'loan_provider_id' => $provider->id,
                 ]
             );
             $officer->update(['loan_provider_id' => $provider->id]);
-            $officer->assignRole(RoleName::LoanOfficer->value);
+            $officer->assignRole(RoleName::LoanProvider->value);
         }
 
         $cbe = LoanProvider::where('short_code', 'CBE')->first();

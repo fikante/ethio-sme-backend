@@ -18,14 +18,14 @@ class BusinessPolicy
     {
         return $user->hasAnyRole([
             RoleName::SmeOwner->value,
-            RoleName::LoanOfficer->value,
+            ...RoleName::loanProviderRoleNames(),
             RoleName::SuperAdmin->value,
         ]);
     }
 
     public function view(User $user, Business $business): bool
     {
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 
@@ -63,7 +63,7 @@ class BusinessPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 
@@ -76,7 +76,7 @@ class BusinessPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 

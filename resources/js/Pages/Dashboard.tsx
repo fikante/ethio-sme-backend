@@ -9,6 +9,7 @@ import type {
     SuperAdminStats,
 } from '@/types/dashboard';
 import { Head, Link, usePage } from '@inertiajs/react';
+import { isLoanProviderRole } from '@/lib/roles';
 import {
     Activity,
     ArrowDownRight,
@@ -988,7 +989,7 @@ export default function Dashboard() {
                 />
             );
         }
-        if (role === 'loan_officer' || role === 'loan-provider') {
+        if (isLoanProviderRole(role)) {
             return (
                 <LoanOfficerDashboard stats={stats as LoanOfficerStats} />
             );

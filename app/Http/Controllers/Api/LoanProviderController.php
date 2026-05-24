@@ -19,7 +19,7 @@ class LoanProviderController extends Controller
                 AllowedFilter::exact('type'),
             ])
             ->allowedSorts(['name', 'base_interest_rate', 'created_at'])
-            ->withCount(['loanApplications', 'loanOfficers'])
+            ->withCount(['loanApplications', 'users'])
             ->active()
             ->paginate(20);
 
@@ -29,8 +29,8 @@ class LoanProviderController extends Controller
     public function show(LoanProvider $loanProvider): JsonResponse
     {
         return response()->json(
-            $loanProvider->load(['loanOfficers:id,name,email,loan_provider_id'])
-                ->loadCount(['loanApplications', 'loanHistory'])
+            $loanProvider->load(['users:id,name,email,loan_provider_id'])
+                ->loadCount(['loanApplications', 'loanHistory', 'users'])
         );
     }
 

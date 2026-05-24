@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Business;
 
+use App\Domain\Auth\Enums\RoleName;
 use App\Domain\Business\Actions\CreateBusinessAction;
 use App\Domain\Business\Actions\UpdateBusinessAction;
 use App\Domain\Business\Data\BusinessData;
@@ -21,7 +22,7 @@ class BusinessController extends Controller
 
         $query = Business::query();
 
-        if (! $request->user()->hasAnyRole(['loan_officer', 'super_admin'])) {
+        if (! $request->user()->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             $query->ownedBy($request->user()->id);
         }
 

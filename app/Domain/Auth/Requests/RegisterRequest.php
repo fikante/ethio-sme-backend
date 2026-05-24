@@ -21,6 +21,7 @@ class RegisterRequest extends FormRequest
             'password' => ['required', 'confirmed', Password::min(8)],
             'role' => ['required', Rule::in([
                 'sme_owner',
+                'loan_provider',
                 'loan_officer',
                 'super_admin',
                 'sme-owner',

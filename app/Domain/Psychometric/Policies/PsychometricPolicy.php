@@ -17,7 +17,7 @@ class PsychometricPolicy
 
     public function view(User $user, PsychometricAssessment $assessment): bool
     {
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 

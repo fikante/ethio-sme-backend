@@ -47,9 +47,15 @@ class LoanProvider extends Model implements Auditable
         });
     }
 
-    public function loanOfficers(): HasMany
+    public function users(): HasMany
     {
         return $this->hasMany(User::class, 'loan_provider_id');
+    }
+
+    /** @deprecated Use users() — loan provider staff are the same role. */
+    public function loanOfficers(): HasMany
+    {
+        return $this->users();
     }
 
     public function loanApplications(): HasMany

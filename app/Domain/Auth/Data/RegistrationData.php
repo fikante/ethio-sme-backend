@@ -22,7 +22,7 @@ class RegistrationData extends Data
         $role = (string) $request->input('role');
         $normalised = match ($role) {
             'sme-owner', 'sme_owner' => RoleName::SmeOwner,
-            'loan-provider', 'loan_officer' => RoleName::LoanOfficer,
+            'loan-provider', 'loan_officer', 'loan_provider' => RoleName::LoanProvider,
             'super-admin', 'super_admin' => RoleName::SuperAdmin,
             default => RoleName::SmeOwner,
         };

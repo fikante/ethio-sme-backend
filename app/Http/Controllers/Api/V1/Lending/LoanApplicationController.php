@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1\Lending;
 
+use App\Domain\Auth\Enums\RoleName;
 use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
 use App\Domain\Lending\Requests\StoreLoanApplicationRequest;
@@ -26,7 +27,7 @@ class LoanApplicationController extends Controller
             ->allowedSorts(['created_at', 'snapshot_risk_score', 'snapshot_limit_etb'])
             ->with(['business.owner', 'reviewer']);
 
-        if ($user->hasAnyRole(['loan_officer', 'super_admin'])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             $this->authorize('viewPipeline', LoanApplication::class);
         } else {
             $this->authorize('viewSelf', LoanApplication::class);

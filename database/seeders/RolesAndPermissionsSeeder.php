@@ -37,7 +37,7 @@ class RolesAndPermissionsSeeder extends Seeder
                 PermissionName::ConsentsManage->value,
                 PermissionName::PrivacyErasureRequest->value,
             ],
-            RoleName::LoanOfficer->value => [
+            RoleName::LoanProvider->value => [
                 PermissionName::AuthLogout->value,
                 PermissionName::ApplicationsPipelineView->value,
                 PermissionName::ApplicationsDetailView->value,
@@ -65,7 +65,8 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $aliases = [
             'sme-owner' => RoleName::SmeOwner->value,
-            'loan-provider' => RoleName::LoanOfficer->value,
+            'loan-provider' => RoleName::LoanProvider->value,
+            'loan_officer' => RoleName::LoanProvider->value,
             'super-admin' => RoleName::SuperAdmin->value,
         ];
 

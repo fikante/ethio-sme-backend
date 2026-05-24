@@ -16,7 +16,7 @@ class ValuationPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 
@@ -29,7 +29,7 @@ class ValuationPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 
@@ -42,7 +42,7 @@ class ValuationPolicy
             return false;
         }
 
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])) {
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])) {
             return true;
         }
 

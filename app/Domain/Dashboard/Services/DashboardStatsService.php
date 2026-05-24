@@ -20,7 +20,7 @@ class DashboardStatsService
     {
         return match (self::resolveRole($user)) {
             RoleName::SmeOwner->value => self::smeOwner($user),
-            RoleName::LoanOfficer->value => self::loanOfficer(),
+            RoleName::LoanProvider->value => self::loanProvider(),
             RoleName::SuperAdmin->value => self::superAdmin(),
             default => [],
         };
@@ -34,8 +34,8 @@ class DashboardStatsService
             return RoleName::SuperAdmin->value;
         }
 
-        if (self::hasAnyRole($names, ['loan_officer', 'loan-provider'])) {
-            return RoleName::LoanOfficer->value;
+        if (self::hasAnyRole($names, RoleName::loanProviderRoleNames())) {
+            return RoleName::LoanProvider->value;
         }
 
         return RoleName::SmeOwner->value;
@@ -100,7 +100,7 @@ class DashboardStatsService
         ];
     }
 
-    private static function loanOfficer(): array
+    private static function loanProvider(): array
     {
         $counts = LoanApplication::query()
             ->selectRaw('status, count(*) as count')

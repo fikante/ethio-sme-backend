@@ -28,9 +28,9 @@ class DevDemoSeeder extends Seeder
 
         $officer = User::firstOrCreate(
             ['email' => 'officer@ethiosme.test'],
-            ['name' => 'Loan Officer', 'password' => 'password']
+            ['name' => 'Loan Provider Demo', 'password' => 'password']
         );
-        $officer->syncRoles([RoleName::LoanOfficer->value]);
+        $officer->syncRoles([RoleName::LoanProvider->value]);
 
         $heartbeatUuids = SmeDailyHeartbeat::query()
             ->select('business_uuid')

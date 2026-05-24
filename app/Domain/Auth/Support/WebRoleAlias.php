@@ -11,13 +11,22 @@ final class WebRoleAlias
     /** @var array<string, string> */
     private const CANONICAL_TO_ALIAS = [
         RoleName::SmeOwner->value => 'sme-owner',
-        RoleName::LoanOfficer->value => 'loan-provider',
+        RoleName::LoanProvider->value => 'loan_provider',
         RoleName::SuperAdmin->value => 'super-admin',
     ];
 
     public static function aliasFor(string $role): string
     {
+        if (in_array($role, RoleName::loanProviderRoleNames(), true)) {
+            return RoleName::LoanProvider->value;
+        }
+
         return self::CANONICAL_TO_ALIAS[$role] ?? $role;
+    }
+
+    public static function isLoanProviderRole(string $role): bool
+    {
+        return in_array($role, RoleName::loanProviderRoleNames(), true);
     }
 
     /** @return list<string> */
@@ -33,6 +42,9 @@ final class WebRoleAlias
                 if ($alias === $role) {
                     $expanded[] = $canonical;
                 }
+            }
+            if (self::isLoanProviderRole($role)) {
+                $expanded = array_merge($expanded, RoleName::loanProviderRoleNames());
             }
         }
 

@@ -3,11 +3,12 @@
 use App\Domain\Auth\Support\WebRoleAlias;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\Admin\ModelTrainingController;
+use App\Http\Controllers\Web\Admin\UserManagementController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use App\Http\Controllers\Web\LoanApplicationWebController;
 use App\Http\Controllers\Web\PsychometricWebController;
-use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -54,8 +55,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('sme.valuation.run');
     });
 
-    // Loan Provider (Lender) portal
-    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan-provider')))->group(function () {
+    // Loan provider (lender) portal
+    Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan_provider')))->group(function () {
         Route::get('/applications-pipeline', fn () => Inertia::render('Placeholders/ApplicationsPipeline'))
             ->name('applications.pipeline');
         Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])
@@ -66,6 +67,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Super admin / audit
     Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('super-admin')))->group(function () {
+        Route::get('/admin/users', [UserManagementController::class, 'index'])
+            ->name('admin.users');
+        Route::post('/admin/users', [UserManagementController::class, 'store'])
+            ->name('admin.users.store');
+        Route::patch('/admin/users/{user}', [UserManagementController::class, 'update'])
+            ->name('admin.users.update');
+        Route::delete('/admin/users/{user}', [UserManagementController::class, 'destroy'])
+            ->name('admin.users.destroy');
+
         Route::get('/admin/macroeconomic-factors', fn () => Inertia::render('Placeholders/MacroeconomicFactors'))
             ->name('admin.macroeconomic');
         Route::get('/admin/fairness-audit', fn () => Inertia::render('Placeholders/FairnessAudit'))

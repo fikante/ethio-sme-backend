@@ -12,7 +12,7 @@ export type PageProps<
 > = T & {
     auth: {
         user: User | null;
-        primaryRole?: 'sme_owner' | 'loan_officer' | 'super_admin' | null;
+        primaryRole?: 'sme_owner' | 'loan_provider' | 'super_admin' | null;
     };
     flash?: {
         success?: string;

@@ -21,7 +21,7 @@ class LoanApplicationPolicy
 
     public function view(User $user, LoanApplication $application): bool
     {
-        if ($user->hasAnyRole([RoleName::LoanOfficer->value, RoleName::SuperAdmin->value])
+        if ($user->hasAnyRole([...RoleName::loanProviderRoleNames(), RoleName::SuperAdmin->value])
             && $user->can(PermissionName::ApplicationsDetailView->value)
         ) {
             return true;
