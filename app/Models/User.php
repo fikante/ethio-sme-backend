@@ -18,7 +18,7 @@ class User extends Authenticatable implements Auditable, JWTSubject
     use HasRoles;
     use Notifiable;
 
-    protected $fillable = ['name', 'email', 'password', 'loan_provider_id'];
+    protected $fillable = ['name', 'email', 'password', 'loan_provider_id', 'email_verified_at'];
 
     protected $hidden = ['password', 'remember_token'];
 

@@ -115,4 +115,31 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin welcome emails
+    |--------------------------------------------------------------------------
+    |
+    | Set MAIL_WELCOME_ENABLED=false in .env to skip welcome emails when
+    | creating users from the admin panel (e.g. while Resend domain is pending).
+    |
+    */
+
+    'welcome_enabled' => filter_var(env('MAIL_WELCOME_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+
+    /** Mailer for admin welcome emails (defaults to MAIL_MAILER). Use "log" to debug without Resend. */
+    'welcome_mailer' => env('MAIL_WELCOME_MAILER', env('MAIL_MAILER', 'log')),
+
+    /**
+     * From address for welcome emails. Until ethiosme.et is verified in Resend, use
+     * onboarding@resend.dev (Resend's sandbox sender — works without domain verification).
+     */
+    'welcome_from' => [
+        'address' => env('MAIL_WELCOME_FROM_ADDRESS', env('MAIL_FROM_ADDRESS', 'onboarding@resend.dev')),
+        'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
+    ],
+
+    /** If true, log welcome email to storage/logs when Resend fails (local dev). */
+    'welcome_log_on_failure' => filter_var(env('MAIL_WELCOME_LOG_ON_FAILURE', true), FILTER_VALIDATE_BOOLEAN),
+
 ];

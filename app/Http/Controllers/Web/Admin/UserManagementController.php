@@ -11,9 +11,11 @@ use App\Models\LoanProvider;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Throwable;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -115,49 +117,48 @@ class UserManagementController extends Controller
         $plainPassword = $validated['password'];
         $canonicalRole = $this->canonicalRole($validated['role']);
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => $plainPassword,
-            'loan_provider_id' => $canonicalRole === RoleName::LoanProvider->value
-                ? ($validated['loan_provider_id'] ?? null)
-                : null,
-        ]);
-
-        $this->syncUserRoles($user, $canonicalRole);
-
-        if ($validated['role'] === 'sme_owner') {
-            Business::create([
-                'owner_id' => $user->id,
-                'uuid' => (string) Str::uuid(),
-                'business_name' => $validated['business_name'],
-                'sector' => $validated['sector'],
-                'sub_city' => $validated['sub_city'],
-                'established_year' => $validated['established_year'],
-                'status' => 'active',
-                'data_source' => 'app',
-                'tin_number' => 'PENDING-'.strtoupper(Str::random(6)),
+        $user = DB::transaction(function () use ($validated, $plainPassword, $canonicalRole) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => $plainPassword,
+                'email_verified_at' => now(),
+                'loan_provider_id' => $canonicalRole === RoleName::LoanProvider->value
+                    ? ($validated['loan_provider_id'] ?? null)
+                    : null,
             ]);
+
+            $this->syncUserRoles($user, $canonicalRole);
+
+            if ($validated['role'] === 'sme_owner') {
+                Business::create([
+                    'owner_id' => $user->id,
+                    'uuid' => (string) Str::uuid(),
+                    'business_name' => $validated['business_name'],
+                    'sector' => $validated['sector'],
+                    'sub_city' => $validated['sub_city'],
+                    'established_year' => $validated['established_year'],
+                    'status' => 'active',
+                    'data_source' => 'app',
+                    'tin_number' => 'PENDING-'.strtoupper(Str::random(8)),
+                ]);
+            }
+
+            return $user;
+        });
+
+        $emailResult = $this->sendWelcomeEmail($user, $plainPassword, $validated['role']);
+
+        $message = "User {$user->name} created successfully.";
+        if ($emailResult === 'sent') {
+            $message .= " Welcome email sent to {$user->email}.";
+        } elseif ($emailResult === 'logged') {
+            $message .= ' Welcome email logged locally (check storage/logs/laravel.log).';
+        } else {
+            $message .= ' Welcome email was not sent — share login credentials manually.';
         }
 
-        try {
-            Mail::to($user->email)->send(
-                new WelcomeUserMail($user, $plainPassword, $validated['role'])
-            );
-            $emailSent = true;
-        } catch (\Exception $e) {
-            Log::warning('Welcome email failed', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage(),
-            ]);
-            $emailSent = false;
-        }
-
-        $message = $emailSent
-            ? "User {$user->name} created and welcome email sent to {$user->email}."
-            : "User {$user->name} created. Email delivery failed — share credentials manually.";
-
-        return back()->with($emailSent ? 'success' : 'error', $message);
+        return back()->with('success', $message);
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -207,12 +208,61 @@ class UserManagementController extends Controller
 
     private function syncUserRoles(User $user, string $canonicalRole): void
     {
-        $roles = array_map(
-            fn (string $guard) => Role::findByName($canonicalRole, $guard),
-            ['web', 'api'],
-        );
+        $user->syncRoles([$canonicalRole]);
 
-        $user->syncRoles($roles);
+        $apiRole = Role::findByName($canonicalRole, 'api');
+        if (! $user->hasRole($apiRole)) {
+            $user->assignRole($apiRole);
+        }
+    }
+
+    /** @return 'sent'|'logged'|'failed' */
+    private function sendWelcomeEmail(User $user, string $plainPassword, string $role): string
+    {
+        if (! config('mail.welcome_enabled', true)) {
+            return 'failed';
+        }
+
+        $mailable = new WelcomeUserMail($user, $plainPassword, $role);
+        $mailer = config('mail.welcome_mailer', config('mail.default'));
+
+        if ($mailer === 'log') {
+            Mail::mailer('log')->to($user->email)->send($mailable);
+
+            return 'logged';
+        }
+
+        try {
+            Mail::mailer($mailer)->to($user->email)->send($mailable);
+
+            return 'sent';
+        } catch (Throwable $e) {
+            Log::warning('Welcome email failed', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'mailer' => $mailer,
+                'from' => config('mail.welcome_from.address'),
+                'error' => $e->getMessage(),
+            ]);
+
+            if (config('mail.welcome_log_on_failure', true)) {
+                try {
+                    Mail::mailer('log')->to($user->email)->send($mailable);
+                    Log::info('Welcome email written to log mailer after send failure', [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                    ]);
+
+                    return 'logged';
+                } catch (Throwable $logError) {
+                    Log::warning('Welcome email log fallback failed', [
+                        'error' => $logError->getMessage(),
+                    ]);
+                }
+            }
+
+            return 'failed';
+        }
     }
 
     private function canonicalRole(string $role): string
