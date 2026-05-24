@@ -14,4 +14,8 @@ export type PageProps<
         user: User | null;
         primaryRole?: 'sme_owner' | 'loan_officer' | 'super_admin' | null;
     };
+    flash?: {
+        success?: string;
+        error?: string;
+    };
 };

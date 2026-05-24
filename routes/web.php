@@ -3,9 +3,9 @@
 use App\Domain\Auth\Support\WebRoleAlias;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Web\Admin\ModelTrainingController;
-use App\Http\Controllers\Web\Borrower\LoanApplicationWebController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\LoanApplicationWebController;
 use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +23,9 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/psychometric-test', fn () => Inertia::render('Borrower/PsychometricTest'))
+    ->name('psychometric-test');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -30,10 +33,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // SME Owner (Borrower) portal
     Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('sme-owner')))->group(function () {
-        Route::get('/loan-application', [LoanApplicationWebController::class, 'index'])
+        Route::get('/loan-application', [LoanApplicationWebController::class, 'show'])
             ->name('loan-application');
-        Route::post('/loan-application', [LoanApplicationWebController::class, 'store'])
-            ->name('loan-application.store');
+        Route::post('/loan-application/submit', [LoanApplicationWebController::class, 'store'])
+            ->name('loan-application.submit');
 
         Route::get('/psychometrics', fn () => Inertia::render('Placeholders/Psychometrics'))
             ->name('psychometrics');

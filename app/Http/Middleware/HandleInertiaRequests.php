@@ -45,6 +45,10 @@ class HandleInertiaRequests extends Middleware
                 ] : null,
                 'primaryRole' => $user ? DashboardStatsService::resolveRole($user) : null,
             ],
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
         ];
     }
 }
