@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Web;
 
 use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
+use App\Domain\TimeSeries\Actions\ImportTransactionHeartbeatAction;
+use App\Domain\TimeSeries\Exceptions\TransactionImportException;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\LoanApplication;
@@ -80,6 +82,7 @@ class LoanApplicationWebController extends Controller
     public function store(
         Request $request,
         CreateLoanApplicationAction $createApplication,
+        ImportTransactionHeartbeatAction $importHeartbeat,
     ): RedirectResponse {
         $validated = $request->validate([
             'full_name' => ['required', 'string', 'max:255'],
@@ -91,7 +94,7 @@ class LoanApplicationWebController extends Controller
             'requested_amount' => ['required', 'numeric', 'min:10000', 'max:5000000'],
             'tenure_months' => ['required', 'integer', 'in:6,12,18,24'],
             'purpose' => ['required', 'string', 'max:500'],
-            'transaction_file' => ['nullable', 'file', 'mimes:csv,xlsx,xls', 'max:10240'],
+            'transaction_file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:10240'],
         ]);
 
         /** @var User $user */
@@ -116,21 +119,21 @@ class LoanApplicationWebController extends Controller
             ]
         );
 
-        $heartbeatDays = SmeDailyHeartbeat::query()->forBusiness($business)->count();
-        if ($heartbeatDays < 1) {
+        try {
+            $importedDays = $importHeartbeat->execute($business, $request->file('transaction_file'));
+        } catch (TransactionImportException $e) {
             return redirect()
                 ->route('loan-application')
-                ->with('error', 'No transaction history found for this business. Use a business UUID that exists in the AI dataset, or contact support.');
+                ->withErrors(['transaction_file' => $e->getMessage()])
+                ->withInput();
         }
 
-        if ($request->hasFile('transaction_file')) {
-            $file = $request->file('transaction_file');
-            $file->storeAs(
-                'transactions',
-                $business->uuid.'_transactions.'.$file->getClientOriginalExtension(),
-                'local'
-            );
-        }
+        $file = $request->file('transaction_file');
+        $file->storeAs(
+            'transactions',
+            $business->uuid.'_transactions.'.$file->getClientOriginalExtension(),
+            'local'
+        );
 
         $duplicate = LoanApplication::query()
             ->where('business_id', $business->id)
@@ -147,6 +150,11 @@ class LoanApplicationWebController extends Controller
                 ->with('error', 'You already have an active loan application.');
         }
 
+        $psychometricDone = PsychometricAssessment::query()
+            ->where('business_id', $business->id)
+            ->whereNotNull('completed_at')
+            ->exists();
+
         $application = $createApplication->execute(new CreateLoanApplicationData(
             businessId: $business->id,
             requestedAmount: (float) $validated['requested_amount'],
@@ -154,11 +162,18 @@ class LoanApplicationWebController extends Controller
             idempotencyKey: $request->header('Idempotency-Key'),
         ));
 
-        $application->update(['status' => LoanApplication::STATUS_QUEUED_FOR_AI]);
+        $application->update([
+            'status' => $psychometricDone
+                ? LoanApplication::STATUS_QUEUED_FOR_AI
+                : LoanApplication::STATUS_PENDING_PSYCHOMETRIC,
+        ]);
 
         return redirect()
             ->route('loan-application')
-            ->with('success', 'Application submitted successfully. Awaiting AI evaluation.');
+            ->with(
+                'success',
+                "Application submitted successfully. {$importedDays} days of transaction history loaded. Awaiting AI evaluation."
+            );
     }
 
     public function ensureBusiness(Request $request): JsonResponse

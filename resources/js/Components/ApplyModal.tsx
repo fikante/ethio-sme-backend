@@ -170,6 +170,10 @@ export default function ApplyModal({
 
     const handleFinalSubmit = () => {
         const next: Record<string, string> = {};
+        if (!data.transactionFile) {
+            next.transaction_file =
+                'Upload your CBE transaction history (CSV or Excel). This is required for AI forecasting and NPV calculation.';
+        }
         if (!data.purpose.trim()) next.purpose = 'Purpose is required.';
         setErrors(next);
         if (Object.keys(next).length > 0) return;
@@ -662,13 +666,22 @@ function Step4({ data, errors, submitting, dragOver, fileInputRef, inputClass, l
     return (
         <div className="space-y-5">
             <div>
-                <span className={labelClass}>Upload your CBE transaction history (CSV or Excel)</span>
+                <span className={labelClass}>
+                    Upload your CBE transaction history (CSV or Excel){' '}
+                    <span className="text-red-600 dark:text-red-400">*</span>
+                </span>
                 <div onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} onClick={() => fileInputRef.current?.click()}
                     className={`mt-2 cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${dragOver ? 'border-gray-900 bg-gray-50 dark:border-zinc-300 dark:bg-zinc-800' : 'border-gray-300 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900'}`}>
                     <FileUp className="mx-auto h-8 w-8 text-gray-900 dark:text-zinc-100/60" />
                     <p className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">Drag & drop your file here</p>
                     <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">or click to browse</p>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-zinc-400">Accepted: .csv, .xlsx — Max 10MB</p>
+                    <p className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
+                        Required · Accepted: .csv, .xlsx — Min 14 days of data — Max 10MB
+                    </p>
+                    <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                        Include columns: Date, Credit/Inflow, Debit/Outflow (or daily totals per
+                        date).
+                    </p>
                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileInput} />
                 </div>
                 {data.transactionFile && (

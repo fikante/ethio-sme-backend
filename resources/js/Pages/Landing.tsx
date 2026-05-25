@@ -550,11 +550,11 @@ export default function Landing() {
                                     <h2 className="mt-2 text-3xl font-semibold tracking-tight text-[#0A0A0A] dark:text-white sm:text-4xl">
                                         From signup to decision
                                     </h2>
-                                    <p className="mt-4 text-[#525252] dark:text-[#E5E5E5]">
+                                    {/* <p className="mt-4 text-[#525252] dark:text-[#E5E5E5]">
                                         SME owners register, complete psychometrics, upload
                                         transaction history, and receive an AI‑driven valuation—loan
                                         providers then approve or reject the application.
-                                    </p>
+                                    </p> */}
                                 </div>
                             </Reveal>
 
@@ -646,7 +646,7 @@ export default function Landing() {
                                             evaluating risk‑based capital
                                             efficiency, Ethio‑SME Valuation
                                             System provides a clear, explainable
-                                            underwriting pathway—without relying
+                                            underwriting pathway without relying
                                             on real‑estate collateral.
                                         </p>
                                     </div>
@@ -666,10 +666,6 @@ export default function Landing() {
                                             >
                                                 For Banks: Schedule a Demo
                                             </a> */}
-                                        </div>
-                                        <div className="mt-3 text-xs text-[#525252] dark:text-[#E5E5E5]">
-                                            Demo buttons are placeholders in
-                                            this PoC landing page.
                                         </div>
                                     </div>
                                 </div>
