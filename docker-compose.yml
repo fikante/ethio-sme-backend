@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   app:
     build:
@@ -9,31 +7,12 @@ services:
     restart: unless-stopped
     ports:
       - "8000:8000"
+      - "5173:5173"
     volumes:
       - .:/var/www/html
-    depends_on:
-      - postgres
+      - node_modules:/var/www/html/node_modules
     environment:
-      APP_ENV: local
-      DB_CONNECTION: pgsql
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_DATABASE: ethio_sme
-      DB_USERNAME: postgres
-      DB_PASSWORD: secret
-
-  postgres:
-    image: postgres:16-alpine
-    container_name: ethio_sme_postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ethio_sme
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: secret
-    ports:
-      - "5433:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+      PHP_CLI_SERVER_WORKERS: 8
 
 volumes:
-  pgdata:
+  node_modules:

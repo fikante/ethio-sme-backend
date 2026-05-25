@@ -1,25 +1,12 @@
-FROM php:8.3-cli-alpine
+FROM sail-8.5/app:latest
+
+USER root
 
 WORKDIR /var/www/html
 
-RUN apk add --no-cache \
-    bash \
-    curl \
-    git \
-    icu-dev \
-    libpq-dev \
-    oniguruma-dev \
-    postgresql-client \
-    unzip \
-    zip \
-    && docker-php-ext-install \
-        intl \
-        mbstring \
-        pdo \
-        pdo_pgsql
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+EXPOSE 8000 5173
 
-EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]

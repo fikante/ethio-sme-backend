@@ -4,9 +4,11 @@ import {
     markPsychometricComplete,
 } from '@/lib/psychometricCompletion';
 import {
+    AlertCircle,
     Brain,
     Check,
     CheckCircle,
+    FileText,
     FileUp,
     Loader2,
     Send,
@@ -38,6 +40,7 @@ const SUB_CITIES = [
 
 const TENURE_OPTIONS = [6, 12, 18, 24] as const;
 const STEP_LABELS = ['Personal', 'Business', 'Psych', 'Submit'];
+const MIN_TRANSACTION_DAYS = 45;
 
 const etbFormatter = new Intl.NumberFormat('en-ET', { maximumFractionDigits: 0 });
 
@@ -47,6 +50,24 @@ function formatEtb(amount: number): string {
 
 function getInitials(name: string): string {
     return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
+}
+
+function mapInertiaErrors(
+    raw: Record<string, string | string[] | undefined> | undefined,
+): Record<string, string> {
+    if (!raw) {
+        return {};
+    }
+
+    const mapped: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+        if (value === undefined) {
+            continue;
+        }
+        mapped[key] = Array.isArray(value) ? value[0] : value;
+    }
+
+    return mapped;
 }
 
 type FormState = {
@@ -70,6 +91,8 @@ type Props = {
     businessUuid?: string | null;
     psychometricCompleted?: boolean;
     initialSuccess?: boolean;
+    initialErrors?: Record<string, string>;
+    flashError?: string | null;
 };
 
 export default function ApplyModal({
@@ -79,6 +102,8 @@ export default function ApplyModal({
     businessUuid = null,
     psychometricCompleted = false,
     initialSuccess = false,
+    initialErrors = {},
+    flashError = null,
 }: Props) {
     const [visible, setVisible] = useState(false);
     const [animating, setAnimating] = useState(false);
@@ -87,6 +112,8 @@ export default function ApplyModal({
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [dragOver, setDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [serverError, setServerError] = useState<string | null>(null);
 
     const [data, setData] = useState<FormState>({
         fullName: userName,
@@ -110,6 +137,12 @@ export default function ApplyModal({
             setVisible(true);
             if (initialSuccess) {
                 setStep('success');
+                setErrors({});
+                setServerError(null);
+            } else if (Object.keys(initialErrors).length > 0 || flashError) {
+                setStep(4);
+                setErrors(initialErrors);
+                setServerError(flashError);
             } else if (psychometricCompleted) {
                 setStep(4);
                 if (businessUuid) {
@@ -129,7 +162,7 @@ export default function ApplyModal({
             const timer = setTimeout(() => setVisible(false), 200);
             return () => clearTimeout(timer);
         }
-    }, [isOpen, userName, initialSuccess, psychometricCompleted, businessUuid]);
+    }, [isOpen, userName, initialSuccess, initialErrors, flashError, psychometricCompleted, businessUuid]);
 
     const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
         setData((prev) => ({ ...prev, [key]: value }));
@@ -179,6 +212,7 @@ export default function ApplyModal({
         if (Object.keys(next).length > 0) return;
 
         setSubmitting(true);
+        setServerError(null);
         const formData = new FormData();
         formData.append('full_name', data.fullName);
         formData.append('phone', data.phone);
@@ -194,13 +228,56 @@ export default function ApplyModal({
         router.post(route('loan-application.submit'), formData, {
             forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => setStep('success'),
+            onSuccess: (page) => {
+                const flash = (page.props.flash ?? {}) as {
+                    success?: string;
+                    error?: string;
+                };
+                const pageErrors = mapInertiaErrors(
+                    page.props.errors as
+                        | Record<string, string | string[] | undefined>
+                        | undefined,
+                );
+
+                if (flash.success) {
+                    setStep('success');
+                    setErrors({});
+                    setServerError(null);
+                    return;
+                }
+
+                setStep(4);
+
+                if (Object.keys(pageErrors).length > 0) {
+                    setErrors(pageErrors);
+                    setServerError(
+                        pageErrors.transaction_file
+                            ?? Object.values(pageErrors)[0]
+                            ?? null,
+                    );
+                    return;
+                }
+
+                if (flash.error) {
+                    setErrors({});
+                    setServerError(flash.error);
+                    return;
+                }
+
+                setErrors({});
+                setServerError(null);
+            },
             onError: (errs) => {
-                const mapped: Record<string, string> = {};
-                Object.entries(errs).forEach(([k, v]) => {
-                    mapped[k] = Array.isArray(v) ? v[0] : String(v);
-                });
+                const mapped = mapInertiaErrors(
+                    errs as Record<string, string | string[] | undefined>,
+                );
+                setStep(4);
                 setErrors(mapped);
+                setServerError(
+                    mapped.transaction_file
+                        ?? Object.values(mapped)[0]
+                        ?? 'Submission failed. Please check the form and try again.',
+                );
             },
             onFinish: () => setSubmitting(false),
         });
@@ -299,6 +376,7 @@ export default function ApplyModal({
                                     {step === 4 && (
                                         <Step4
                                             data={data} errors={errors} submitting={submitting} dragOver={dragOver}
+                                            serverError={serverError}
                                             fileInputRef={fileInputRef} inputClass={inputClass} labelClass={labelClass}
                                             ghostBtn={ghostBtn} onChange={update} onBack={() => setStep(3)}
                                             onSubmit={handleFinalSubmit}
@@ -653,8 +731,9 @@ function Step3({
     );
 }
 
-function Step4({ data, errors, submitting, dragOver, fileInputRef, inputClass, labelClass, ghostBtn, onChange, onBack, onSubmit, onDragOver, onDragLeave, onDrop, onFileInput, onRemoveFile }: {
+function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, inputClass, labelClass, ghostBtn, onChange, onBack, onSubmit, onDragOver, onDragLeave, onDrop, onFileInput, onRemoveFile }: {
     data: FormState; errors: Record<string, string>; submitting: boolean; dragOver: boolean;
+    serverError: string | null;
     fileInputRef: React.RefObject<HTMLInputElement>; inputClass: string; labelClass: string; ghostBtn: string;
     onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
     onBack: () => void; onSubmit: () => void;
@@ -663,35 +742,78 @@ function Step4({ data, errors, submitting, dragOver, fileInputRef, inputClass, l
 }) {
     const min = 10_000, max = 5_000_000;
     const clamp = (n: number) => Math.min(max, Math.max(min, n));
+    const fileError = errors.transaction_file;
+    const dropZoneClass = data.transactionFile
+        ? 'cursor-default border-emerald-400 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+        : fileError
+          ? 'cursor-pointer border-red-400 bg-red-50 dark:border-red-700 dark:bg-red-950/30'
+          : `cursor-pointer ${dragOver ? 'border-gray-900 bg-gray-50 dark:border-zinc-300 dark:bg-zinc-800' : 'border-gray-300 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900'}`;
+
     return (
         <div className="space-y-5">
+            {serverError && (
+                <div
+                    role="alert"
+                    className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                >
+                    <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+                    <p>{serverError}</p>
+                </div>
+            )}
             <div>
                 <span className={labelClass}>
                     Upload your CBE transaction history (CSV or Excel){' '}
                     <span className="text-red-600 dark:text-red-400">*</span>
                 </span>
-                <div onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} onClick={() => fileInputRef.current?.click()}
-                    className={`mt-2 cursor-pointer rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${dragOver ? 'border-gray-900 bg-gray-50 dark:border-zinc-300 dark:bg-zinc-800' : 'border-gray-300 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-900'}`}>
-                    <FileUp className="mx-auto h-8 w-8 text-gray-900 dark:text-zinc-100/60" />
-                    <p className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">Drag & drop your file here</p>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">or click to browse</p>
-                    <p className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
-                        Required · Accepted: .csv, .xlsx — Min 14 days of data — Max 10MB
-                    </p>
-                    <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
-                        Include columns: Date, Credit/Inflow, Debit/Outflow (or daily totals per
-                        date).
-                    </p>
+                <div
+                    onDragOver={onDragOver}
+                    onDragLeave={onDragLeave}
+                    onDrop={onDrop}
+                    onClick={() => !data.transactionFile && fileInputRef.current?.click()}
+                    className={`mt-2 rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${dropZoneClass}`}
+                >
+                    {data.transactionFile ? (
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                                <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                                    {data.transactionFile.name}
+                                </p>
+                                <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
+                                    {(data.transactionFile.size / 1024).toFixed(1)} KB · ready to submit
+                                </p>
+                            </div>
+                            {fileError && (
+                                <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>
+                            )}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); onRemoveFile(); }}
+                                className="rounded-lg border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:border-gray-900 hover:text-gray-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-100"
+                            >
+                                Remove file
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            <FileUp className="mx-auto h-8 w-8 text-gray-900 dark:text-zinc-100/60" />
+                            <p className="mt-3 text-sm font-medium text-gray-900 dark:text-zinc-100">Drag & drop your file here</p>
+                            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">or click to browse</p>
+                            <p className="mt-2 text-xs text-gray-500 dark:text-zinc-400">
+                                Required · Minimum {MIN_TRANSACTION_DAYS} days of data · Accepted: .csv, .xlsx · Max 10MB
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                                Include columns: Date, Credit/Inflow, Debit/Outflow (or daily totals per date).
+                            </p>
+                            {fileError && (
+                                <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{fileError}</p>
+                            )}
+                        </>
+                    )}
                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileInput} />
                 </div>
-                {data.transactionFile && (
-                    <div className="mt-2 flex items-center gap-2 text-sm text-gray-900 dark:text-zinc-100">
-                        <Check className="h-4 w-4" />
-                        <span>{data.transactionFile.name} ({(data.transactionFile.size / 1024).toFixed(1)} KB)</span>
-                        <button type="button" onClick={onRemoveFile} className="text-xs text-gray-500 underline dark:text-zinc-400">Remove</button>
-                    </div>
-                )}
-                {errors.transaction_file && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.transaction_file}</p>}
             </div>
             <div>
                 <span className={labelClass}>How much do you need? (ETB)</span>

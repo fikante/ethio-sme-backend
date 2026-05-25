@@ -3,6 +3,7 @@
 namespace App\Domain\TimeSeries\Services;
 
 use App\Domain\TimeSeries\Exceptions\TransactionImportException;
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Models\Business;
 use App\Models\SmeDailyHeartbeat;
 use Carbon\Carbon;
@@ -13,7 +14,9 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 class ImportTransactionHeartbeatService
 {
-    public const MIN_DAILY_ROWS = 14;
+    public const MIN_DAILY_ROWS = 45;
+
+    public const SOURCE_TYPE_APPLICATION_UPLOAD = SupabaseHeartbeatSchema::SOURCE_TYPE_APP_UPLOAD;
 
     /**
      * Parse upload, replace prior application uploads for this business, persist daily heartbeat rows.
@@ -44,30 +47,43 @@ class ImportTransactionHeartbeatService
         DB::transaction(function () use ($business, $dailyRows, $now): void {
             SmeDailyHeartbeat::query()
                 ->forBusiness($business)
-                ->where('source_type', 'application_upload')
+                ->where('source_type', self::SOURCE_TYPE_APPLICATION_UPLOAD)
                 ->delete();
+
+            $omitNetCashflow = SupabaseHeartbeatSchema::omitNetCashflowOnInsert();
 
             $payload = [];
             foreach ($dailyRows as $date => $metrics) {
                 $inflow = round($metrics['inflow'], 2);
                 $outflow = round($metrics['outflow'], 2);
 
-                $payload[] = [
+                $row = [
                     'business_uuid' => $business->uuid,
                     'transaction_date' => $date,
                     'daily_total_inflow' => $inflow,
                     'daily_total_outflow' => $outflow,
-                    'net_cashflow' => round($inflow - $outflow, 2),
                     'end_of_day_balance' => round($metrics['balance'] ?? 0, 2),
                     'txn_count' => (int) $metrics['txn_count'],
-                    'unique_cust_count' => 0,
-                    'channel' => 'cbe_upload',
-                    'sector_mcc' => $business->sector,
-                    'location_region' => $business->sub_city,
-                    'source_type' => 'application_upload',
+                    'unique_cust_count' => (int) ($metrics['unique_cust_count'] ?? 0),
+                    'channel' => $this->truncateForColumn(
+                        $metrics['channel'] ?? 'cbe_upload',
+                        SupabaseHeartbeatSchema::MAX_CHANNEL_LENGTH,
+                    ),
+                    'sector_mcc' => $this->truncateForColumn(
+                        $business->sector,
+                        SupabaseHeartbeatSchema::MAX_SECTOR_MCC_LENGTH,
+                    ),
+                    'location_region' => $this->truncateForColumn($business->sub_city, 64),
+                    'source_type' => self::SOURCE_TYPE_APPLICATION_UPLOAD,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
+
+                if (! $omitNetCashflow) {
+                    $row['net_cashflow'] = round($inflow - $outflow, 2);
+                }
+
+                $payload[] = $row;
             }
 
             foreach (array_chunk($payload, 500) as $chunk) {
@@ -196,7 +212,7 @@ class ImportTransactionHeartbeatService
 
     /**
      * @param  list<array<string, mixed>>  $rows
-     * @return array<string, array{inflow: float, outflow: float, txn_count: int, balance: float}>
+     * @return array<string, array{inflow: float, outflow: float, txn_count: int, balance: float, unique_cust_count: int, channel: string}>
      */
     private function fromPreAggregatedRows(array $rows): array
     {
@@ -216,6 +232,8 @@ class ImportTransactionHeartbeatService
                 'outflow' => $outflow,
                 'txn_count' => (int) ($row['txn_count'] ?? $row['transaction_count'] ?? 1),
                 'balance' => $this->toFloat($row['end_of_day_balance'] ?? $row['balance'] ?? 0),
+                'unique_cust_count' => (int) ($row['unique_cust_count'] ?? $row['unique_customers'] ?? 0),
+                'channel' => trim((string) ($row['channel'] ?? '')) ?: 'cbe_upload',
             ];
         }
 
@@ -224,7 +242,7 @@ class ImportTransactionHeartbeatService
 
     /**
      * @param  list<array<string, mixed>>  $rows
-     * @return array<string, array{inflow: float, outflow: float, txn_count: int, balance: float}>
+     * @return array<string, array{inflow: float, outflow: float, txn_count: int, balance: float, unique_cust_count: int, channel: string}>
      */
     private function aggregateTransactionRows(array $rows): array
     {
@@ -237,7 +255,14 @@ class ImportTransactionHeartbeatService
             }
 
             if (! isset($daily[$date])) {
-                $daily[$date] = ['inflow' => 0.0, 'outflow' => 0.0, 'txn_count' => 0, 'balance' => 0.0];
+                $daily[$date] = [
+                    'inflow' => 0.0,
+                    'outflow' => 0.0,
+                    'txn_count' => 0,
+                    'balance' => 0.0,
+                    'unique_cust_count' => 0,
+                    'channel' => trim((string) ($row['channel'] ?? '')) ?: 'cbe_upload',
+                ];
             }
 
             $credit = $this->toFloat($row['credit'] ?? $row['deposit'] ?? 0);
@@ -270,6 +295,15 @@ class ImportTransactionHeartbeatService
         return $daily;
     }
 
+    private function truncateForColumn(string $value, int $maxLength): string
+    {
+        $trimmed = trim($value);
+
+        return mb_strlen($trimmed) <= $maxLength
+            ? $trimmed
+            : mb_substr($trimmed, 0, $maxLength);
+    }
+
     /**
      * @param  list<string|null>  $headers
      * @return array<int, string>
@@ -299,6 +333,11 @@ class ImportTransactionHeartbeatService
             'transaction_count' => 'txn_count',
             'end_of_day_balance' => 'end_of_day_balance',
             'balance' => 'balance',
+            'net_cashflow' => 'net_cashflow',
+            'net_cash_flow' => 'net_cashflow',
+            'unique_cust_count' => 'unique_cust_count',
+            'unique_customers' => 'unique_cust_count',
+            'channel' => 'channel',
         ];
 
         $normalized = [];

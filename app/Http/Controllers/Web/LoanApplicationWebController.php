@@ -6,6 +6,7 @@ use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
 use App\Domain\TimeSeries\Actions\ImportTransactionHeartbeatAction;
 use App\Domain\TimeSeries\Exceptions\TransactionImportException;
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\LoanApplication;
@@ -27,11 +28,17 @@ class LoanApplicationWebController extends Controller
         $user = auth()->user();
         $business = $this->ensureDraftBusiness($user);
 
-        $transactions = $business
+        $uploadedHeartbeatQuery = $business
             ? SmeDailyHeartbeat::query()
                 ->forBusiness($business)
+                ->where('source_type', SupabaseHeartbeatSchema::SOURCE_TYPE_APP_UPLOAD)
+            : null;
+
+        $heartbeatDays = $uploadedHeartbeatQuery?->count() ?? 0;
+
+        $transactions = $uploadedHeartbeatQuery
+            ? $uploadedHeartbeatQuery
                 ->orderByDesc('transaction_date')
-                ->take(30)
                 ->get([
                     'transaction_date',
                     'daily_total_inflow',
@@ -50,6 +57,13 @@ class LoanApplicationWebController extends Controller
                 ->all()
             : [];
 
+        $dateRange = $heartbeatDays > 0
+            ? [
+                'from' => $uploadedHeartbeatQuery->min('transaction_date'),
+                'to' => $uploadedHeartbeatQuery->max('transaction_date'),
+            ]
+            : null;
+
         $existingApp = $business
             ? LoanApplication::query()
                 ->where('business_id', $business->id)
@@ -66,9 +80,8 @@ class LoanApplicationWebController extends Controller
                 'created_at' => $existingApp->created_at->toDateTimeString(),
             ] : null,
             'hasBusiness' => (bool) $business,
-            'heartbeatDays' => $business
-                ? SmeDailyHeartbeat::query()->forBusiness($business)->count()
-                : 0,
+            'heartbeatDays' => $heartbeatDays,
+            'transactionDateRange' => $dateRange,
             'businessUuid' => $business?->uuid,
             'psychometricCompleted' => $business
                 ? PsychometricAssessment::query()
@@ -119,22 +132,6 @@ class LoanApplicationWebController extends Controller
             ]
         );
 
-        try {
-            $importedDays = $importHeartbeat->execute($business, $request->file('transaction_file'));
-        } catch (TransactionImportException $e) {
-            return redirect()
-                ->route('loan-application')
-                ->withErrors(['transaction_file' => $e->getMessage()])
-                ->withInput();
-        }
-
-        $file = $request->file('transaction_file');
-        $file->storeAs(
-            'transactions',
-            $business->uuid.'_transactions.'.$file->getClientOriginalExtension(),
-            'local'
-        );
-
         $duplicate = LoanApplication::query()
             ->where('business_id', $business->id)
             ->whereNotIn('status', [
@@ -147,8 +144,36 @@ class LoanApplicationWebController extends Controller
         if ($duplicate) {
             return redirect()
                 ->route('loan-application')
-                ->with('error', 'You already have an active loan application.');
+                ->withErrors([
+                    'transaction_file' => 'You already have an active loan application.',
+                ])
+                ->withInput();
         }
+
+        try {
+            $importedDays = $importHeartbeat->execute($business, $request->file('transaction_file'));
+        } catch (TransactionImportException $e) {
+            return redirect()
+                ->route('loan-application')
+                ->withErrors(['transaction_file' => $e->getMessage()])
+                ->withInput();
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()
+                ->route('loan-application')
+                ->withErrors([
+                    'transaction_file' => 'Could not save transaction history. Please verify your file and try again.',
+                ])
+                ->withInput();
+        }
+
+        $file = $request->file('transaction_file');
+        $file->storeAs(
+            'transactions',
+            $business->uuid.'_transactions.'.$file->getClientOriginalExtension(),
+            'local'
+        );
 
         $psychometricDone = PsychometricAssessment::query()
             ->where('business_id', $business->id)
