@@ -68,6 +68,10 @@ return new class extends Migration
      */
     private function replaceStatusCheck(array $statuses): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         DB::statement('ALTER TABLE loan_applications DROP CONSTRAINT IF EXISTS loan_applications_status_check');
 
         $allowed = implode(', ', array_map(

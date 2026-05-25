@@ -25,6 +25,7 @@ type Props = PageProps<{
     existingApplication: ExistingApplication | null;
     hasBusiness: boolean;
     heartbeatDays: number;
+    transactionDateRange: { from: string; to: string } | null;
     businessUuid: string | null;
     psychometricCompleted: boolean;
 }>;
@@ -64,16 +65,39 @@ function StatusBadge({ status }: { status: string }) {
     );
 }
 
+function normalizePageErrors(
+    raw: Record<string, string | string[] | undefined> | undefined,
+): Record<string, string> {
+    if (!raw) {
+        return {};
+    }
+
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+        if (value === undefined) {
+            continue;
+        }
+        normalized[key] = Array.isArray(value) ? value[0] : value;
+    }
+
+    return normalized;
+}
+
 export default function LoanApplication() {
     const {
         transactions = [],
         existingApplication = null,
         heartbeatDays = 0,
+        transactionDateRange = null,
         businessUuid = null,
         psychometricCompleted = false,
     } = usePage<Props>().props;
-    const flash = usePage().props.flash as { success?: string; error?: string };
-    const authUser = usePage().props.auth.user;
+    const page = usePage();
+    const flash = page.props.flash as { success?: string; error?: string };
+    const pageErrors = normalizePageErrors(
+        page.props.errors as Record<string, string | string[] | undefined> | undefined,
+    );
+    const authUser = page.props.auth.user;
 
     const [modalOpen, setModalOpen] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -82,11 +106,20 @@ export default function LoanApplication() {
         existingApplication !== null &&
         existingApplication.status !== 'draft';
 
+    const hasSubmitErrors = Object.keys(pageErrors).length > 0;
+
     useEffect(() => {
         if (flash?.success) {
             setShowSuccess(true);
         }
     }, [flash?.success]);
+
+    useEffect(() => {
+        if (hasSubmitErrors || flash?.error) {
+            setModalOpen(true);
+            setShowSuccess(false);
+        }
+    }, [hasSubmitErrors, flash?.error]);
 
     return (
         <AuthenticatedLayout
@@ -120,7 +153,15 @@ export default function LoanApplication() {
                         </p>
                         {heartbeatDays > 0 && (
                             <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
-                                {heartbeatDays} days of transaction data on file
+                                {heartbeatDays} days of uploaded transaction data
+                                {transactionDateRange && (
+                                    <>
+                                        {' '}
+                                        (
+                                        {formatDate(transactionDateRange.from)} –{' '}
+                                        {formatDate(transactionDateRange.to)})
+                                    </>
+                                )}
                             </p>
                         )}
                     </div>
@@ -140,9 +181,24 @@ export default function LoanApplication() {
 
                 <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
                     <div className="border-b border-gray-200 px-6 py-4 dark:border-zinc-800">
-                        <h2 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
-                            Your Past Transactions
-                        </h2>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                                Your Past Transactions
+                            </h2>
+                            {transactions.length > 0 && (
+                                <span className="text-xs text-gray-500 dark:text-zinc-400">
+                                    Showing {transactions.length} day
+                                    {transactions.length === 1 ? '' : 's'}
+                                    {transactionDateRange && (
+                                        <>
+                                            {' '}
+                                            · {formatDate(transactionDateRange.from)} –{' '}
+                                            {formatDate(transactionDateRange.to)}
+                                        </>
+                                    )}
+                                </span>
+                            )}
+                        </div>
                     </div>
 
                     {transactions.length === 0 ? (
@@ -153,7 +209,7 @@ export default function LoanApplication() {
                             </p>
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
+                        <div className="max-h-[32rem] overflow-auto">
                             <table className="w-full min-w-[640px] text-left text-sm">
                                 <thead>
                                     <tr className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
@@ -218,6 +274,8 @@ export default function LoanApplication() {
                 businessUuid={businessUuid}
                 psychometricCompleted={psychometricCompleted}
                 initialSuccess={showSuccess}
+                initialErrors={pageErrors}
+                flashError={flash?.error ?? null}
             />
         </AuthenticatedLayout>
     );
