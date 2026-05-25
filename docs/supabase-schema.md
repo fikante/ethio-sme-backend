@@ -19,7 +19,8 @@ Production PostgreSQL on Supabase is the canonical schema for this project. The 
 | `transaction_date` | date | |
 | `daily_total_inflow` | numeric | |
 | `daily_total_outflow` | numeric | |
-| `net_cashflow` | numeric | nullable |
+| `net_cashflow` | numeric | **GENERATED** on production (`inflow - outflow`); never insert from Laravel |
+| `source_type` | varchar(16) | e.g. `app_upload`, `csv_seed` — max 16 chars |
 | `end_of_day_balance` | numeric | |
 | `txn_count` | int | |
 | `unique_cust_count` | int | |
@@ -27,7 +28,6 @@ Production PostgreSQL on Supabase is the canonical schema for this project. The 
 | `sector_mcc` | varchar | |
 | `location_region` | varchar | |
 | `acct_opening_date` | date | nullable |
-| `source_type` | varchar | |
 | `ingest_seed` | bigint | nullable |
 | `created_at`, `updated_at` | timestamp | |
 

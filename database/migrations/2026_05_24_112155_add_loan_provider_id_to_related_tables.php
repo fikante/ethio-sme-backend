@@ -22,10 +22,12 @@ return new class extends Migration
         });
         DB::statement('CREATE INDEX idx_loan_app_provider_id ON loan_applications (loan_provider_id)');
 
-        Schema::table('sme_loan_history', function (Blueprint $table) {
-            $table->unsignedBigInteger('loan_provider_id')->nullable()->after('source_bank');
-        });
-        DB::statement('CREATE INDEX idx_loan_history_provider_id ON sme_loan_history (loan_provider_id)');
+        if (Schema::hasTable('sme_loan_history')) {
+            Schema::table('sme_loan_history', function (Blueprint $table) {
+                $table->unsignedBigInteger('loan_provider_id')->nullable()->after('source_bank');
+            });
+            DB::statement('CREATE INDEX idx_loan_history_provider_id ON sme_loan_history (loan_provider_id)');
+        }
     }
 
     /**
@@ -33,10 +35,12 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('DROP INDEX IF EXISTS idx_loan_history_provider_id');
-        Schema::table('sme_loan_history', function (Blueprint $table) {
-            $table->dropColumn('loan_provider_id');
-        });
+        if (Schema::hasTable('sme_loan_history')) {
+            DB::statement('DROP INDEX IF EXISTS idx_loan_history_provider_id');
+            Schema::table('sme_loan_history', function (Blueprint $table) {
+                $table->dropColumn('loan_provider_id');
+            });
+        }
 
         DB::statement('DROP INDEX IF EXISTS idx_loan_app_provider_id');
         Schema::table('loan_applications', function (Blueprint $table) {

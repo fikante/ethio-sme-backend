@@ -29,6 +29,17 @@ return new class extends Migration
             });
         }
 
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            Schema::table('psychometric_assessments', function (Blueprint $table) {
+                if (Schema::hasColumn('psychometric_assessments', 'composite_score')) {
+                    $table->dropColumn('composite_score');
+                }
+                $table->decimal('composite_score', 5, 4)->nullable();
+            });
+
+            return;
+        }
+
         DB::statement('ALTER TABLE psychometric_assessments DROP COLUMN IF EXISTS composite_score');
         DB::statement('
             ALTER TABLE psychometric_assessments
@@ -43,6 +54,25 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            Schema::table('psychometric_assessments', function (Blueprint $table) {
+                if (Schema::hasColumn('psychometric_assessments', 'composite_score')) {
+                    $table->dropColumn('composite_score');
+                }
+                $table->decimal('composite_score', 5, 4)->nullable();
+            });
+
+            Schema::table('psychometric_assessments', function (Blueprint $table) {
+                if (Schema::hasColumn('psychometric_assessments', 'financial_risk_score')) {
+                    $table->renameColumn('financial_risk_score', 'risk_tolerance_score');
+                }
+
+                $table->dropColumn(['delayed_gratification_score', 'social_desirability_flagged']);
+            });
+
+            return;
+        }
+
         DB::statement('ALTER TABLE psychometric_assessments DROP COLUMN IF EXISTS composite_score');
         DB::statement('
             ALTER TABLE psychometric_assessments
