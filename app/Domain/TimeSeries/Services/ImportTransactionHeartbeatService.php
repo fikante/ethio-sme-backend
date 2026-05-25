@@ -45,39 +45,54 @@ class ImportTransactionHeartbeatService
         $now = now();
 
         DB::transaction(function () use ($business, $dailyRows, $now): void {
-            SmeDailyHeartbeat::query()
-                ->forBusiness($business)
-                ->where('source_type', self::SOURCE_TYPE_APPLICATION_UPLOAD)
-                ->delete();
+            $deleteQuery = SmeDailyHeartbeat::query()->forBusiness($business);
+            if (SupabaseHeartbeatSchema::hasSourceTypeColumn()) {
+                $deleteQuery->where('source_type', self::SOURCE_TYPE_APPLICATION_UPLOAD);
+            }
+            $deleteQuery->delete();
 
             $omitNetCashflow = SupabaseHeartbeatSchema::omitNetCashflowOnInsert();
+            $isSupabase = SupabaseHeartbeatSchema::isSupabaseLayout();
 
             $payload = [];
             foreach ($dailyRows as $date => $metrics) {
                 $inflow = round($metrics['inflow'], 2);
                 $outflow = round($metrics['outflow'], 2);
 
-                $row = [
-                    'business_uuid' => $business->uuid,
-                    'transaction_date' => $date,
-                    'daily_total_inflow' => $inflow,
-                    'daily_total_outflow' => $outflow,
-                    'end_of_day_balance' => round($metrics['balance'] ?? 0, 2),
-                    'txn_count' => (int) $metrics['txn_count'],
-                    'unique_cust_count' => (int) ($metrics['unique_cust_count'] ?? 0),
-                    'channel' => $this->truncateForColumn(
-                        $metrics['channel'] ?? 'cbe_upload',
-                        SupabaseHeartbeatSchema::MAX_CHANNEL_LENGTH,
-                    ),
-                    'sector_mcc' => $this->truncateForColumn(
-                        $business->sector,
-                        SupabaseHeartbeatSchema::MAX_SECTOR_MCC_LENGTH,
-                    ),
-                    'location_region' => $this->truncateForColumn($business->sub_city, 64),
-                    'source_type' => self::SOURCE_TYPE_APPLICATION_UPLOAD,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
+                $row = $isSupabase
+                    ? [
+                        'business_id' => $business->id,
+                        'heartbeat_date' => $date,
+                        'inflow_total' => $inflow,
+                        'outflow_total' => $outflow,
+                        'transaction_count' => (int) $metrics['txn_count'],
+                        'transaction_failure_rate' => 0,
+                        'is_payday' => false,
+                        'is_holiday' => false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]
+                    : [
+                        'business_uuid' => $business->uuid,
+                        'transaction_date' => $date,
+                        'daily_total_inflow' => $inflow,
+                        'daily_total_outflow' => $outflow,
+                        'end_of_day_balance' => round($metrics['balance'] ?? 0, 2),
+                        'txn_count' => (int) $metrics['txn_count'],
+                        'unique_cust_count' => (int) ($metrics['unique_cust_count'] ?? 0),
+                        'channel' => $this->truncateForColumn(
+                            $metrics['channel'] ?? 'cbe_upload',
+                            SupabaseHeartbeatSchema::MAX_CHANNEL_LENGTH,
+                        ),
+                        'sector_mcc' => $this->truncateForColumn(
+                            $business->sector,
+                            SupabaseHeartbeatSchema::MAX_SECTOR_MCC_LENGTH,
+                        ),
+                        'location_region' => $this->truncateForColumn($business->sub_city, 64),
+                        'source_type' => self::SOURCE_TYPE_APPLICATION_UPLOAD,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ];
 
                 if (! $omitNetCashflow) {
                     $row['net_cashflow'] = round($inflow - $outflow, 2);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -71,6 +72,10 @@ class Business extends Model implements Auditable
 
     public function dailyHeartbeat(): HasMany
     {
+        if (SupabaseHeartbeatSchema::isSupabaseLayout()) {
+            return $this->hasMany(SmeDailyHeartbeat::class, 'business_id');
+        }
+
         return $this->hasMany(SmeDailyHeartbeat::class, 'business_uuid', 'uuid');
     }
 

@@ -7,6 +7,7 @@ use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
 use App\Domain\Macroeconomics\Actions\UpsertExogenousFactorsAction;
 use App\Domain\Macroeconomics\Data\ExogenousFactorsData;
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Models\Business;
 use App\Models\PsychometricAssessment;
 use App\Models\SmeDailyHeartbeat;
@@ -32,13 +33,24 @@ class DevDemoSeeder extends Seeder
         );
         $officer->syncRoles([RoleName::LoanProvider->value]);
 
-        $heartbeatUuids = SmeDailyHeartbeat::query()
-            ->select('business_uuid')
-            ->distinct()
-            ->orderBy('business_uuid')
-            ->limit(3)
-            ->pluck('business_uuid')
-            ->all();
+        $heartbeatUuids = SupabaseHeartbeatSchema::isSupabaseLayout()
+            ? SmeDailyHeartbeat::query()
+                ->select('business_id')
+                ->distinct()
+                ->orderBy('business_id')
+                ->limit(3)
+                ->pluck('business_id')
+                ->map(fn (int $id) => Business::query()->find($id)?->uuid)
+                ->filter()
+                ->values()
+                ->all()
+            : SmeDailyHeartbeat::query()
+                ->select('business_uuid')
+                ->distinct()
+                ->orderBy('business_uuid')
+                ->limit(3)
+                ->pluck('business_uuid')
+                ->all();
 
         $scenarios = [
             ['name' => 'Ato Girma - Merkato Retail', 'sector' => 'retail', 'sub_city' => 'Addis Ketema', 'profile' => 'creditworthy'],

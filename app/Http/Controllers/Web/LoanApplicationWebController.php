@@ -29,21 +29,24 @@ class LoanApplicationWebController extends Controller
         $business = $this->ensureDraftBusiness($user);
 
         $uploadedHeartbeatQuery = $business
-            ? SmeDailyHeartbeat::query()
-                ->forBusiness($business)
-                ->where('source_type', SupabaseHeartbeatSchema::SOURCE_TYPE_APP_UPLOAD)
+            ? SmeDailyHeartbeat::query()->forBusiness($business)
             : null;
 
+        if ($uploadedHeartbeatQuery && SupabaseHeartbeatSchema::hasSourceTypeColumn()) {
+            $uploadedHeartbeatQuery->where('source_type', SupabaseHeartbeatSchema::SOURCE_TYPE_APP_UPLOAD);
+        }
+
         $heartbeatDays = $uploadedHeartbeatQuery?->count() ?? 0;
+        $dateColumn = SupabaseHeartbeatSchema::dateColumn();
 
         $transactions = $uploadedHeartbeatQuery
             ? $uploadedHeartbeatQuery
-                ->orderByDesc('transaction_date')
+                ->orderByDesc($dateColumn)
                 ->get([
-                    'transaction_date',
-                    'daily_total_inflow',
-                    'daily_total_outflow',
-                    'txn_count',
+                    $dateColumn,
+                    SupabaseHeartbeatSchema::inflowColumn(),
+                    SupabaseHeartbeatSchema::outflowColumn(),
+                    SupabaseHeartbeatSchema::txnCountColumn(),
                     'net_cashflow',
                 ])
                 ->map(fn (SmeDailyHeartbeat $row) => [
@@ -59,8 +62,8 @@ class LoanApplicationWebController extends Controller
 
         $dateRange = $heartbeatDays > 0
             ? [
-                'from' => $uploadedHeartbeatQuery->min('transaction_date'),
-                'to' => $uploadedHeartbeatQuery->max('transaction_date'),
+                'from' => $uploadedHeartbeatQuery->min($dateColumn),
+                'to' => $uploadedHeartbeatQuery->max($dateColumn),
             ]
             : null;
 

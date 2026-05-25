@@ -2,6 +2,7 @@
 
 namespace App\Domain\Valuation\Services;
 
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Domain\Valuation\Data\InferenceRequestData;
 use App\Domain\Valuation\Data\InferenceResponseData;
 use App\Domain\Valuation\Exceptions\AiEngineException;
@@ -104,10 +105,11 @@ class InferenceOrchestratorService
 
     private function resolveAsOfDate(Business $business): string
     {
+        $dateColumn = SupabaseHeartbeatSchema::dateColumn();
         $latestHeartbeat = SmeDailyHeartbeat::query()
             ->forBusiness($business)
-            ->orderByDesc('transaction_date')
-            ->value('transaction_date');
+            ->orderByDesc($dateColumn)
+            ->value($dateColumn);
 
         if ($latestHeartbeat !== null) {
             return Carbon::parse($latestHeartbeat)->toDateString();
