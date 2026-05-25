@@ -14,6 +14,7 @@ use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\PermissionRegistrar;
 
 class DevDemoSeeder extends Seeder
 {
@@ -32,6 +33,8 @@ class DevDemoSeeder extends Seeder
             ['name' => 'Loan Provider Demo', 'password' => 'password']
         );
         $officer->syncRoles([RoleName::LoanProvider->value]);
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         $heartbeatUuids = SupabaseHeartbeatSchema::isSupabaseLayout()
             ? SmeDailyHeartbeat::query()

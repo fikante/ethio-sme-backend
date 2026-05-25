@@ -45,6 +45,8 @@ class LoanApplication extends Model implements Auditable
         'status',
         'idempotency_key',
         'valuation_id',
+        'npv_credit_limit',
+        'ai_risk_score',
         'ai_risk_band',
         'prob_default',
         'snapshot_risk_score',
@@ -63,8 +65,10 @@ class LoanApplication extends Model implements Auditable
         'reason_codes' => 'array',
         'model_versions' => 'array',
         'decided_at' => 'datetime',
+        'ai_risk_score' => 'decimal:4',
         'prob_default' => 'decimal:4',
         'snapshot_risk_score' => 'decimal:4',
+        'npv_credit_limit' => 'decimal:2',
         'snapshot_limit_etb' => 'decimal:2',
         'effective_discount_rate' => 'decimal:4',
         'apr' => 'decimal:4',
@@ -170,6 +174,16 @@ class LoanApplication extends Model implements Auditable
 
     public function isReadyForValuation(): bool
     {
-        return in_array($this->status, [self::STATUS_QUEUED_FOR_AI, self::STATUS_PENDING_DATA_SYNC], true);
+        return in_array($this->status, [
+            self::STATUS_QUEUED_FOR_AI,
+            self::STATUS_SUBMITTED,
+            self::STATUS_PENDING_DATA_SYNC,
+        ], true);
+    }
+
+    public function isDegradedEvaluation(): bool
+    {
+        return $this->status === self::STATUS_EVALUATED
+            && ($this->valuation?->isDegraded() ?? $this->npv_credit_limit === null);
     }
 }

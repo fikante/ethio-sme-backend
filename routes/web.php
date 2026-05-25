@@ -6,6 +6,8 @@ use App\Http\Controllers\Web\Admin\ModelTrainingController;
 use App\Http\Controllers\Web\Admin\UserManagementController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\Lender\ApplicationsPipelineController;
+use App\Http\Controllers\Web\Lender\DecisioningController;
 use App\Http\Controllers\Web\Lender\RiskAndForecastController;
 use App\Http\Controllers\Web\LoanApplicationWebController;
 use App\Http\Controllers\Web\PsychometricWebController;
@@ -57,11 +59,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Loan provider (lender) portal
     Route::middleware('role:'.implode('|', WebRoleAlias::middlewareRoleList('loan_provider')))->group(function () {
-        Route::get('/applications-pipeline', fn () => Inertia::render('Placeholders/ApplicationsPipeline'))
+        Route::get('/applications-pipeline', [ApplicationsPipelineController::class, 'index'])
             ->name('applications.pipeline');
+        Route::post('/applications/{application}/evaluate', [ApplicationsPipelineController::class, 'evaluate'])
+            ->name('applications.evaluate');
         Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])
             ->name('risk.forecast');
-        Route::get('/decisioning-xai', fn () => Inertia::render('Placeholders/DecisioningAndXAI'))
+        Route::get('/risk-forecast/{application}', [RiskAndForecastController::class, 'show'])
+            ->name('risk.forecast.show');
+        Route::post('/decisioning/{application}/decide', [DecisioningController::class, 'decide'])
+            ->name('decisioning.decide');
+        Route::get('/decisioning-xai/{application}', [DecisioningController::class, 'show'])
             ->name('decisioning.xai');
     });
 

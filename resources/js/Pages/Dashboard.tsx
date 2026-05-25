@@ -8,7 +8,7 @@ import type {
     SmeOwnerStats,
     SuperAdminStats,
 } from '@/types/dashboard';
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { isLoanProviderRole } from '@/lib/roles';
 import {
     Activity,
@@ -641,7 +641,10 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                                             <RiskBandBadge band={row.ai_risk_band} />
                                         </td>
                                         <td className="px-4 py-3">
-                                            <PipelineAction status={row.status} />
+                                            <PipelineAction
+                                                applicationId={row.id}
+                                                status={row.status}
+                                            />
                                         </td>
                                     </tr>
                                 ))
@@ -659,21 +662,48 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
     );
 }
 
-function PipelineAction({ status }: { status: string }) {
-    if (status === 'queued_for_ai') {
+function PipelineAction({
+    applicationId,
+    status,
+}: {
+    applicationId: number;
+    status: string;
+}) {
+    const [evaluating, setEvaluating] = useState(false);
+
+    if (status === 'queued_for_ai' || status === 'submitted') {
         return (
-            <Link
-                href={route('risk.forecast')}
-                className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+            <button
+                type="button"
+                disabled={evaluating}
+                onClick={() => {
+                    setEvaluating(true);
+                    router.post(
+                        route('applications.evaluate', applicationId),
+                        {},
+                        {
+                            preserveScroll: true,
+                            onFinish: () => setEvaluating(false),
+                        },
+                    );
+                }}
+                className="inline-flex min-w-[7.5rem] items-center justify-center gap-1 rounded-lg bg-emerald-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-900 disabled:opacity-80 dark:bg-emerald-700"
             >
-                Run AI →
-            </Link>
+                {evaluating ? (
+                    <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Evaluating...
+                    </>
+                ) : (
+                    'Run AI →'
+                )}
+            </button>
         );
     }
     if (status === 'evaluated') {
         return (
             <Link
-                href={route('decisioning.xai')}
+                href={route('risk.forecast.show', applicationId)}
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0C447C] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0C447C]/90 dark:bg-[#85B7EB] dark:text-[#0F1A16]"
             >
                 Review →
@@ -684,14 +714,14 @@ function PipelineAction({ status }: { status: string }) {
         return (
             <span className={`inline-flex items-center gap-1.5 text-xs ${mutedClass}`}>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Running...
+                Evaluating...
             </span>
         );
     }
     if (status === 'approved' || status === 'rejected') {
         return (
             <Link
-                href={route('applications.pipeline')}
+                href={route('risk.forecast.show', applicationId)}
                 className="text-xs font-medium text-gray-600 hover:underline dark:text-zinc-400"
             >
                 View

@@ -6,9 +6,10 @@ use App\Domain\Valuation\Exceptions\AiEngineException;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Low-level HTTP client for the FastAPI Financial Predictions service (contract v2).
+ * HTTP client for the Hugging Face Financial Predictions service (contract v1).
  */
 class AiEngineClient
 {
@@ -19,23 +20,11 @@ class AiEngineClient
 
     /**
      * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
      */
-    public function inference(array $payload): array
+    public function predict(array $payload): array
     {
-        return $this->request('post', '/inference', $payload, authenticated: true);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    public function submitTrainingJob(array $payload): array
-    {
-        return $this->request('post', '/training/jobs', $payload, authenticated: true);
-    }
-
-    public function getTrainingJob(string $jobId): array
-    {
-        return $this->request('get', '/training/jobs/'.$jobId, authenticated: true);
+        return $this->request('post', '/predict', $payload, authenticated: true);
     }
 
     /**
@@ -54,7 +43,15 @@ class AiEngineClient
             return (array) $response->json();
         }
 
-        throw AiEngineException::fromResponse($response->status(), (array) $response->json());
+        $body = (array) $response->json();
+        Log::error('AI engine request failed', [
+            'method' => $method,
+            'path' => $path,
+            'status' => $response->status(),
+            'body' => $body,
+        ]);
+
+        throw AiEngineException::fromResponse($response->status(), $body);
     }
 
     /**
@@ -67,35 +64,49 @@ class AiEngineClient
         bool $authenticated,
     ): Response {
         $baseUrl = rtrim((string) config('services.ai_engine.url', 'http://localhost:8000'), '/');
-        $apiPrefix = '/api/v1';
-        $timeout = (int) config('services.ai_engine.timeout', 30);
-        $retries = max(1, (int) config('services.ai_engine.retries', 1));
+        $timeout = (int) config('services.ai_engine.timeout', 60);
 
-        $http = Http::timeout($timeout)
-            ->retry($retries, 200, throw: false)
-            ->acceptJson();
+        $http = Http::timeout($timeout)->acceptJson();
 
         if ($authenticated) {
-            $token = (string) config('services.ai_engine.token', '');
-            if ($token === '') {
+            $key = (string) config('services.ai_engine.key', '');
+            if ($key === '') {
                 throw new AiEngineException(
                     'UNAUTHORIZED',
-                    'AI service token is not configured (AI_SERVICE_TOKEN).',
+                    'AI service key is not configured (AI_SERVICE_KEY).',
                     httpStatus: 500,
                 );
             }
-            $http = $http->withToken($token);
+            $http = $http->withHeaders(['X-Internal-Key' => $key]);
         }
 
-        $url = $baseUrl.$apiPrefix.$path;
+        $url = $baseUrl.$path;
 
         try {
-            return match (strtolower($method)) {
+            $response = match (strtolower($method)) {
                 'get' => $http->get($url),
                 'post' => $http->asJson()->post($url, $payload ?? []),
                 default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
             };
+
+            if ($response->status() === 503 && strtolower($method) === 'post') {
+                Log::warning('AI engine returned 503, retrying once after cold-start delay', ['url' => $url]);
+                sleep(5);
+
+                return match (strtolower($method)) {
+                    'get' => $http->get($url),
+                    'post' => $http->asJson()->post($url, $payload ?? []),
+                    default => throw new \InvalidArgumentException("Unsupported HTTP method: {$method}"),
+                };
+            }
+
+            return $response;
         } catch (ConnectionException $e) {
+            Log::error('AI engine connection failed', [
+                'url' => $url,
+                'message' => $e->getMessage(),
+            ]);
+
             throw new AiEngineException(
                 'SERVICE_UNAVAILABLE',
                 'AI engine is unreachable: '.$e->getMessage(),

@@ -37,10 +37,11 @@ return [
 
     'ai_engine' => [
         'url' => env('AI_SERVICE_URL', 'http://localhost:8000'),
-        'token' => env('AI_SERVICE_TOKEN'),
-        'timeout' => (int) env('AI_SERVICE_TIMEOUT', 30),
+        'key' => env('AI_SERVICE_KEY', env('AI_SERVICE_TOKEN')),
+        'token' => env('AI_SERVICE_KEY', env('AI_SERVICE_TOKEN')),
+        'timeout' => (int) env('AI_SERVICE_TIMEOUT', 60),
         'retries' => (int) env('AI_SERVICE_RETRIES', 1),
-        'contract_version' => env('AI_SERVICE_CONTRACT_VERSION', 'v2'),
+        'contract_version' => env('AI_SERVICE_CONTRACT_VERSION', 'v1'),
         'fallback_enabled' => filter_var(env('AI_SERVICE_FALLBACK_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
         // Connection string for the external Python FastAPI service (same Supabase DB as Laravel).
         'database_url' => env('DATABASE_URL') ?: sprintf(

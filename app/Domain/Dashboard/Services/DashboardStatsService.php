@@ -57,32 +57,9 @@ class DashboardStatsService
                 ->latest()
                 ->first()
             : null;
-        $heartbeatCount = 0;
-        if ($business) {
-            // #region agent log
-            $logPath = base_path('.cursor/debug-054501.log');
-            @file_put_contents($logPath, json_encode([
-                'sessionId' => '054501',
-                'hypothesisId' => 'A',
-                'location' => 'DashboardStatsService::smeOwner',
-                'message' => 'before heartbeat count',
-                'data' => ['businessId' => $business->id],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ])."\n", FILE_APPEND | LOCK_EX);
-            // #endregion
-            $heartbeatCount = SmeDailyHeartbeat::query()->forBusiness($business)->count();
-            // #region agent log
-            @file_put_contents($logPath, json_encode([
-                'sessionId' => '054501',
-                'runId' => 'post-fix',
-                'hypothesisId' => 'A',
-                'location' => 'DashboardStatsService::smeOwner',
-                'message' => 'after heartbeat count',
-                'data' => ['heartbeatCount' => $heartbeatCount],
-                'timestamp' => (int) round(microtime(true) * 1000),
-            ])."\n", FILE_APPEND | LOCK_EX);
-            // #endregion
-        }
+        $heartbeatCount = $business
+            ? SmeDailyHeartbeat::query()->forBusiness($business)->count()
+            : 0;
         $hasAssessment = $business
             ? $business->psychometricAssessments()->exists()
             : false;

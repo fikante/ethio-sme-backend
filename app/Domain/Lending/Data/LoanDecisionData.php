@@ -31,4 +31,19 @@ class LoanDecisionData extends Data
             apr: $request->filled('apr') ? (float) $request->input('apr') : null,
         );
     }
+
+    public static function fromWebRequest(Request $request, int $officerId): self
+    {
+        $narrative = $request->filled('narrative')
+            ? (string) $request->input('narrative')
+            : ($request->filled('rejection_narrative') ? (string) $request->input('rejection_narrative') : null);
+
+        return new self(
+            outcome: DecisionOutcome::from((string) $request->input('decision')),
+            reasonCodes: (array) $request->input('reason_codes', []),
+            narrative: $narrative,
+            officerId: $officerId,
+            apr: $request->filled('apr') ? (float) $request->input('apr') : null,
+        );
+    }
 }

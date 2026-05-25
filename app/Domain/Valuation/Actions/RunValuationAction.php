@@ -2,23 +2,21 @@
 
 namespace App\Domain\Valuation\Actions;
 
-use App\Domain\Valuation\Data\NpvInputsData;
 use App\Domain\Valuation\Services\InferenceOrchestratorService;
 use App\Domain\Valuation\Support\ReasonCodeBuilder;
-use App\Models\ExogenousFactor;
+use App\Domain\Valuation\Support\SupabaseValuationSchema;
 use App\Models\LoanApplication;
 use App\Models\Valuation;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Orchestrates valuation: calls AI service, persists Supabase-shaped valuations row,
- * links loan_applications.valuation_id.
+ * Orchestrates valuation via live Hugging Face /predict (contract v1).
  */
 class RunValuationAction
 {
     public function __construct(
         private readonly InferenceOrchestratorService $orchestrator,
-        private readonly CalculateNpvAction $calculateNpv,
         private readonly PersistShapExplanationsAction $persistShap,
         private readonly ReasonCodeBuilder $reasonCodes,
     ) {}
@@ -32,101 +30,115 @@ class RunValuationAction
             }
         }
 
-        if (! $application->isReadyForValuation()) {
+        if (! $application->isReadyForValuation() && $application->status !== LoanApplication::STATUS_PROCESSING) {
             throw new \DomainException(
                 "Application {$application->id} is not ready for valuation (status={$application->status})"
             );
         }
 
-        $request = $this->orchestrator->buildRequest($application);
+        if ($application->status === LoanApplication::STATUS_PROCESSING) {
+            Log::warning('Retrying valuation for application stuck in processing', [
+                'application_id' => $application->id,
+            ]);
+        }
 
         DB::transaction(fn () => $application->update(['status' => LoanApplication::STATUS_PROCESSING]));
 
         try {
-            $response = $this->orchestrator->call($application, $request);
+            $response = $this->orchestrator->call($application);
         } catch (\Throwable $e) {
-            DB::transaction(fn () => $application->update([
-                'status' => LoanApplication::STATUS_QUEUED_FOR_AI,
-            ]));
+            Log::error('RunValuationAction failed', [
+                'application_id' => $application->id,
+                'message' => $e->getMessage(),
+                'class' => $e::class,
+            ]);
+            $this->rollbackToQueued($application);
 
             throw $e;
         }
-
-        $factors = ExogenousFactor::latestRow();
-        $assessment = $application->business?->psychometricAssessment;
-
-        $compositeScore = 0.5;
-        if ($assessment !== null) {
-            $compositeScore = $assessment->isV2()
-                ? (float) $assessment->composite_score
-                : (float) (
-                    ($assessment->integrity_score * 0.4)
-                    + ($assessment->conscientiousness_score * 0.4)
-                    + ($assessment->financial_risk_score * 0.2)
-                );
-        }
-
-        $npvResult = $this->calculateNpv->execute(new NpvInputsData(
-            p10CashFlows: $response->p10Series,
-            nbePolicyRate: (float) ($factors->nbe_policy_rate ?? config('valuation.fallback_policy_rate', 0.15)),
-            psychometricCompositeScore: $compositeScore,
-            xgboostRiskScore: $response->xgboostScore,
-        ));
 
         $reasonCodes = $response->reasonCodes !== []
             ? $this->reasonCodes->fromMlResponse($response->reasonCodes)
             : $this->reasonCodes->build($response->shapValues);
 
-        $contractVersion = (string) config('services.ai_engine.contract_version', 'v2');
+        $contractVersion = $response->contractVersion
+            ?: (string) config('services.ai_engine.contract_version', 'v1');
 
-        return DB::transaction(function () use (
-            $application,
-            $response,
-            $npvResult,
-            $reasonCodes,
-            $contractVersion
-        ): Valuation {
-            $valuation = Valuation::create([
-                'business_id' => $application->business_id,
-                'ai_risk_score' => $response->xgboostScore,
-                'ai_risk_band' => $response->xgboostClass,
-                'prob_default' => $response->probDefault,
-                'horizon_days' => min(max((int) $application->requested_tenure_months * 30, 7), 365),
-                'effective_discount_rate' => $npvResult->effectiveDiscountRate,
-                'apr' => $npvResult->apr,
-                'npv_credit_limit' => $npvResult->mappedLimitEtb,
-                'p10_cashflow_forecast' => $response->p10Series,
-                'p50_cashflow_forecast' => $response->p50Series,
-                'p90_cashflow_forecast' => $response->p90Series,
-                'shap_values' => $response->shapValues,
-                'reason_codes' => $reasonCodes,
-                'forecaster_mode' => $response->forecastSource ?? 'selector',
-                'contract_version' => $contractVersion,
-                'model_versions' => $response->modelVersions,
-                'feature_snapshot_hash' => isset($response->dataProvenance['feature_snapshot_hash'])
-                    ? (string) $response->dataProvenance['feature_snapshot_hash']
-                    : null,
-                'inferred_at' => now(),
+        $npvLimit = $response->npvCreditLimit;
+
+        try {
+            return DB::transaction(function () use (
+                $application,
+                $response,
+                $reasonCodes,
+                $contractVersion,
+                $npvLimit,
+                $idempotencyKey
+            ): Valuation {
+                $valuation = Valuation::create(
+                    SupabaseValuationSchema::valuationInsertAttributes(
+                        $application,
+                        $response,
+                        $reasonCodes,
+                        $contractVersion,
+                        $npvLimit,
+                        $idempotencyKey,
+                    )
+                );
+
+                $this->persistShap->execute($valuation, $response->shapValues);
+
+                $application->update(
+                    SupabaseValuationSchema::loanApplicationUpdateAttributes(
+                        $application,
+                        $valuation->id,
+                        $response,
+                        $reasonCodes,
+                        $contractVersion,
+                        $npvLimit,
+                    )
+                );
+
+                // #region agent log
+                @file_put_contents(base_path('.cursor/debug-054501.log'), json_encode([
+                    'sessionId' => '054501',
+                    'hypothesisId' => 'C',
+                    'location' => 'RunValuationAction::execute',
+                    'message' => 'valuation persisted',
+                    'data' => [
+                        'applicationId' => $application->id,
+                        'valuationId' => $valuation->id,
+                        'supabaseLayout' => SupabaseValuationSchema::isSupabaseLayout(),
+                        'forecasterMode' => $valuation->forecaster_mode,
+                    ],
+                    'timestamp' => (int) round(microtime(true) * 1000),
+                ])."\n", FILE_APPEND | LOCK_EX);
+                // #endregion
+
+                Log::info('Valuation completed', [
+                    'application_id' => $application->id,
+                    'valuation_id' => $valuation->id,
+                    'forecaster_mode' => $response->forecasterMode,
+                    'degraded' => $response->isDegraded(),
+                ]);
+
+                return $valuation->fresh(['shapExplanations']);
+            });
+        } catch (\Throwable $e) {
+            Log::error('RunValuationAction persist failed', [
+                'application_id' => $application->id,
+                'message' => $e->getMessage(),
             ]);
+            $this->rollbackToQueued($application);
 
-            $this->persistShap->execute($valuation, $response->shapValues);
+            throw $e;
+        }
+    }
 
-            $application->update([
-                'status' => LoanApplication::STATUS_EVALUATED,
-                'valuation_id' => $valuation->id,
-                'snapshot_limit_etb' => $npvResult->mappedLimitEtb,
-                'effective_discount_rate' => $npvResult->effectiveDiscountRate,
-                'apr' => $npvResult->apr,
-                'ai_risk_band' => $response->xgboostClass,
-                'prob_default' => $response->probDefault,
-                'snapshot_risk_score' => $response->xgboostScore,
-                'reason_codes' => $reasonCodes,
-                'contract_version' => $contractVersion,
-                'model_versions' => $response->modelVersions,
-                'feature_snapshot_hash' => $response->featureSnapshotHash,
-            ]);
-
-            return $valuation->fresh(['shapExplanations']);
-        });
+    private function rollbackToQueued(LoanApplication $application): void
+    {
+        DB::transaction(fn () => $application->update([
+            'status' => LoanApplication::STATUS_QUEUED_FOR_AI,
+        ]));
     }
 }

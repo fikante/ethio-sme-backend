@@ -66,23 +66,6 @@ class SmeDailyHeartbeat extends Model
 
     public function scopeForBusiness(Builder $query, Business $business): Builder
     {
-        // #region agent log
-        $logPath = base_path('.cursor/debug-054501.log');
-        @file_put_contents($logPath, json_encode([
-            'sessionId' => '054501',
-            'hypothesisId' => 'A',
-            'location' => 'SmeDailyHeartbeat::scopeForBusiness',
-            'message' => 'forBusiness scope',
-            'data' => [
-                'isSupabaseLayout' => SupabaseHeartbeatSchema::isSupabaseLayout(),
-                'fkColumn' => SupabaseHeartbeatSchema::businessFkColumn(),
-                'businessId' => $business->id,
-                'hasBusinessUuid' => $business->uuid !== null,
-            ],
-            'timestamp' => (int) round(microtime(true) * 1000),
-        ])."\n", FILE_APPEND | LOCK_EX);
-        // #endregion
-
         return $query->where(
             SupabaseHeartbeatSchema::businessFkColumn(),
             SupabaseHeartbeatSchema::businessFkValue($business),

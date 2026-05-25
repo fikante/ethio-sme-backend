@@ -2,83 +2,79 @@
 
 namespace App\Domain\Valuation\Services;
 
-use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
-use App\Domain\Valuation\Data\InferenceRequestData;
 use App\Domain\Valuation\Data\InferenceResponseData;
 use App\Domain\Valuation\Exceptions\AiEngineException;
 use App\Models\AiEvaluationLog;
-use App\Models\Business;
 use App\Models\LoanApplication;
-use App\Models\PsychometricAssessment;
-use App\Models\SmeDailyHeartbeat;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
- * Builds selector-based v2 inference requests and coordinates calls to the FastAPI service.
+ * Builds v1 /predict requests and coordinates calls to the Hugging Face AI service.
  */
 class InferenceOrchestratorService
 {
     public function __construct(
         private readonly AiEngineClient $client,
+        private readonly ValuationFallbackService $fallback,
     ) {}
 
-    public function buildRequest(LoanApplication $application): InferenceRequestData
+    /**
+     * @return array<string, mixed>
+     */
+    public function buildPredictPayload(LoanApplication $application): array
     {
         $business = $application->business;
         if ($business === null) {
             throw new \InvalidArgumentException('Loan application is missing an associated business.');
         }
 
-        return $this->buildForBusiness($business, $application);
+        return [
+            'business_uuid' => (string) $business->uuid,
+            'horizon_days' => (int) config('valuation.inference_horizon_days', 30),
+            'cashflow_haircut' => (float) config('valuation.cashflow_haircut', 0.30),
+            'requested_amount' => (float) $application->requested_amount,
+            'force_degraded' => false,
+        ];
     }
 
-    public function buildForBusiness(
-        Business $business,
-        ?LoanApplication $application = null,
-    ): InferenceRequestData {
-        $asOfDate = $this->resolveAsOfDate($business);
-        $lookbackDays = (int) config('valuation.inference_lookback_days', 60);
-        $horizonDays = $application !== null
-            ? min(max((int) $application->requested_tenure_months * 30, 7), 365)
-            : (int) config('valuation.inference_horizon_days', 30);
-
-        return new InferenceRequestData(
-            requestId: (string) Str::uuid(),
-            businessUuid: (string) $business->uuid,
-            asOfDate: $asOfDate,
-            historyWindow: [
-                'mode' => 'lookback_days',
-                'lookback_days' => $lookbackDays,
-            ],
-            horizonDays: $horizonDays,
-            psychometricRef: $this->resolvePsychometricRef($business),
-            macroRef: [
-                'mode' => 'as_of_date',
-                'date' => $asOfDate,
-            ],
-        );
-    }
-
-    public function call(LoanApplication $application, InferenceRequestData $request): InferenceResponseData
+    public function call(LoanApplication $application): InferenceResponseData
     {
+        $payload = $this->buildPredictPayload($application);
         $startedAt = microtime(true);
-        $payload = $request->toPayload();
         $success = false;
         $errorMessage = null;
         $responseData = [];
 
         try {
-            $responseData = $this->client->inference($payload);
+            $responseData = $this->client->predict($payload);
             $success = true;
 
-            return InferenceResponseData::fromHttp($responseData);
+            return InferenceResponseData::fromPredictV1($responseData);
         } catch (AiEngineException $e) {
             $errorMessage = $e->errorCode.': '.$e->getMessage();
+
+            if (config('services.ai_engine.fallback_enabled', true)) {
+                Log::warning('AI predict failed; using fallback valuation', [
+                    'application_id' => $application->id,
+                    'error' => $errorMessage,
+                ]);
+
+                return $this->fallback->build($application);
+            }
+
             throw $e;
         } catch (\Throwable $e) {
             $errorMessage = $e->getMessage();
+
+            if (config('services.ai_engine.fallback_enabled', true)) {
+                Log::warning('AI predict error; using fallback valuation', [
+                    'application_id' => $application->id,
+                    'error' => $errorMessage,
+                ]);
+
+                return $this->fallback->build($application);
+            }
+
             throw $e;
         } finally {
             try {
@@ -101,40 +97,5 @@ class InferenceOrchestratorService
     public function health(): array
     {
         return $this->client->health();
-    }
-
-    private function resolveAsOfDate(Business $business): string
-    {
-        $dateColumn = SupabaseHeartbeatSchema::dateColumn();
-        $latestHeartbeat = SmeDailyHeartbeat::query()
-            ->forBusiness($business)
-            ->orderByDesc($dateColumn)
-            ->value($dateColumn);
-
-        if ($latestHeartbeat !== null) {
-            return Carbon::parse($latestHeartbeat)->toDateString();
-        }
-
-        return now()->toDateString();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function resolvePsychometricRef(Business $business): array
-    {
-        $assessment = PsychometricAssessment::query()
-            ->where('business_id', $business->id)
-            ->latest('completed_at')
-            ->first();
-
-        if ($assessment === null) {
-            return ['mode' => 'none'];
-        }
-
-        return [
-            'mode' => 'assessment_id',
-            'assessment_id' => (string) $assessment->id,
-        ];
     }
 }

@@ -286,8 +286,10 @@ export default function Authenticated({
                     },
                     {
                         name: "Decisioning & XAI",
-                href: safeRoute("decisioning.xai"),
-                active: safeCurrent("decisioning.xai"),
+                href: safeRoute("applications.pipeline"),
+                active:
+                    safeCurrent("decisioning.xai") ||
+                    safeCurrent("decisioning.decide"),
                         icon: (
                             <svg
                                 viewBox="0 0 24 24"

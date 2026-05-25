@@ -4,7 +4,6 @@ namespace App\Domain\Lending\Actions;
 
 use App\Domain\Lending\Data\LoanDecisionData;
 use App\Domain\Lending\Enums\DecisionOutcome;
-use App\Domain\Lending\Enums\ReasonCode;
 use App\Models\AdverseActionNotice;
 use App\Models\LoanApplication;
 use Illuminate\Support\Facades\DB;
@@ -23,15 +22,10 @@ class SubmitLoanDecisionAction
             throw new \DomainException("Application {$application->id} is already terminal ({$application->status})");
         }
 
-        if ($decision->outcome === DecisionOutcome::Rejected) {
-            $invalid = array_diff($decision->reasonCodes, ReasonCode::values());
-            if (count($invalid) > 0 || count($decision->reasonCodes) === 0) {
-                throw ValidationException::withMessages([
-                    'reason_codes' => count($invalid) > 0
-                        ? ['Unknown reason codes: '.implode(', ', $invalid)]
-                        : ['At least one valid reason_code is required when rejecting an application.'],
-                ]);
-            }
+        if ($decision->outcome === DecisionOutcome::Rejected && count($decision->reasonCodes) === 0) {
+            throw ValidationException::withMessages([
+                'reason_codes' => ['At least one reason code is required when rejecting an application.'],
+            ]);
         }
 
         $terminalStatus = match ($decision->outcome) {
