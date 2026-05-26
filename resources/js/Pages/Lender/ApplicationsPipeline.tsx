@@ -4,12 +4,17 @@ import { formatEtb, formatPercentFraction } from "@/lib/format";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { PageProps } from "@/types";
 import { Head, router, usePage } from "@inertiajs/react";
+import { axios } from "@/bootstrap";
 import {
+    AlertCircle,
+    Brain,
     CheckCircle,
     Clock,
     Loader2,
     Search,
+    X,
     XCircle,
+    Zap,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -86,12 +91,12 @@ function humaniseSector(sector: string | null): string {
 function getActionForStatus(
     app: PipelineApplication,
     onOpenPanel: (id: number) => void,
+    onEvaluate: (id: number) => void,
 ): React.ReactNode {
     const { status, id } = app;
 
     const notReadyStatuses = [
         "draft",
-        "submitted",
         "pending_psychometric",
         "pending_data_sync",
     ];
@@ -109,9 +114,37 @@ function getActionForStatus(
 
     if (status === "queued_for_ai") {
         return (
-            <span className="inline-flex animate-pulse items-center gap-1.5 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
-                <Clock className="h-3 w-3" />
-                Queued
+            <button
+                type="button"
+                onClick={() => onEvaluate(id)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-700 focus:outline-none"
+            >
+                <Zap className="h-3.5 w-3.5" />
+                Run AI Evaluation
+            </button>
+        );
+    }
+
+    if (status === "submitted" && app.psychometric_complete && app.data_coverage_days >= 45) {
+        return (
+            <button
+                type="button"
+                onClick={() => onEvaluate(id)}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none"
+            >
+                <Zap className="h-3.5 w-3.5" />
+                Run AI Evaluation
+            </button>
+        );
+    }
+
+    if (status === "submitted") {
+        return (
+            <span
+                title="Application is not yet ready for AI evaluation"
+                className="cursor-default text-sm font-medium text-zinc-400 dark:text-zinc-600"
+            >
+                Not Ready
             </span>
         );
     }
@@ -217,6 +250,10 @@ export default function ApplicationsPipeline() {
     // Panel state
     const [selectedApplicationId, setSelectedApplicationId] = useState<number | null>(null);
 
+    // Evaluate loading state
+    const [evaluatingId, setEvaluatingId] = useState<number | null>(null);
+    const [evalError, setEvalError] = useState<string | null>(null);
+
     // Filter state
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -270,6 +307,25 @@ export default function ApplicationsPipeline() {
     const handleDecision = useCallback(() => {
         // Refresh the pipeline data via Inertia after a decision is made
         router.reload({ only: ["applications"] });
+    }, []);
+
+    const handleEvaluate = useCallback(async (applicationId: number) => {
+        setEvaluatingId(applicationId);
+        setEvalError(null);
+        try {
+            await axios.post(
+                `/applications/${applicationId}/evaluate`,
+                {},
+                { headers: { Accept: "application/json" } },
+            );
+            router.reload({ only: ["applications"] });
+            setSelectedApplicationId(applicationId);
+        } catch (err: unknown) {
+            const axErr = err as { response?: { data?: { error?: string } }; message?: string };
+            setEvalError(axErr?.response?.data?.error ?? axErr?.message ?? "AI evaluation failed.");
+        } finally {
+            setEvaluatingId(null);
+        }
     }, []);
 
     // Filter + sort
@@ -336,6 +392,42 @@ export default function ApplicationsPipeline() {
             }
         >
             <Head title="Loan Applications" />
+
+            {/* Full-page AI evaluation overlay */}
+            {evaluatingId !== null && (
+                <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-sm">
+                    <div className="flex flex-col items-center gap-6 rounded-2xl border border-gray-700 bg-gray-800 p-10 shadow-2xl max-w-md text-center">
+                        <div className="relative">
+                            <div className="h-16 w-16 rounded-full border-4 border-gray-600 border-t-emerald-500 animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <Brain className="h-6 w-6 text-emerald-400" />
+                            </div>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-white">AI Evaluation in Progress</h3>
+                            <p className="mt-2 text-sm text-gray-400">
+                                The AI engine is analysing cash flow patterns, psychometric scores, and macroeconomic factors to compute the NPV credit limit and risk band.
+                            </p>
+                            <p className="mt-3 text-xs text-gray-500">This typically takes 10–30 seconds…</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Eval error toast */}
+            {evalError && (
+                <div className="fixed bottom-6 right-6 z-[70] flex items-center gap-3 rounded-xl border border-red-700 bg-red-900/80 px-4 py-3 shadow-2xl">
+                    <AlertCircle className="h-5 w-5 text-red-300" />
+                    <p className="text-sm text-white">{evalError}</p>
+                    <button
+                        type="button"
+                        onClick={() => setEvalError(null)}
+                        className="ml-2 text-red-300 hover:text-white"
+                    >
+                        <X className="h-4 w-4" />
+                    </button>
+                </div>
+            )}
 
             <div className="py-8 space-y-4">
                 {flash?.success && (
@@ -590,7 +682,7 @@ export default function ApplicationsPipeline() {
 
                                         {/* Action — state machine */}
                                         <td className="px-4 py-3">
-                                            {getActionForStatus(app, handleOpenPanel)}
+                                            {getActionForStatus(app, handleOpenPanel, handleEvaluate)}
                                         </td>
                                     </tr>
                                 ))

@@ -59,11 +59,7 @@ export default function Authenticated({
     const [sidebarWidth, setSidebarWidth] = useState<number>(288);
     const isResizingRef = useRef(false);
 
-    const BrandMark = ({
-        className = "h-6 w-6",
-    }: {
-        className?: string;
-    }) => (
+    const BrandMark = ({ className = "h-6 w-6" }: { className?: string }) => (
         <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -121,104 +117,99 @@ export default function Authenticated({
     );
 
     const borrowerSection: NavSection = {
-                label: "SME Portal",
-                items: [
-                    {
-                        name: "Loan Application",
-                        href: safeRoute("loan-application"),
-                        active: safeCurrent("loan-application"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Psychometric Assessment",
+        label: "SME Portal",
+        items: [
+            {
+                name: "Loan Application",
+                href: safeRoute("loan-application"),
+                active: safeCurrent("loan-application"),
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Psychometric Assessment",
                 href: safeRoute("psychometrics"),
                 active: safeCurrent("psychometrics"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 21s7-4.5 7-10a4 4 0 0 0-7-2 4 4 0 0 0-7 2c0 5.5 7 10 7 10z"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Integrations",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 21s7-4.5 7-10a4 4 0 0 0-7-2 4 4 0 0 0-7 2c0 5.5 7 10 7 10z"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Integrations",
                 href: safeRoute("integrations"),
                 active: safeCurrent("integrations"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "SME Valuation",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Application Status",
                 href: safeRoute("sme.valuation"),
                 active: safeCurrent("sme.valuation"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 19V5"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 19h16"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M7 15l3-3 3 2 5-7"
-                                />
-                            </svg>
-                        ),
-                    },
-                ],
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 12h6M9 16h4"
+                        />
+                    </svg>
+                ),
+            },
+        ],
     };
 
     const lenderLendingSection: NavSection = {
@@ -296,115 +287,115 @@ export default function Authenticated({
     };
 
     const adminSection: NavSection = {
-                label: "Administration",
-                items: [
-                    {
-                        name: "Users",
+        label: "Administration",
+        items: [
+            {
+                name: "Users",
                 href: safeRoute("admin.users"),
                 active: safeCurrent("admin.users"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
-                                />
-                                <circle cx="9" cy="7" r="4" />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Macroeconomic Factors",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"
+                        />
+                        <circle cx="9" cy="7" r="4" />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Macroeconomic Factors",
                 href: safeRoute("admin.macroeconomic"),
                 active: safeCurrent("admin.macroeconomic"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 19h16"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M6 15l3-3 3 2 5-7"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Model Training",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 19h16"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M6 15l3-3 3 2 5-7"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Model Training",
                 href: safeRoute("admin.model-training"),
                 active: safeCurrent("admin.model-training"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 3v4m0 10v4M5 8h14M7 16h10M9 12h6"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Fairness Audit",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 3v4m0 10v4M5 8h14M7 16h10M9 12h6"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Fairness Audit",
                 href: safeRoute("admin.fairness"),
                 active: safeCurrent("admin.fairness"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 3v18"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M5 8h14"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M7 8l-2 4a4 4 0 0 0 8 0l-2-4"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M17 8l-2 4a4 4 0 0 0 8 0l-2-4"
-                                />
-                            </svg>
-                        ),
-                    },
-                ],
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 3v18"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 8h14"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M7 8l-2 4a4 4 0 0 0 8 0l-2-4"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M17 8l-2 4a4 4 0 0 0 8 0l-2-4"
+                        />
+                    </svg>
+                ),
+            },
+        ],
     };
 
     const sections: NavSection[] = useMemo(() => {
@@ -454,7 +445,9 @@ export default function Authenticated({
                                     item.active
                                         ? "bg-gray-900 text-white dark:bg-white/10"
                                         : "text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-white/70 dark:hover:bg-white/10 dark:hover:text-white",
-                                    sidebarCollapsed ? "w-11 justify-center px-0" : "",
+                                    sidebarCollapsed
+                                        ? "w-11 justify-center px-0"
+                                        : "",
                                     "focus:outline-none focus:ring-2 focus:ring-gray-900/20 dark:focus:ring-white/20",
                                     "active:bg-gray-200/70 dark:active:bg-white/15",
                                 ].join(" ")}
@@ -471,7 +464,9 @@ export default function Authenticated({
                                     {item.icon}
                                 </span>
                                 {!sidebarCollapsed && (
-                                    <span className="truncate">{item.name}</span>
+                                    <span className="truncate">
+                                        {item.name}
+                                    </span>
                                 )}
                             </Link>
                         ))}
@@ -621,7 +616,8 @@ export default function Authenticated({
                             </span>
                             {!sidebarCollapsed && (
                                 <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                                    {import.meta.env.VITE_APP_NAME ?? "EthioSME"}
+                                    {import.meta.env.VITE_APP_NAME ??
+                                        "EthioSME"}
                                 </span>
                             )}
                         </Link>

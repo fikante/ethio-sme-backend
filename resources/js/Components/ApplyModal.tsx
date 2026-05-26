@@ -70,6 +70,11 @@ type FormState = {
     sector: string;
     subCity: string;
     establishedYear: string;
+    employeeCount: string;
+    premisesStatus: 'owned' | 'rented' | 'online' | '';
+    tinNumber: string;
+    tradeLicenseNo: string;
+    monthlyRevenueEstimate: string;
     psychometricDone: boolean;
     transactionFile: File | null;
     requestedAmount: number;
@@ -155,6 +160,11 @@ export default function ApplyModal({
         sector: '',
         subCity: '',
         establishedYear: String(new Date().getFullYear() - 3),
+        employeeCount: '',
+        premisesStatus: '',
+        tinNumber: '',
+        tradeLicenseNo: '',
+        monthlyRevenueEstimate: '',
         psychometricDone: false,
         transactionFile: null,
         requestedAmount: 100_000,
@@ -224,6 +234,8 @@ export default function ApplyModal({
         if (!data.sector) next.sector = 'Select a sector.';
         if (!data.subCity) next.subCity = 'Select a sub-city.';
         if (!data.establishedYear) next.establishedYear = 'Year is required.';
+        if (!data.employeeCount || parseInt(data.employeeCount) < 1) next.employeeCount = 'Employee count is required.';
+        if (!data.premisesStatus) next.premisesStatus = 'Please select your premises type.';
         setErrors(next);
         return Object.keys(next).length === 0;
     };
@@ -264,6 +276,11 @@ export default function ApplyModal({
         formData.append('sector', data.sector);
         formData.append('sub_city', data.subCity);
         formData.append('established_year', data.establishedYear);
+        formData.append('employee_count', data.employeeCount);
+        formData.append('premises_status', data.premisesStatus);
+        if (data.tinNumber) formData.append('tin_number', data.tinNumber);
+        if (data.tradeLicenseNo) formData.append('trade_license_no', data.tradeLicenseNo);
+        if (data.monthlyRevenueEstimate) formData.append('monthly_revenue_estimate', data.monthlyRevenueEstimate);
         formData.append('requested_amount', String(data.requestedAmount));
         formData.append('tenure_months', String(data.tenureMonths));
         formData.append('purpose', data.purpose);
@@ -673,7 +690,7 @@ function Step2({
     onBack: () => void; onNext: () => void;
 }) {
     return (
-        <div className="space-y-4">
+        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             <div>
                 <label className={labelClass} htmlFor="businessName">Business Name</label>
                 <input id="businessName" className={inputClass} value={data.businessName} onChange={(e) => onChange('businessName', e.target.value)} />
@@ -704,6 +721,94 @@ function Step2({
                 <input id="year" type="number" min={1990} max={new Date().getFullYear()} className={inputClass} value={data.establishedYear} onChange={(e) => onChange('establishedYear', e.target.value)} />
                 {errors.establishedYear && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.establishedYear}</p>}
             </div>
+
+            {/* Additional Business Details */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-4 dark:border-zinc-700 dark:bg-zinc-800/40">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-zinc-400">Additional Business Details</p>
+
+                <div>
+                    <label className={labelClass} htmlFor="employeeCount">Number of Employees <span className="text-red-600 dark:text-red-400">*</span></label>
+                    <input
+                        id="employeeCount"
+                        type="number"
+                        min={1}
+                        max={500}
+                        className={inputClass}
+                        value={data.employeeCount}
+                        onChange={(e) => onChange('employeeCount', e.target.value)}
+                        placeholder="e.g. 12"
+                    />
+                    {errors.employeeCount && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.employeeCount}</p>}
+                </div>
+
+                <div>
+                    <span className={labelClass}>Business Premises <span className="text-red-600 dark:text-red-400">*</span></span>
+                    {errors.premisesStatus && <p className="text-xs text-red-600 dark:text-red-400">{errors.premisesStatus}</p>}
+                    <div className="mt-2 flex gap-2">
+                        {(['owned', 'rented', 'online'] as const).map((opt) => (
+                            <button
+                                key={opt}
+                                type="button"
+                                onClick={() => onChange('premisesStatus', opt)}
+                                className={`flex-1 rounded-xl border px-3 py-2.5 text-xs font-semibold capitalize transition-all ${
+                                    data.premisesStatus === opt
+                                        ? 'border-gray-900 bg-gray-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-300'
+                                }`}
+                            >
+                                {opt === 'owned' ? '🏠 Owned' : opt === 'rented' ? '🏢 Rented' : '💻 Online'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className={labelClass} htmlFor="tinNumber">
+                        Tax Identification Number (TIN){' '}
+                        <span className="font-normal normal-case text-gray-400 dark:text-zinc-500">optional</span>
+                    </label>
+                    <input
+                        id="tinNumber"
+                        type="text"
+                        className={inputClass}
+                        value={data.tinNumber}
+                        onChange={(e) => onChange('tinNumber', e.target.value)}
+                        placeholder="e.g. 123456789"
+                    />
+                </div>
+
+                <div>
+                    <label className={labelClass} htmlFor="tradeLicenseNo">
+                        Trade License Number{' '}
+                        <span className="font-normal normal-case text-gray-400 dark:text-zinc-500">optional</span>
+                    </label>
+                    <input
+                        id="tradeLicenseNo"
+                        type="text"
+                        className={inputClass}
+                        value={data.tradeLicenseNo}
+                        onChange={(e) => onChange('tradeLicenseNo', e.target.value)}
+                        placeholder="e.g. AA-TL-2024-001"
+                    />
+                </div>
+
+                <div>
+                    <label className={labelClass} htmlFor="monthlyRevenueEstimate">
+                        Estimated Monthly Revenue (ETB){' '}
+                        <span className="font-normal normal-case text-gray-400 dark:text-zinc-500">optional</span>
+                    </label>
+                    <input
+                        id="monthlyRevenueEstimate"
+                        type="number"
+                        min={0}
+                        className={inputClass}
+                        value={data.monthlyRevenueEstimate}
+                        onChange={(e) => onChange('monthlyRevenueEstimate', e.target.value)}
+                        placeholder="e.g. 50000"
+                    />
+                </div>
+            </div>
+
             <StepActions
                 left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>}
                 right={<button type="button" onClick={onNext} className={primaryBtn}>Continue →</button>}

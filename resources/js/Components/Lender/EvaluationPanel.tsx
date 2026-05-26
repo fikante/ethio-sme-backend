@@ -1,6 +1,7 @@
 import CashFlowForecastChart from "@/features/valuation/components/CashFlowForecastChart";
 import ShapAttributionChart from "@/features/valuation/components/ShapAttributionChart";
 import { formatEtb, formatPercentFraction } from "@/lib/format";
+import { axios } from "@/bootstrap";
 import { router } from "@inertiajs/react";
 import {
     AlertCircle,
@@ -537,42 +538,30 @@ export default function EvaluationPanel({
         setLoading(true);
         setFetchError(null);
 
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
+        try {
+            abortRef.current?.abort();
+            const controller = new AbortController();
+            abortRef.current = controller;
 
-        fetch(route("lender.application.detail", { application: applicationId }), {
-            signal: controller.signal,
-            headers: {
-                Accept: "application/json",
-                "X-Requested-With": "XMLHttpRequest",
-                "X-XSRF-TOKEN": decodeURIComponent(
-                    document.cookie
-                        .split("; ")
-                        .find((row) => row.startsWith("XSRF-TOKEN="))
-                        ?.split("=")[1] ?? "",
-                ),
-            },
-        })
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error(`Request failed with status ${res.status}`);
-                }
-                return res.json() as Promise<ApplicationDetailData>;
-            })
-            .then((json) => {
-                setData(json);
-                setLoading(false);
-            })
-            .catch((err: unknown) => {
-                if (err instanceof Error && err.name === "AbortError") return;
-                setFetchError(
-                    err instanceof Error
-                        ? err.message
-                        : "Failed to load application data.",
-                );
-                setLoading(false);
-            });
+            axios
+                .get<ApplicationDetailData>(`/lender/applications/${applicationId}/detail`, {
+                    signal: controller.signal,
+                })
+                .then(({ data: json }) => {
+                    setData(json);
+                    setLoading(false);
+                })
+                .catch((err: unknown) => {
+                    const axErr = err as { code?: string; message?: string };
+                    if (axErr?.code === "ERR_CANCELED") return;
+                    setFetchError(axErr?.message ?? "Failed to load application data.");
+                    setLoading(false);
+                });
+        } catch (err: unknown) {
+            const e = err as { message?: string };
+            setFetchError(e?.message ?? "Failed to initialize request.");
+            setLoading(false);
+        }
     }, [applicationId]);
 
     useEffect(() => {

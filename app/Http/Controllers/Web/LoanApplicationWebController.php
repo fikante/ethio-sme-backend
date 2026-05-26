@@ -212,6 +212,11 @@ class LoanApplicationWebController extends Controller
             'sector' => ['required', 'string'],
             'sub_city' => ['required', 'string'],
             'established_year' => ['required', 'integer', 'min:1990', 'max:'.date('Y')],
+            'employee_count' => ['required', 'integer', 'min:1', 'max:9999'],
+            'premises_status' => ['required', 'in:owned,rented,online'],
+            'tin_number' => ['nullable', 'string', 'max:50'],
+            'trade_license_no' => ['nullable', 'string', 'max:100'],
+            'monthly_revenue_estimate' => ['nullable', 'numeric', 'min:0'],
             'requested_amount' => ['required', 'numeric', 'min:10000', 'max:5000000'],
             'tenure_months' => ['required', 'integer', 'in:6,12,18,24'],
             'purpose' => ['required', 'string', 'max:500'],
@@ -238,6 +243,13 @@ class LoanApplicationWebController extends Controller
                 'sector' => $validated['sector'],
                 'sub_city' => $validated['sub_city'],
                 'established_year' => $validated['established_year'],
+                'employee_count' => (int) $validated['employee_count'],
+                'premises_status' => $validated['premises_status'],
+                'tin_number' => $validated['tin_number'] ?? null,
+                'trade_license_no' => $validated['trade_license_no'] ?? null,
+                'monthly_revenue_estimate' => isset($validated['monthly_revenue_estimate'])
+                    ? (float) $validated['monthly_revenue_estimate']
+                    : null,
             ]
         );
 

@@ -8,6 +8,7 @@ use App\Domain\Valuation\Exceptions\AiEngineException;
 use App\Http\Controllers\Controller;
 use App\Models\LoanApplication;
 use App\Models\SmeDailyHeartbeat;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -115,7 +116,7 @@ class ApplicationsPipelineController extends Controller
         Request $request,
         LoanApplication $application,
         RunValuationAction $action,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $this->authorize('evaluate', $application);
 
         if (! in_array($application->status, [
@@ -123,6 +124,9 @@ class ApplicationsPipelineController extends Controller
             LoanApplication::STATUS_SUBMITTED,
             LoanApplication::STATUS_PROCESSING,
         ], true)) {
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'Application is not eligible for AI evaluation.'], 422);
+            }
             return back()->with('error', 'Application is not eligible for AI evaluation.');
         }
 
@@ -135,6 +139,9 @@ class ApplicationsPipelineController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'AI evaluation failed: '.$e->getMessage()], 500);
+            }
             return back()->with('error', 'AI evaluation failed: '.$e->getMessage());
         } catch (\Throwable $e) {
             Log::error('AI evaluation failed', [
@@ -142,13 +149,24 @@ class ApplicationsPipelineController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json(['error' => 'AI evaluation failed: '.$e->getMessage()], 500);
+            }
             return back()->with('error', 'AI evaluation failed: '.$e->getMessage());
         }
 
         $application->refresh();
         $message = $application->isDegradedEvaluation()
-            ? 'AI evaluation completed in degraded mode — review before deciding.'
+            ? 'AI evaluation completed in degraded mode.'
             : 'AI evaluation completed successfully.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'application_id' => $application->id,
+            ]);
+        }
 
         return redirect()
             ->route('applications.pipeline')

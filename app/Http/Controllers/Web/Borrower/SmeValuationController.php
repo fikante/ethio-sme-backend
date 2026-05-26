@@ -28,6 +28,45 @@ class SmeValuationController extends Controller
         $primary = $businesses->first();
         $latestValuation = $primary?->latestValuation;
 
+        // Latest loan application for status tracking
+        $latestApp = $primary
+            ? LoanApplication::query()
+                ->where('business_id', $primary->id)
+                ->with('loanProvider')
+                ->latest()
+                ->first()
+            : null;
+
+        $applicationData = null;
+        if ($latestApp !== null) {
+            $applicationData = [
+                'id'                      => $latestApp->id,
+                'status'                  => $latestApp->status,
+                'requested_amount'        => $latestApp->requested_amount,
+                'requested_tenure_months' => $latestApp->requested_tenure_months,
+                'loan_provider_name'      => $latestApp->loanProvider?->name,
+                'created_at'              => $latestApp->created_at->toDateTimeString(),
+                'decided_at'              => $latestApp->decided_at,
+            ];
+        }
+
+        $psychometricComplete = $primary
+            ? \App\Models\PsychometricAssessment::query()
+                ->where('business_id', $primary->id)
+                ->whereNotNull('completed_at')
+                ->exists()
+            : false;
+
+        // Data coverage days
+        $dataCoverageDays = 0;
+        if ($primary !== null) {
+            $fkColumn = \App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema::businessFkColumn();
+            $fkValue  = \App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema::businessFkValue($primary);
+            $dataCoverageDays = \App\Models\SmeDailyHeartbeat::query()
+                ->where($fkColumn, $fkValue)
+                ->count();
+        }
+
         return Inertia::render('Borrower/SmeValuation', [
             'businesses' => $businesses->map(fn (Business $b) => [
                 'id'            => $b->id,
@@ -36,10 +75,10 @@ class SmeValuationController extends Controller
                 'sector'        => $b->sector,
                 'sub_city'      => $b->sub_city,
             ]),
-            'valuation'       => $latestValuation
-                ? $this->buildSmeOwnerView($latestValuation, $primary)
-                : null,
-            'canRunValuation' => $primary !== null && $this->hasRunnableApplication($primary),
+            'application'           => $applicationData,
+            'psychometricComplete'  => $psychometricComplete,
+            'dataCoverageDays'      => $dataCoverageDays,
+            'canRunValuation'       => $primary !== null && $this->hasRunnableApplication($primary),
         ]);
     }
 
