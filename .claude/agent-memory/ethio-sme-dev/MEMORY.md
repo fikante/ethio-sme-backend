@@ -1,0 +1,5 @@
+- [User Profile](user_profile.md) — Thesis author, full-stack owner of EthioSME
+- [Dashboard Architecture](project_dashboard_architecture.md) — Controller is thin; stats live in DashboardStatsService; SME owner stats extended with redesigned keys
+- [Chart.js Patterns](project_chartjs_patterns.md) — Doughnut needs ArcElement+DoughnutController registered locally; ensureChartsRegistered() covers Line/Bar only
+- [SmeDailyHeartbeat Schema](project_heartbeat_schema.md) — Dual Supabase/SQLite schema; always use SupabaseHeartbeatSchema helpers for column names
+- [Psychometric Score Scale](project_psychometric_score_scale.md) — composite_score stored as 0–1; multiply ×100 before passing to UI

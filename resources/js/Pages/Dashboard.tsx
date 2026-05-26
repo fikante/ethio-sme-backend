@@ -1,4 +1,3 @@
-import SmeLatestApplicationCard from '@/Components/Sme/SmeLatestApplicationCard';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import type { PageProps } from '@/types';
 import type {
@@ -11,13 +10,27 @@ import type {
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { isLoanProviderRole } from '@/lib/roles';
 import {
+    ensureChartsRegistered,
+    getChartPalette,
+    chartFont,
+    useIsDarkMode,
+} from '@/lib/chartTheme';
+import {
+    ArcElement,
+    DoughnutController,
+    Chart as ChartJS,
+    type ChartData,
+    type ChartOptions,
+} from 'chart.js';
+import { Doughnut, Line } from 'react-chartjs-2';
+import {
     Activity,
+    AlertTriangle,
     ArrowDownRight,
     ArrowUpRight,
     Banknote,
     Brain,
     Building2,
-    Check,
     CheckCircle,
     ChevronRight,
     Clock,
@@ -28,14 +41,23 @@ import {
     Minus,
     Scale,
     ShieldCheck,
+    TrendingDown,
+    TrendingUp,
     XCircle,
 } from 'lucide-react';
 import {
     ReactNode,
     useEffect,
     useMemo,
+    useRef,
     useState,
 } from 'react';
+
+// Register Chart.js components needed for SME owner dashboard
+// (ArcElement/DoughnutController are not in ensureChartsRegistered — register them here)
+ChartJS.register(ArcElement, DoughnutController);
+// Also ensure the shared set (CategoryScale, LinearScale, Line, etc.) is registered
+ensureChartsRegistered();
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
@@ -444,6 +466,503 @@ function DbHealthPill({ health }: { health: DbHealth }) {
 
 // ─── SME Owner ────────────────────────────────────────────────────────────────
 
+const APPLICATION_STATUS_LABELS: Record<string, { label: string; color: string }> = {
+    draft:                { label: 'Draft — complete your application',     color: 'text-zinc-400' },
+    submitted:            { label: 'Submitted — under review',              color: 'text-blue-400' },
+    pending_psychometric: { label: 'Action Required — complete assessment', color: 'text-amber-400' },
+    pending_data_sync:    { label: 'Syncing your financial data…',          color: 'text-blue-400' },
+    queued_for_ai:        { label: 'In queue for AI evaluation',            color: 'text-blue-400' },
+    processing:           { label: 'AI is evaluating your application',     color: 'text-purple-400' },
+    evaluated:            { label: 'Evaluation complete',                   color: 'text-green-400' },
+    approved:             { label: 'Congratulations — Approved!',           color: 'text-emerald-400' },
+    rejected:             { label: 'Decision: Not approved at this time',   color: 'text-red-400' },
+    withdrawn:            { label: 'Application withdrawn',                 color: 'text-zinc-500' },
+};
+
+// ─── SME Owner: Application Status Card ──────────────────────────────────────
+
+function AppStatusCard({
+    latestApplication,
+}: {
+    latestApplication: SmeOwnerStats['latestApplication'];
+}) {
+    const cfg = latestApplication
+        ? (APPLICATION_STATUS_LABELS[latestApplication.status] ?? {
+              label: latestApplication.status.replace(/_/g, ' '),
+              color: 'text-zinc-400',
+          })
+        : null;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                Application Status
+            </p>
+            {latestApplication && cfg ? (
+                <div className="space-y-3">
+                    <p className={`text-sm font-semibold ${cfg.color}`}>
+                        {cfg.label}
+                    </p>
+                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-zinc-500">
+                        <span>
+                            Requested:{' '}
+                            <span className="text-gray-700 dark:text-zinc-300 font-medium">
+                                ETB {latestApplication.requested_amount.toLocaleString('en-ET')}
+                            </span>
+                        </span>
+                        {latestApplication.submitted_at && (
+                            <span>{formatDate(latestApplication.submitted_at)}</span>
+                        )}
+                    </div>
+                    {latestApplication.status === 'pending_psychometric' && (
+                        <Link
+                            href="/psychometrics"
+                            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-amber-400 transition"
+                        >
+                            Complete Assessment →
+                        </Link>
+                    )}
+                    {latestApplication.apr !== null && (
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">
+                            Indicative APR:{' '}
+                            <span className="text-gray-700 dark:text-zinc-300">{formatApr(latestApplication.apr)}</span>
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    <p className="text-sm text-gray-400 dark:text-zinc-500">No active application.</p>
+                    <Link
+                        href="/loan-application"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-100 transition"
+                    >
+                        Start Your Application →
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── SME Owner: Financial Health Score Donut ─────────────────────────────────
+
+function HealthScoreCard({ score }: { score: number }) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+
+    const ringColor =
+        score >= 70 ? '#4ade80' : score >= 40 ? '#fbbf24' : '#f87171';
+    const trackColor = isDark ? '#27272a' : '#e4e4e7';
+
+    const data: ChartData<'doughnut'> = useMemo(
+        () => ({
+            datasets: [
+                {
+                    data: [score, 100 - score],
+                    backgroundColor: [ringColor, trackColor],
+                    borderWidth: 0,
+                    hoverBackgroundColor: [ringColor, trackColor],
+                },
+            ],
+        }),
+        [score, ringColor, trackColor],
+    );
+
+    const centerTextPlugin = useMemo(
+        () => ({
+            id: 'centerText',
+            afterDraw(chart: ChartJS) {
+                const { ctx, chartArea } = chart;
+                if (!chartArea) return;
+                const x = (chartArea.left + chartArea.right) / 2;
+                const y = (chartArea.top + chartArea.bottom) / 2;
+                ctx.save();
+                ctx.font = `bold 28px ${chartFont().family}`;
+                ctx.fillStyle = palette.text;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(String(score), x, y);
+                ctx.restore();
+            },
+        }),
+        [score, palette.text],
+    );
+
+    const options: ChartOptions<'doughnut'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '72%',
+            animation: { duration: 700, easing: 'easeOutQuart' },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) =>
+                            ctx.dataIndex === 0
+                                ? `Score: ${score}/100`
+                                : `Remaining: ${100 - score}`,
+                    },
+                },
+            },
+        }),
+        [palette, score],
+    );
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5 flex flex-col items-center">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3 self-start">
+                Financial Health Score
+            </p>
+            <div className="w-36 h-36">
+                <Doughnut
+                    data={data}
+                    options={options}
+                    plugins={[centerTextPlugin]}
+                />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white">{score}/100</p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500 text-center">
+                Based on cash flow, transactions &amp; assessment
+            </p>
+        </div>
+    );
+}
+
+// ─── SME Owner: Cash Flow Trend Sparkline ────────────────────────────────────
+
+function CashflowTrendCard({
+    trend,
+}: {
+    trend: SmeOwnerStats['cashflowTrend'];
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+
+    const values = useMemo(() => trend.map((t) => t.net), [trend]);
+    const labels = useMemo(() => trend.map((t) => t.date), [trend]);
+    const minVal  = values.length ? Math.min(...values) : 0;
+    const maxVal  = values.length ? Math.max(...values) : 0;
+
+    const data: ChartData<'line'> = useMemo(
+        () => ({
+            labels,
+            datasets: [
+                {
+                    label: 'Net Cash Flow',
+                    data: values,
+                    borderColor: palette.positive,
+                    backgroundColor: `${palette.positive}22`,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 4,
+                    borderWidth: 1.5,
+                },
+                {
+                    label: 'Zero line',
+                    data: values.map(() => 0),
+                    borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+                    borderDash: [4, 4],
+                    pointRadius: 0,
+                    borderWidth: 1,
+                    fill: false,
+                },
+            ],
+        }),
+        [labels, values, palette, isDark],
+    );
+
+    const options: ChartOptions<'line'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        title: (items) => items[0]?.label ?? '',
+                        label: (ctx) =>
+                            ctx.datasetIndex === 0
+                                ? `ETB ${Number(ctx.parsed.y).toLocaleString('en-ET')}`
+                                : '',
+                    },
+                },
+                datalabels: { display: false },
+            },
+            scales: {
+                x: { display: false },
+                y: { display: false },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                Recent Cash Flow Activity
+            </p>
+            {trend.length > 1 ? (
+                <>
+                    <div style={{ height: 80 }}>
+                        <Line data={data} options={options} />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-zinc-500">
+                        <span>
+                            Low:{' '}
+                            <span className="text-red-400 font-medium">
+                                ETB {minVal.toLocaleString('en-ET')}
+                            </span>
+                        </span>
+                        <span className="text-gray-400 dark:text-zinc-600">Last 30 days</span>
+                        <span>
+                            High:{' '}
+                            <span className="text-green-400 font-medium">
+                                ETB {maxVal.toLocaleString('en-ET')}
+                            </span>
+                        </span>
+                    </div>
+                </>
+            ) : (
+                <p className="text-sm text-gray-400 dark:text-zinc-500">
+                    No cash flow data available yet.
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ─── SME Owner: Transaction Activity Card ────────────────────────────────────
+
+function TxnActivityCard({
+    txnActivity,
+}: {
+    txnActivity: SmeOwnerStats['txnActivity'];
+}) {
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                Daily Transaction Activity
+            </p>
+            {txnActivity ? (
+                <div className="space-y-2">
+                    <div>
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums">
+                            {txnActivity.avg_recent}
+                        </span>
+                        <span className="ml-2 text-sm text-gray-400 dark:text-zinc-500">
+                            avg. daily transactions
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                        {txnActivity.direction === 'up' ? (
+                            <>
+                                <TrendingUp className="h-3.5 w-3.5 text-green-400" />
+                                <span className="text-green-400 font-medium">
+                                    ↑ {txnActivity.trend_pct}% vs prior 14 days
+                                </span>
+                            </>
+                        ) : (
+                            <>
+                                <TrendingDown className="h-3.5 w-3.5 text-amber-400" />
+                                <span className="text-amber-400 font-medium">
+                                    ↓ {Math.abs(txnActivity.trend_pct)}% vs prior 14 days
+                                </span>
+                            </>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <p className="text-sm text-gray-400 dark:text-zinc-500">No data yet.</p>
+            )}
+        </div>
+    );
+}
+
+// ─── SME Owner: Data Coverage Card ───────────────────────────────────────────
+
+function DataCoverageCard({ days }: { days: number }) {
+    const pct = Math.min(Math.round((days / 365) * 100), 100);
+    const animated = useCountUp(pct);
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                Financial History Coverage
+            </p>
+            <p className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums">
+                {days}{' '}
+                <span className="text-lg font-semibold text-gray-500 dark:text-zinc-400">days</span>
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
+                {pct}% toward full 365-day coverage
+            </p>
+            <div className="mt-3 h-1.5 w-full rounded-full bg-gray-200 dark:bg-zinc-700">
+                <div
+                    className="h-full rounded-full bg-blue-500 transition-all duration-700"
+                    style={{ width: `${animated}%` }}
+                    role="progressbar"
+                    aria-valuenow={pct}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${pct}% financial history coverage`}
+                />
+            </div>
+        </div>
+    );
+}
+
+// ─── SME Owner: Psychometric Assessment Card ──────────────────────────────────
+
+function PsychometricCard({
+    psychometricAssessment,
+}: {
+    psychometricAssessment: SmeOwnerStats['psychometricAssessment'];
+}) {
+    const done = psychometricAssessment?.completed ?? false;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-3">
+                Psychometric Assessment
+            </p>
+            {done ? (
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-400 shrink-0" />
+                        <span className="text-sm font-semibold text-green-400">
+                            Assessment Complete
+                        </span>
+                    </div>
+                    {psychometricAssessment?.completed_at && (
+                        <p className="text-xs text-gray-400 dark:text-zinc-500">
+                            Completed {formatDate(psychometricAssessment.completed_at)}
+                        </p>
+                    )}
+                    {psychometricAssessment?.composite_score !== null &&
+                        psychometricAssessment?.composite_score !== undefined && (
+                            <p className="text-xs text-gray-500 dark:text-zinc-400">
+                                Score:{' '}
+                                <span className="font-semibold text-gray-900 dark:text-white">
+                                    {Math.round(psychometricAssessment.composite_score)}/100
+                                </span>
+                            </p>
+                        )}
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0" />
+                        <span className="text-sm font-semibold text-amber-400">
+                            Assessment Pending
+                        </span>
+                    </div>
+                    <p className="text-xs text-gray-400 dark:text-zinc-500">
+                        Completing the assessment strengthens your credit profile.
+                    </p>
+                    <Link
+                        href="/psychometrics"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-amber-400 transition"
+                    >
+                        Complete Now →
+                    </Link>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ─── SME Owner: Score Boosters & Drags ────────────────────────────────────────
+
+function ShapDriversPanel({
+    shapDrivers,
+}: {
+    shapDrivers: SmeOwnerStats['shapDrivers'];
+}) {
+    const hasAny =
+        shapDrivers.boosters.length > 0 || shapDrivers.drags.length > 0;
+
+    return (
+        <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
+            <p className="text-sm font-medium text-gray-500 dark:text-zinc-400 uppercase tracking-wide mb-4">
+                Your Credit Profile Analysis
+            </p>
+            {hasAny ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Boosters */}
+                    <div>
+                        <p className="text-xs font-semibold text-green-400 mb-3">
+                            What&apos;s Working For You
+                        </p>
+                        {shapDrivers.boosters.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                                {shapDrivers.boosters.map((b) => (
+                                    <span
+                                        key={b.feature}
+                                        className="inline-flex items-center rounded-full bg-green-50 border border-green-200 dark:bg-green-900/40 dark:border-green-700/50 text-green-700 dark:text-green-300 px-3 py-1 text-xs font-medium"
+                                    >
+                                        {b.label}
+                                    </span>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                No positive drivers identified yet.
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Drags */}
+                    <div>
+                        <p className="text-xs font-semibold text-amber-400 mb-3">
+                            Areas to Watch
+                        </p>
+                        {shapDrivers.drags.length > 0 ? (
+                            <div className="space-y-2">
+                                {shapDrivers.drags.map((d) => (
+                                    <div key={d.feature}>
+                                        <span className="inline-flex items-center rounded-full bg-amber-50 border border-amber-200 dark:bg-amber-900/40 dark:border-amber-700/50 text-amber-700 dark:text-amber-300 px-3 py-1 text-xs font-medium">
+                                            {d.label}
+                                        </span>
+                                        {d.tip && (
+                                            <p className="mt-1 ml-1 text-xs text-gray-400 dark:text-zinc-500">
+                                                {d.tip}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-400 dark:text-zinc-500">
+                                No drag factors identified.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <p className="text-sm text-gray-400 dark:text-zinc-500 text-center py-4">
+                    Submit your application to see your personalized financial profile analysis.
+                </p>
+            )}
+        </div>
+    );
+}
+
+// ─── SME Owner: Main Dashboard ────────────────────────────────────────────────
+
 function SmeOwnerDashboard({
     userName,
     stats,
@@ -451,75 +970,34 @@ function SmeOwnerDashboard({
     userName: string;
     stats: SmeOwnerStats;
 }) {
-    const app = stats.application;
-    const showResults =
-        app &&
-        ['evaluated', 'approved', 'rejected'].includes(app.status);
-
     return (
         <>
             <header className="mb-8">
-                <h1 className="text-2xl font-bold tracking-tight">
-                    {greeting()}, {userName.split(' ')[0]}. 👋
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
+                    {greeting()}, {userName.split(' ')[0]}.
                 </h1>
-                <p className={`mt-1 text-sm ${mutedClass}`}>
-                    Here is your loan application status.
+                <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
+                    Here is your business financial overview.
                 </p>
             </header>
 
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                <KpiCard
-                    label="Application Status"
-                    displayValue={
-                        app ? (
-                            <StatusBadge status={app.status} />
-                        ) : (
-                            <span className={`text-sm ${mutedClass}`}>
-                                No application
-                            </span>
-                        )
-                    }
-                    icon={<FileText className="h-6 w-6" />}
-                    color="blue"
-                />
-                <KpiCard
-                    label="Credit Limit"
-                    displayValue={
-                        <span className="text-xl font-bold tabular-nums">
-                            {app?.npv_credit_limit
-                                ? formatEtb(app.npv_credit_limit)
-                                : 'Pending'}
-                        </span>
-                    }
-                    icon={<Banknote className="h-6 w-6" />}
-                    color="green"
-                />
-                <KpiCard
-                    label="Risk Score"
-                    displayValue={<RiskBandBadge band={app?.ai_risk_band} />}
-                    icon={<ShieldCheck className="h-6 w-6" />}
-                    color="gold"
-                />
-                <KpiCard
-                    label="Data Coverage"
-                    displayValue={
-                        <DataCoverageValue days={stats.heartbeatDays} />
-                    }
-                    icon={<Database className="h-6 w-6" />}
-                    color="blue"
-                />
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <AppStatusCard latestApplication={stats.latestApplication} />
+                <HealthScoreCard score={stats.healthScore} />
+                <CashflowTrendCard trend={stats.cashflowTrend} />
             </div>
 
-            <div className="mt-6">
-                <SmeLatestApplicationCard
-                    app={app}
-                    showResults={!!showResults}
-                    formatDate={formatDate}
-                    formatEtb={formatEtb}
-                    formatApr={formatApr}
-                    statusBadge={(status) => <StatusBadge status={status} />}
-                    riskBadge={(band) => <RiskBandBadge band={band} />}
-                />
+            {/* Row 2 */}
+            <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
+                <TxnActivityCard txnActivity={stats.txnActivity} />
+                <DataCoverageCard days={stats.coverageDays} />
+                <PsychometricCard psychometricAssessment={stats.psychometricAssessment} />
+            </div>
+
+            {/* Row 3 — full width */}
+            <div className="mt-5">
+                <ShapDriversPanel shapDrivers={stats.shapDrivers} />
             </div>
         </>
     );

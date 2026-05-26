@@ -49,8 +49,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/psychometrics', [PsychometricWebController::class, 'show'])
             ->name('psychometrics');
-        Route::get('/integrations', fn () => Inertia::render('Placeholders/Integrations'))
+        Route::get('/integrations', [App\Http\Controllers\Web\Borrower\IntegrationsController::class, 'show'])
             ->name('integrations');
+        Route::post('/integrations/simulate-chapa', [App\Http\Controllers\Web\Borrower\IntegrationsController::class, 'simulateChapa'])
+            ->name('integrations.simulate-chapa');
         Route::get('/sme-valuation', [SmeValuationController::class, 'index'])
             ->name('sme.valuation');
         Route::post('/sme-valuation/{business}/run', [SmeValuationController::class, 'run'])

@@ -1,3 +1,11 @@
+export type BusinessSummary = {
+    id: number;
+    uuid: string;
+    business_name: string;
+    sector: string | null;
+    sub_city: string | null;
+};
+
 export type ShapDriver = {
     feature: string;
     value: number;

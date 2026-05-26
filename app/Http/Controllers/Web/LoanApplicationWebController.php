@@ -74,25 +74,111 @@ class LoanApplicationWebController extends Controller
                 ->first()
             : null;
 
+        // Cash flow analytics from all heartbeat records (ascending for charts)
+        $heartbeatRecords = [];
+        $weeklyTxnCounts = [];
+        $cashflowStats = null;
+
+        if ($business && $uploadedHeartbeatQuery) {
+            $allRecords = (clone $uploadedHeartbeatQuery)
+                ->orderBy($dateColumn, 'asc')
+                ->get([
+                    $dateColumn,
+                    SupabaseHeartbeatSchema::inflowColumn(),
+                    SupabaseHeartbeatSchema::outflowColumn(),
+                    SupabaseHeartbeatSchema::txnCountColumn(),
+                    'net_cashflow',
+                ])
+                ->map(fn (SmeDailyHeartbeat $row) => [
+                    'date'    => $row->transaction_date?->toDateString() ?? '',
+                    'inflow'  => (float) ($row->daily_total_inflow ?? 0),
+                    'outflow' => (float) ($row->daily_total_outflow ?? 0),
+                    'net'     => (float) ($row->net_cashflow ?? ((float) $row->daily_total_inflow - (float) $row->daily_total_outflow)),
+                    'txn'     => (int) ($row->txn_count ?? 0),
+                ])
+                ->values();
+
+            $heartbeatRecords = $allRecords->all();
+
+            // 30-day rolling averages
+            $last30 = (clone $uploadedHeartbeatQuery)
+                ->orderByDesc($dateColumn)
+                ->limit(30)
+                ->get([
+                    SupabaseHeartbeatSchema::inflowColumn(),
+                    SupabaseHeartbeatSchema::outflowColumn(),
+                    'net_cashflow',
+                ]);
+
+            $positiveDays = $allRecords->where('net', '>', 0)->count();
+            $negativeDays = $allRecords->where('net', '<=', 0)->count();
+            $totalDays = $allRecords->count();
+
+            $cashflowStats = [
+                'avg_inflow_30d'      => round((float) ($last30->avg(SupabaseHeartbeatSchema::inflowColumn()) ?? 0), 2),
+                'avg_outflow_30d'     => round((float) ($last30->avg(SupabaseHeartbeatSchema::outflowColumn()) ?? 0), 2),
+                'avg_net_30d'         => round((float) ($last30->avg('net_cashflow') ?? 0), 2),
+                'total_days'          => $totalDays,
+                'positive_days'       => $positiveDays,
+                'negative_days'       => $negativeDays,
+                'positive_ratio'      => $totalDays > 0 ? round($positiveDays / $totalDays * 100, 1) : 0,
+                'cashflow_volatility' => $this->computeVolatilityLabel($allRecords->pluck('net')->toArray()),
+            ];
+
+            // Weekly transaction volume aggregation
+            $weeklyTxnCounts = $allRecords
+                ->groupBy(fn ($r) => \Carbon\Carbon::parse($r['date'])->startOfWeek()->toDateString())
+                ->map(fn ($week, $startDate) => [
+                    'week'  => $startDate,
+                    'total' => $week->sum('txn'),
+                ])
+                ->values()
+                ->all();
+        }
+
         return Inertia::render('Borrower/LoanApplication', [
             'transactions' => $transactions,
             'existingApplication' => $existingApp ? [
-                'status' => $existingApp->status,
-                'requested_amount' => $existingApp->requested_amount,
-                'tenure_months' => $existingApp->requested_tenure_months,
-                'created_at' => $existingApp->created_at->toDateTimeString(),
+                'status'                   => $existingApp->status,
+                'requested_amount'         => $existingApp->requested_amount,
+                'requested_tenure_months'  => $existingApp->requested_tenure_months,
+                'apr'                      => $existingApp->apr,
+                'ai_risk_band'             => $existingApp->ai_risk_band,
+                'created_at'               => $existingApp->created_at->toDateTimeString(),
             ] : null,
-            'hasBusiness' => (bool) $business,
-            'heartbeatDays' => $heartbeatDays,
+            'hasBusiness'          => (bool) $business,
+            'heartbeatDays'        => $heartbeatDays,
             'transactionDateRange' => $dateRange,
-            'businessUuid' => $business?->uuid,
+            'businessUuid'         => $business?->uuid,
             'psychometricCompleted' => $business
                 ? PsychometricAssessment::query()
                     ->where('business_id', $business->id)
                     ->whereNotNull('completed_at')
                     ->exists()
                 : false,
+            'heartbeatRecords' => $heartbeatRecords,
+            'weeklyTxnCounts'  => $weeklyTxnCounts,
+            'cashflowStats'    => $cashflowStats,
         ]);
+    }
+
+    private function computeVolatilityLabel(array $netCashflows): string
+    {
+        if (count($netCashflows) < 5) {
+            return 'Insufficient data';
+        }
+        $mean = array_sum($netCashflows) / count($netCashflows);
+        $variance = array_sum(array_map(fn ($v) => ($v - $mean) ** 2, $netCashflows)) / count($netCashflows);
+        $stdDev = sqrt($variance);
+        $cv = $mean != 0 ? abs($stdDev / $mean) : 1;
+
+        if ($cv < 0.3) {
+            return 'Low';
+        } elseif ($cv < 0.7) {
+            return 'Moderate';
+        } else {
+            return 'High';
+        }
     }
 
     public function store(

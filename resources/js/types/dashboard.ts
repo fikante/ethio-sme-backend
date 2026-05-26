@@ -15,6 +15,7 @@ export type DashboardUser = {
 };
 
 export type SmeOwnerStats = {
+    // Legacy keys retained for backwards compatibility
     business: { name: string; sector: string } | null;
     heartbeatDays: number;
     hasAssessment: boolean;
@@ -23,6 +24,7 @@ export type SmeOwnerStats = {
         status: string;
         requested_amount: string | number;
         tenure_months: number;
+        /** Retained for SmeLatestApplicationCard — not shown in redesigned SME dashboard */
         npv_credit_limit: string | number | null;
         apr: string | number | null;
         ai_risk_band: string | null;
@@ -36,6 +38,33 @@ export type SmeOwnerStats = {
         applicationSubmitted: boolean;
         aiEvaluated: boolean;
         decisionReceived: boolean;
+    };
+
+    // Redesigned dashboard keys
+    hasBusiness: boolean;
+    latestApplication: {
+        status: string;
+        requested_amount: number;
+        apr: number | null;
+        risk_band: string | null;
+        submitted_at: string | null;
+    } | null;
+    psychometricAssessment: {
+        completed: boolean;
+        completed_at: string | null;
+        composite_score: number | null;
+    } | null;
+    cashflowTrend: Array<{ date: string; net: number }>;
+    txnActivity: {
+        avg_recent: number;
+        trend_pct: number;
+        direction: 'up' | 'down';
+    } | null;
+    coverageDays: number;
+    healthScore: number;
+    shapDrivers: {
+        boosters: Array<{ label: string; value: number; feature: string }>;
+        drags: Array<{ label: string; value: number; feature: string; tip?: string }>;
     };
 };
 
