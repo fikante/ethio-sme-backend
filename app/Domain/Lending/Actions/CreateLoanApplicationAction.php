@@ -24,6 +24,7 @@ class CreateLoanApplicationAction
 
             return LoanApplication::create([
                 'business_id' => $data->businessId,
+                'loan_provider_id' => $data->loanProviderId,
                 'requested_amount' => $data->requestedAmount,
                 'requested_tenure_months' => $data->requestedTenureMonths,
                 'status' => LoanApplication::STATUS_PENDING_PSYCHOMETRIC,

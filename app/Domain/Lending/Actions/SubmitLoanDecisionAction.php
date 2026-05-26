@@ -40,6 +40,8 @@ class SubmitLoanDecisionAction
                 'rejection_narrative' => $decision->narrative,
                 'reason_codes' => $decision->reasonCodes,
                 'decided_at' => now(),
+                'officer_notes' => $decision->officerNotes,
+                'rejection_reason_code' => $decision->rejectionReasonCode,
             ]);
 
             if ($decision->outcome === DecisionOutcome::Rejected) {

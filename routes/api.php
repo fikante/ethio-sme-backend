@@ -30,6 +30,9 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
     Route::get('ai/health', AiHealthController::class);
 
+    // Public (no auth) — returns only active providers with display fields
+    Route::get('public/loan-providers', [LoanProviderController::class, 'publicIndex']);
+
     Route::prefix('auth')->group(function (): void {
         Route::post('register', [AuthController::class, 'register']);
         Route::post('login', [AuthController::class, 'login']);

@@ -221,97 +221,78 @@ export default function Authenticated({
                 ],
     };
 
-    const lenderSection: NavSection = {
-                label: "Lending",
-                items: [
-                    {
-                        name: "Applications Pipeline",
+    const lenderLendingSection: NavSection = {
+        label: "LENDING",
+        items: [
+            {
+                name: "Loan Applications",
                 href: safeRoute("applications.pipeline"),
                 active: safeCurrent("applications.pipeline"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 6h16"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 12h10"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M4 18h7"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M18 10v10"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Risk & Forecast",
-                href: safeRoute("risk.forecast"),
-                active: safeCurrent("risk.forecast"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M3 17l6-6 4 4 8-10"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M3 21h18"
-                                />
-                            </svg>
-                        ),
-                    },
-                    {
-                        name: "Decisioning & XAI",
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 6h16"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 12h10"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M4 18h7"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M18 10v10"
+                        />
+                    </svg>
+                ),
+            },
+        ],
+    };
+
+    const lenderAnalyticsSection: NavSection = {
+        label: "ANALYTICS",
+        items: [
+            {
+                name: "Decisioning & XAI",
                 href: safeRoute("applications.pipeline"),
                 active:
                     safeCurrent("decisioning.xai") ||
                     safeCurrent("decisioning.decide"),
-                        icon: (
-                            <svg
-                                viewBox="0 0 24 24"
-                                className="h-5 w-5"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                            >
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M12 2a7 7 0 0 0-4 12.75V18a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.25A7 7 0 0 0 12 2z"
-                                />
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    d="M10 22h4"
-                                />
-                            </svg>
-                        ),
-                    },
-                ],
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 2a7 7 0 0 0-4 12.75V18a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-3.25A7 7 0 0 0 12 2z"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M10 22h4"
+                        />
+                    </svg>
+                ),
+            },
+        ],
     };
 
     const adminSection: NavSection = {
@@ -428,7 +409,7 @@ export default function Authenticated({
 
     const sections: NavSection[] = useMemo(() => {
         const overview: NavSection = {
-            label: "Overview",
+            label: "OVERVIEW",
             items: [...navigation],
         };
 
@@ -436,7 +417,7 @@ export default function Authenticated({
             return [overview, borrowerSection];
         }
         if (isLoanProviderRole(primaryRole)) {
-            return [overview, lenderSection];
+            return [overview, lenderLendingSection, lenderAnalyticsSection];
         }
         if (primaryRole === "super_admin") {
             return [overview, adminSection];

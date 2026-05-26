@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Web\Lender;
 
+use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Domain\Valuation\Actions\RunValuationAction;
 use App\Domain\Valuation\Exceptions\AiEngineException;
 use App\Http\Controllers\Controller;
 use App\Models\LoanApplication;
+use App\Models\SmeDailyHeartbeat;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,9 +20,16 @@ class ApplicationsPipelineController extends Controller
     {
         $this->authorize('viewPipeline', LoanApplication::class);
 
+        $loanProviderId = $request->user()->loan_provider_id;
+        if ($loanProviderId === null) {
+            abort(403, 'Your account is not associated with a loan provider.');
+        }
+
         $applications = LoanApplication::query()
-            ->with(['business', 'valuation'])
+            ->forProvider($loanProviderId)
+            ->with(['business', 'business.psychometricAssessment', 'valuation'])
             ->whereIn('status', [
+                LoanApplication::STATUS_DRAFT,
                 LoanApplication::STATUS_SUBMITTED,
                 LoanApplication::STATUS_PENDING_PSYCHOMETRIC,
                 LoanApplication::STATUS_PENDING_DATA_SYNC,
@@ -29,6 +38,7 @@ class ApplicationsPipelineController extends Controller
                 LoanApplication::STATUS_EVALUATED,
                 LoanApplication::STATUS_APPROVED,
                 LoanApplication::STATUS_REJECTED,
+                LoanApplication::STATUS_WITHDRAWN,
             ])
             ->orderByRaw("CASE status
                 WHEN 'queued_for_ai' THEN 1
@@ -37,7 +47,7 @@ class ApplicationsPipelineController extends Controller
                 WHEN 'submitted' THEN 4
                 ELSE 5 END")
             ->orderByDesc('created_at')
-            ->limit(50)
+            ->limit(200)
             ->get()
             ->map(function (LoanApplication $app) {
                 $hasDecision = $app->decided_at !== null
@@ -50,29 +60,29 @@ class ApplicationsPipelineController extends Controller
                     && ! $hasDecision
                     && ! $hasRiskReview;
 
-                // #region agent log
-                @file_put_contents(base_path('.cursor/debug-c09a18.log'), json_encode([
-                    'sessionId' => 'c09a18',
-                    'hypothesisId' => 'A',
-                    'location' => 'ApplicationsPipelineController::index.map',
-                    'message' => 'pipeline action flags',
-                    'data' => [
-                        'applicationId' => $app->id,
-                        'status' => $app->status,
-                        'reviewed_by' => $app->reviewed_by,
-                        'decided_at' => $app->decided_at?->toDateTimeString(),
-                        'can_review' => $canReview,
-                        'is_reviewed' => $hasDecision || $hasRiskReview,
-                    ],
-                    'timestamp' => (int) round(microtime(true) * 1000),
-                ])."\n", FILE_APPEND | LOCK_EX);
-                // #endregion
+                $business = $app->business;
+
+                // Compute heartbeat data coverage days using the correct FK column
+                $dataCoverageDays = 0;
+                if ($business !== null) {
+                    $fkColumn = SupabaseHeartbeatSchema::businessFkColumn();
+                    $fkValue = SupabaseHeartbeatSchema::businessFkValue($business);
+                    $dataCoverageDays = SmeDailyHeartbeat::query()
+                        ->where($fkColumn, $fkValue)
+                        ->count();
+                }
+
+                // Psychometric: completed if assessment exists and completed_at is set
+                $psychometricComplete = false;
+                if ($business !== null && $business->psychometricAssessment !== null) {
+                    $psychometricComplete = $business->psychometricAssessment->completed_at !== null;
+                }
 
                 return [
                     'id' => $app->id,
                     'status' => $app->status,
-                    'business_name' => $app->business?->business_name,
-                    'sector' => $app->business?->sector,
+                    'business_name' => $business?->business_name,
+                    'sector' => $business?->sector,
                     'requested_amount' => $app->requested_amount,
                     'requested_tenure_months' => $app->requested_tenure_months,
                     'ai_risk_band' => $app->ai_risk_band,
@@ -80,6 +90,9 @@ class ApplicationsPipelineController extends Controller
                     'npv_credit_limit' => $app->npv_credit_limit ?? $app->snapshot_limit_etb,
                     'is_degraded' => $app->isDegradedEvaluation(),
                     'created_at' => $app->created_at->toDateTimeString(),
+                    'submitted_at' => $app->created_at->toIso8601String(),
+                    'data_coverage_days' => $dataCoverageDays,
+                    'psychometric_complete' => $psychometricComplete,
                     'can_run_ai' => in_array($app->status, [
                         LoanApplication::STATUS_QUEUED_FOR_AI,
                         LoanApplication::STATUS_SUBMITTED,

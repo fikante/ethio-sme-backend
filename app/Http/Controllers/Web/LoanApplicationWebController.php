@@ -10,6 +10,7 @@ use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
 use App\Http\Controllers\Controller;
 use App\Models\Business;
 use App\Models\LoanApplication;
+use App\Models\LoanProvider;
 use App\Models\PsychometricAssessment;
 use App\Models\SmeDailyHeartbeat;
 use App\Models\User;
@@ -136,7 +137,25 @@ class LoanApplicationWebController extends Controller
                 ->all();
         }
 
+        $loanProviders = LoanProvider::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_code', 'logo_url', 'status',
+                'min_loan_amount_etb', 'max_loan_amount_etb', 'base_interest_rate'])
+            ->map(fn (LoanProvider $p) => [
+                'id'                  => $p->id,
+                'name'                => $p->name,
+                'short_code'          => $p->short_code,
+                'logo_url'            => $p->logo_url,
+                'min_loan_amount_etb' => (float) $p->min_loan_amount_etb,
+                'max_loan_amount_etb' => (float) $p->max_loan_amount_etb,
+                'base_interest_rate'  => (float) $p->base_interest_rate,
+            ])
+            ->values()
+            ->all();
+
         return Inertia::render('Borrower/LoanApplication', [
+            'loanProviders' => $loanProviders,
             'transactions' => $transactions,
             'existingApplication' => $existingApp ? [
                 'status'                   => $existingApp->status,
@@ -197,6 +216,7 @@ class LoanApplicationWebController extends Controller
             'tenure_months' => ['required', 'integer', 'in:6,12,18,24'],
             'purpose' => ['required', 'string', 'max:500'],
             'transaction_file' => ['required', 'file', 'mimes:csv,xlsx,xls,txt', 'max:10240'],
+            'loan_provider_id' => ['required', 'integer', 'exists:loan_providers,id'],
         ]);
 
         /** @var User $user */
@@ -289,6 +309,7 @@ class LoanApplicationWebController extends Controller
             requestedAmount: (float) $validated['requested_amount'],
             requestedTenureMonths: (int) $validated['tenure_months'],
             idempotencyKey: $request->header('Idempotency-Key'),
+            loanProviderId: (int) $validated['loan_provider_id'],
         ));
 
         $application->update([

@@ -43,6 +43,9 @@ export type PipelineApplication = {
     npv_credit_limit: string | number | null;
     is_degraded: boolean;
     created_at: string;
+    submitted_at: string;
+    data_coverage_days: number;
+    psychometric_complete: boolean;
     can_run_ai: boolean;
     can_review: boolean;
     is_reviewed: boolean;

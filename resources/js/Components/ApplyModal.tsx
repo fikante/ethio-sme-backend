@@ -5,6 +5,7 @@ import {
 } from '@/lib/psychometricCompletion';
 import {
     AlertCircle,
+    Banknote,
     Brain,
     Check,
     CheckCircle,
@@ -25,6 +26,10 @@ import {
     useState,
 } from 'react';
 
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
 const SECTORS = [
     { code: '5411', label: 'Grocery', icon: '🛒' },
     { code: '5812', label: 'Cafe', icon: '☕' },
@@ -39,38 +44,26 @@ const SUB_CITIES = [
 ] as const;
 
 const TENURE_OPTIONS = [6, 12, 18, 24] as const;
-const STEP_LABELS = ['Personal', 'Business', 'Psych', 'Submit'];
+// Steps: 0=Lender, 1=Personal, 2=Business, 3=Psych, 4=Submit
+const STEP_LABELS = ['Lender', 'Personal', 'Business', 'Psych', 'Submit'];
 const MIN_TRANSACTION_DAYS = 45;
 
-const etbFormatter = new Intl.NumberFormat('en-ET', { maximumFractionDigits: 0 });
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
-function formatEtb(amount: number): string {
-    return `ETB ${etbFormatter.format(amount)}`;
-}
-
-function getInitials(name: string): string {
-    return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
-}
-
-function mapInertiaErrors(
-    raw: Record<string, string | string[] | undefined> | undefined,
-): Record<string, string> {
-    if (!raw) {
-        return {};
-    }
-
-    const mapped: Record<string, string> = {};
-    for (const [key, value] of Object.entries(raw)) {
-        if (value === undefined) {
-            continue;
-        }
-        mapped[key] = Array.isArray(value) ? value[0] : value;
-    }
-
-    return mapped;
+export interface LoanProviderOption {
+    id: number;
+    name: string;
+    short_code: string;
+    logo_url: string | null;
+    min_loan_amount_etb: number;
+    max_loan_amount_etb: number;
+    base_interest_rate: number;
 }
 
 type FormState = {
+    loanProviderId: number | null;
     fullName: string;
     phone: string;
     businessName: string;
@@ -93,7 +86,46 @@ type Props = {
     initialSuccess?: boolean;
     initialErrors?: Record<string, string>;
     flashError?: string | null;
+    loanProviders?: LoanProviderOption[];
 };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const etbFormatter = new Intl.NumberFormat('en-ET', { maximumFractionDigits: 0 });
+
+function formatEtb(amount: number): string {
+    return `ETB ${etbFormatter.format(amount)}`;
+}
+
+function getInitials(name: string): string {
+    return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('');
+}
+
+function mapInertiaErrors(
+    raw: Record<string, string | string[] | undefined> | undefined,
+): Record<string, string> {
+    if (!raw) return {};
+    const mapped: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+        if (value === undefined) continue;
+        mapped[key] = Array.isArray(value) ? value[0] : value;
+    }
+    return mapped;
+}
+
+function ProviderInitialsAvatar({ shortCode }: { shortCode: string }) {
+    return (
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-700 dark:bg-zinc-700 dark:text-zinc-200">
+            {shortCode.slice(0, 3)}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Main Component
+// ---------------------------------------------------------------------------
 
 export default function ApplyModal({
     isOpen,
@@ -104,18 +136,19 @@ export default function ApplyModal({
     initialSuccess = false,
     initialErrors = {},
     flashError = null,
+    loanProviders = [],
 }: Props) {
     const [visible, setVisible] = useState(false);
     const [animating, setAnimating] = useState(false);
-    const [step, setStep] = useState<number | 'success'>(1);
+    const [step, setStep] = useState<number | 'success'>(0);
     const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [dragOver, setDragOver] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
     const [serverError, setServerError] = useState<string | null>(null);
 
     const [data, setData] = useState<FormState>({
+        loanProviderId: null,
         fullName: userName,
         phone: '',
         businessName: '',
@@ -129,8 +162,10 @@ export default function ApplyModal({
         purpose: '',
     });
 
-    const numericStep = step === 'success' ? 4 : step;
-    const progressWidth = `${((numericStep - 1) / 3) * 100}%`;
+    // step 0 = Lender, steps 1–4 match existing flow
+    const numericStep = step === 'success' ? 5 : (step as number);
+    // progress bar: 5 real steps (0–4), show completion at step 5 (success)
+    const progressWidth = `${(numericStep / 4) * 100}%`;
 
     useEffect(() => {
         if (isOpen) {
@@ -142,14 +177,12 @@ export default function ApplyModal({
             } else if (Object.keys(initialErrors).length > 0 || flashError) {
                 setStep(4);
                 setErrors(initialErrors);
-                setServerError(flashError);
+                setServerError(flashError ?? null);
             } else if (psychometricCompleted) {
                 setStep(4);
-                if (businessUuid) {
-                    markPsychometricComplete(businessUuid);
-                }
+                if (businessUuid) markPsychometricComplete(businessUuid);
             } else {
-                setStep(1);
+                setStep(0);
             }
             setData((prev) => ({
                 ...prev,
@@ -167,6 +200,15 @@ export default function ApplyModal({
     const update = useCallback(<K extends keyof FormState>(key: K, value: FormState[K]) => {
         setData((prev) => ({ ...prev, [key]: value }));
     }, []);
+
+    const validateStep0 = () => {
+        if (data.loanProviderId === null) {
+            setErrors({ loanProviderId: 'Please select a lending institution.' });
+            return false;
+        }
+        setErrors({});
+        return true;
+    };
 
     const validateStep1 = () => {
         const next: Record<string, string> = {};
@@ -203,9 +245,10 @@ export default function ApplyModal({
 
     const handleFinalSubmit = () => {
         const next: Record<string, string> = {};
+        if (data.loanProviderId === null) next.loan_provider_id = 'Please select a lending institution.';
         if (!data.transactionFile) {
             next.transaction_file =
-                'Upload your CBE transaction history (CSV or Excel). This is required for AI forecasting and NPV calculation.';
+                'Upload your transaction history (CSV or Excel). This is required for AI forecasting and NPV calculation.';
         }
         if (!data.purpose.trim()) next.purpose = 'Purpose is required.';
         setErrors(next);
@@ -214,6 +257,7 @@ export default function ApplyModal({
         setSubmitting(true);
         setServerError(null);
         const formData = new FormData();
+        formData.append('loan_provider_id', String(data.loanProviderId));
         formData.append('full_name', data.fullName);
         formData.append('phone', data.phone);
         formData.append('business_name', data.businessName);
@@ -229,14 +273,9 @@ export default function ApplyModal({
             forceFormData: true,
             preserveScroll: true,
             onSuccess: (page) => {
-                const flash = (page.props.flash ?? {}) as {
-                    success?: string;
-                    error?: string;
-                };
+                const flash = (page.props.flash ?? {}) as { success?: string; error?: string };
                 const pageErrors = mapInertiaErrors(
-                    page.props.errors as
-                        | Record<string, string | string[] | undefined>
-                        | undefined,
+                    page.props.errors as Record<string, string | string[] | undefined> | undefined,
                 );
 
                 if (flash.success) {
@@ -250,11 +289,7 @@ export default function ApplyModal({
 
                 if (Object.keys(pageErrors).length > 0) {
                     setErrors(pageErrors);
-                    setServerError(
-                        pageErrors.transaction_file
-                            ?? Object.values(pageErrors)[0]
-                            ?? null,
-                    );
+                    setServerError(pageErrors.transaction_file ?? Object.values(pageErrors)[0] ?? null);
                     return;
                 }
 
@@ -268,13 +303,12 @@ export default function ApplyModal({
                 setServerError(null);
             },
             onError: (errs) => {
-                const mapped = mapInertiaErrors(
-                    errs as Record<string, string | string[] | undefined>,
-                );
+                const mapped = mapInertiaErrors(errs as Record<string, string | string[] | undefined>);
                 setStep(4);
                 setErrors(mapped);
                 setServerError(
                     mapped.transaction_file
+                        ?? mapped.loan_provider_id
                         ?? Object.values(mapped)[0]
                         ?? 'Submission failed. Please check the form and try again.',
                 );
@@ -331,13 +365,41 @@ export default function ApplyModal({
                                 <>
                                     <div className="mb-4 flex items-center justify-between">
                                         <h2 className="text-lg font-bold text-gray-900 dark:text-zinc-100">
+                                            {step === 0 && 'Choose Your Lender'}
                                             {step === 1 && 'Personal Information'}
                                             {step === 2 && 'Business Details'}
                                             {step === 4 && 'Submit Application'}
                                         </h2>
-                                        <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 transition hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-100"><X className="h-5 w-5" /></button>
+                                        <button type="button" onClick={onClose} className="rounded-lg p-2 text-gray-400 transition hover:text-gray-900 dark:text-zinc-500 dark:hover:text-zinc-100">
+                                            <X className="h-5 w-5" />
+                                        </button>
                                     </div>
-                                    {step === 1 && <Step1 data={data} errors={errors} inputClass={inputClass} labelClass={labelClass} ghostBtn={ghostBtn} primaryBtn={primaryBtn} onChange={update} onNext={() => validateStep1() && setStep(2)} onCancel={onClose} />}
+
+                                    {step === 0 && (
+                                        <Step0
+                                            data={data}
+                                            errors={errors}
+                                            providers={loanProviders}
+                                            ghostBtn={ghostBtn}
+                                            primaryBtn={primaryBtn}
+                                            onChange={update}
+                                            onNext={() => validateStep0() && setStep(1)}
+                                            onCancel={onClose}
+                                        />
+                                    )}
+                                    {step === 1 && (
+                                        <Step1
+                                            data={data}
+                                            errors={errors}
+                                            inputClass={inputClass}
+                                            labelClass={labelClass}
+                                            ghostBtn={ghostBtn}
+                                            primaryBtn={primaryBtn}
+                                            onChange={update}
+                                            onNext={() => validateStep1() && setStep(2)}
+                                            onBack={() => setStep(0)}
+                                        />
+                                    )}
                                     {step === 2 && (
                                         <Step2
                                             data={data}
@@ -349,13 +411,9 @@ export default function ApplyModal({
                                             onChange={update}
                                             onBack={() => setStep(1)}
                                             onNext={() => {
-                                                if (!validateStep2()) {
-                                                    return;
-                                                }
+                                                if (!validateStep2()) return;
                                                 setStep(
-                                                    psychometricCompleted || data.psychometricDone
-                                                        ? 4
-                                                        : 3,
+                                                    psychometricCompleted || data.psychometricDone ? 4 : 3,
                                                 );
                                             }}
                                         />
@@ -375,10 +433,17 @@ export default function ApplyModal({
                                     )}
                                     {step === 4 && (
                                         <Step4
-                                            data={data} errors={errors} submitting={submitting} dragOver={dragOver}
+                                            data={data}
+                                            errors={errors}
+                                            submitting={submitting}
+                                            dragOver={dragOver}
                                             serverError={serverError}
-                                            fileInputRef={fileInputRef} inputClass={inputClass} labelClass={labelClass}
-                                            ghostBtn={ghostBtn} onChange={update} onBack={() => setStep(3)}
+                                            fileInputRef={fileInputRef}
+                                            inputClass={inputClass}
+                                            labelClass={labelClass}
+                                            ghostBtn={ghostBtn}
+                                            onChange={update}
+                                            onBack={() => setStep(3)}
                                             onSubmit={handleFinalSubmit}
                                             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                                             onDragLeave={() => setDragOver(false)}
@@ -409,23 +474,30 @@ export default function ApplyModal({
     );
 }
 
+// ---------------------------------------------------------------------------
+// StepIndicator (now 5 steps: 0–4)
+// ---------------------------------------------------------------------------
+
 function StepIndicator({ current }: { current: number }) {
     return (
         <div className="px-6 py-5">
             <div className="flex items-center justify-between">
                 {STEP_LABELS.map((label, i) => {
-                    const n = i + 1;
-                    const done = n < current;
-                    const active = n === current;
+                    const done = i < current;
+                    const active = i === current;
                     return (
                         <div key={label} className="flex flex-1 flex-col items-center">
                             <div className="flex w-full items-center">
-                                <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${done ? 'border border-gray-900 bg-gray-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : active ? 'border-2 border-gray-900 bg-white text-gray-900 dark:border-zinc-100 dark:bg-zinc-900 dark:text-zinc-100' : 'border border-gray-300 bg-white text-gray-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-500'}`}>
-                                    {done ? <Check className="h-4 w-4" /> : n}
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${done ? 'border border-gray-900 bg-gray-900 text-white dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900' : active ? 'border-2 border-gray-900 bg-white text-gray-900 dark:border-zinc-100 dark:bg-zinc-900 dark:text-zinc-100' : 'border border-gray-300 bg-white text-gray-400 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-500'}`}>
+                                    {done ? <Check className="h-3.5 w-3.5" /> : i + 1}
                                 </div>
-                                {n < 4 && <div className={`mx-1 h-px flex-1 ${n < current ? 'bg-gray-900 dark:bg-zinc-100' : 'bg-gray-200 dark:bg-zinc-700'}`} />}
+                                {i < STEP_LABELS.length - 1 && (
+                                    <div className={`mx-1 h-px flex-1 ${i < current ? 'bg-gray-900 dark:bg-zinc-100' : 'bg-gray-200 dark:bg-zinc-700'}`} />
+                                )}
                             </div>
-                            <span className={`mt-2 text-[10px] uppercase tracking-wider ${active ? 'font-semibold text-gray-900 dark:text-zinc-100' : 'text-gray-400 dark:text-zinc-500'}`}>{label}</span>
+                            <span className={`mt-2 text-[9px] uppercase tracking-wider ${active ? 'font-semibold text-gray-900 dark:text-zinc-100' : 'text-gray-400 dark:text-zinc-500'}`}>
+                                {label}
+                            </span>
                         </div>
                     );
                 })}
@@ -438,16 +510,137 @@ function StepActions({ left, right }: { left: ReactNode; right: ReactNode }) {
     return <div className="mt-6 flex items-center justify-between">{left}{right}</div>;
 }
 
-function Step1({ data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onChange, onNext, onCancel }: {
+// ---------------------------------------------------------------------------
+// Step 0 — Choose Your Lender
+// ---------------------------------------------------------------------------
+
+function Step0({
+    data,
+    errors,
+    providers,
+    ghostBtn,
+    primaryBtn,
+    onChange,
+    onNext,
+    onCancel,
+}: {
+    data: FormState;
+    errors: Record<string, string>;
+    providers: LoanProviderOption[];
+    ghostBtn: string;
+    primaryBtn: string;
+    onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
+    onNext: () => void;
+    onCancel: () => void;
+}) {
+    return (
+        <div className="space-y-4">
+            <p className="text-sm text-gray-500 dark:text-zinc-400">
+                Select the financial institution you would like to apply to. Your application will be routed directly to them.
+            </p>
+
+            {errors.loanProviderId && (
+                <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-400">
+                    {errors.loanProviderId}
+                </p>
+            )}
+
+            {providers.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 py-10 text-center dark:border-zinc-700 dark:bg-zinc-800/40">
+                    <Banknote className="h-8 w-8 text-gray-300 dark:text-zinc-600" />
+                    <p className="text-sm text-gray-400 dark:text-zinc-500">
+                        No lending institutions are available at this time.
+                    </p>
+                </div>
+            ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                    {providers.map((provider) => {
+                        const selected = data.loanProviderId === provider.id;
+                        return (
+                            <button
+                                key={provider.id}
+                                type="button"
+                                onClick={() => onChange('loanProviderId', provider.id)}
+                                className={`group relative flex w-full items-center gap-4 rounded-xl border px-4 py-3.5 text-left transition-all ${
+                                    selected
+                                        ? 'border-gray-900 bg-gray-50 ring-1 ring-gray-900 dark:border-zinc-100 dark:bg-zinc-800 dark:ring-zinc-100'
+                                        : 'border-gray-200 bg-white hover:border-gray-400 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-500'
+                                }`}
+                            >
+                                {provider.logo_url ? (
+                                    <img
+                                        src={provider.logo_url}
+                                        alt={provider.name}
+                                        className="h-10 w-10 shrink-0 rounded-full object-cover"
+                                    />
+                                ) : (
+                                    <ProviderInitialsAvatar shortCode={provider.short_code} />
+                                )}
+
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="truncate text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                                            {provider.name}
+                                        </span>
+                                        <span className="shrink-0 rounded-full border border-gray-300 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:border-zinc-600 dark:text-zinc-400">
+                                            {provider.short_code}
+                                        </span>
+                                    </div>
+                                    <p className="mt-0.5 text-xs text-gray-400 dark:text-zinc-500">
+                                        {formatEtb(provider.min_loan_amount_etb)} – {formatEtb(provider.max_loan_amount_etb)} · {(provider.base_interest_rate * 100).toFixed(1)}% base rate
+                                    </p>
+                                </div>
+
+                                <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition-all ${
+                                    selected
+                                        ? 'border-gray-900 bg-gray-900 dark:border-zinc-100 dark:bg-zinc-100'
+                                        : 'border-gray-300 dark:border-zinc-600'
+                                }`}>
+                                    {selected && (
+                                        <Check className="h-3 w-3 text-white dark:text-zinc-900" />
+                                    )}
+                                </div>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            <StepActions
+                left={<button type="button" onClick={onCancel} className={ghostBtn}>Cancel</button>}
+                right={
+                    <button
+                        type="button"
+                        onClick={onNext}
+                        disabled={data.loanProviderId === null || providers.length === 0}
+                        className={`${primaryBtn} disabled:cursor-not-allowed`}
+                    >
+                        Continue →
+                    </button>
+                }
+            />
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Step 1 — Personal Information
+// ---------------------------------------------------------------------------
+
+function Step1({
+    data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onChange, onNext, onBack,
+}: {
     data: FormState; errors: Record<string, string>; inputClass: string; labelClass: string;
     ghostBtn: string; primaryBtn: string;
     onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
-    onNext: () => void; onCancel: () => void;
+    onNext: () => void; onBack: () => void;
 }) {
     return (
         <div className="space-y-4">
             <div className="flex justify-center py-2">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-xl font-bold text-gray-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">{getInitials(data.fullName)}</div>
+                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-gray-300 bg-gray-100 text-xl font-bold text-gray-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-100">
+                    {getInitials(data.fullName)}
+                </div>
             </div>
             <div>
                 <label className={labelClass} htmlFor="fullName">Full Name</label>
@@ -459,12 +652,21 @@ function Step1({ data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onC
                 <input id="phone" className={inputClass} placeholder="+251 9XX XXX XXX" value={data.phone} onChange={(e) => onChange('phone', e.target.value)} />
                 {errors.phone && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.phone}</p>}
             </div>
-            <StepActions left={<button type="button" onClick={onCancel} className={ghostBtn}>Cancel</button>} right={<button type="button" onClick={onNext} className={primaryBtn}>Continue →</button>} />
+            <StepActions
+                left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>}
+                right={<button type="button" onClick={onNext} className={primaryBtn}>Continue →</button>}
+            />
         </div>
     );
 }
 
-function Step2({ data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onChange, onBack, onNext }: {
+// ---------------------------------------------------------------------------
+// Step 2 — Business Details
+// ---------------------------------------------------------------------------
+
+function Step2({
+    data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onChange, onBack, onNext,
+}: {
     data: FormState; errors: Record<string, string>; inputClass: string; labelClass: string;
     ghostBtn: string; primaryBtn: string;
     onChange: <K extends keyof FormState>(key: K, value: FormState[K]) => void;
@@ -502,10 +704,17 @@ function Step2({ data, errors, inputClass, labelClass, ghostBtn, primaryBtn, onC
                 <input id="year" type="number" min={1990} max={new Date().getFullYear()} className={inputClass} value={data.establishedYear} onChange={(e) => onChange('establishedYear', e.target.value)} />
                 {errors.establishedYear && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.establishedYear}</p>}
             </div>
-            <StepActions left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>} right={<button type="button" onClick={onNext} className={primaryBtn}>Continue →</button>} />
+            <StepActions
+                left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>}
+                right={<button type="button" onClick={onNext} className={primaryBtn}>Continue →</button>}
+            />
         </div>
     );
 }
+
+// ---------------------------------------------------------------------------
+// Step 3 — Psychometric Assessment
+// ---------------------------------------------------------------------------
 
 function Step3({
     data,
@@ -535,9 +744,7 @@ function Step3({
     useEffect(() => {
         if (psychometricCompleted) {
             onChange('psychometricDone', true);
-            if (businessUuid) {
-                markPsychometricComplete(businessUuid);
-            }
+            if (businessUuid) markPsychometricComplete(businessUuid);
         }
     }, [psychometricCompleted, businessUuid, onChange]);
 
@@ -555,16 +762,12 @@ function Step3({
                         'Content-Type': 'application/json',
                         Accept: 'application/json',
                         'X-CSRF-TOKEN':
-                            document
-                                .querySelector('meta[name="csrf-token"]')
-                                ?.getAttribute('content') ?? '',
+                            document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '',
                     },
                     body: JSON.stringify({}),
                 });
 
-                if (!response.ok) {
-                    return;
-                }
+                if (!response.ok) return;
 
                 const payload = (await response.json()) as {
                     psychometricCompleted?: boolean;
@@ -573,9 +776,7 @@ function Step3({
 
                 if (payload.psychometricCompleted) {
                     onChange('psychometricDone', true);
-                    if (payload.businessUuid) {
-                        markPsychometricComplete(payload.businessUuid);
-                    }
+                    if (payload.businessUuid) markPsychometricComplete(payload.businessUuid);
                 }
             } catch {
                 // ignore polling errors
@@ -585,11 +786,8 @@ function Step3({
         syncCompletion();
 
         const onStorage = (event: StorageEvent) => {
-            if (event.key?.startsWith('psychometric-completed:')) {
-                void syncCompletion();
-            }
+            if (event.key?.startsWith('psychometric-completed:')) void syncCompletion();
         };
-
         const onPsychometricCompleted = () => void syncCompletion();
 
         window.addEventListener('storage', onStorage);
@@ -623,15 +821,11 @@ function Step3({
                         business_name: data.businessName || undefined,
                         sector: data.sector || undefined,
                         sub_city: data.subCity || undefined,
-                        established_year: data.establishedYear
-                            ? Number(data.establishedYear)
-                            : undefined,
+                        established_year: data.establishedYear ? Number(data.establishedYear) : undefined,
                     }),
                 });
 
-                if (!response.ok) {
-                    throw new Error('Could not prepare your business profile.');
-                }
+                if (!response.ok) throw new Error('Could not prepare your business profile.');
 
                 const payload = (await response.json()) as {
                     businessUuid?: string;
@@ -641,26 +835,15 @@ function Step3({
 
                 if (payload.psychometricCompleted) {
                     onChange('psychometricDone', true);
-                    if (token) {
-                        markPsychometricComplete(token);
-                    }
+                    if (token) markPsychometricComplete(token);
                 }
             }
 
-            if (!token) {
-                throw new Error('Missing business access token. Refresh the page and try again.');
-            }
+            if (!token) throw new Error('Missing business access token. Refresh the page and try again.');
 
-            window.open(
-                `${route('psychometric.test')}?token=${encodeURIComponent(token)}`,
-                '_blank',
-            );
+            window.open(`${route('psychometric.test')}?token=${encodeURIComponent(token)}`, '_blank');
         } catch (error) {
-            setOpenError(
-                error instanceof Error
-                    ? error.message
-                    : 'Could not open the psychometric test.',
-            );
+            setOpenError(error instanceof Error ? error.message : 'Could not open the psychometric test.');
         } finally {
             setOpening(false);
         }
@@ -671,9 +854,7 @@ function Step3({
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-gray-200 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-800">
                 <Shield className="h-8 w-8 text-gray-900 dark:text-zinc-100" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">
-                Creditworthiness Assessment
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-zinc-100">Creditworthiness Assessment</h3>
             {alreadyDone ? (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
                     <div className="flex items-center justify-center gap-2 font-semibold">
@@ -681,8 +862,7 @@ function Step3({
                         Assessment already completed
                     </div>
                     <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-400/90">
-                        Your psychometric results are saved. Continue to submit your loan
-                        application.
+                        Your psychometric results are saved. Continue to submit your loan application.
                     </p>
                 </div>
             ) : (
@@ -693,29 +873,17 @@ function Step3({
                         disabled={opening}
                         className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-900 bg-gray-900 py-4 text-sm font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-60"
                     >
-                        {opening ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                        ) : (
-                            <Brain className="h-5 w-5" />
-                        )}
+                        {opening ? <Loader2 className="h-5 w-5 animate-spin" /> : <Brain className="h-5 w-5" />}
                         {opening ? 'Opening test…' : 'Take Psychometric Test'}
                     </button>
-                    {openError && (
-                        <p className="text-xs text-gray-500 dark:text-zinc-400">
-                            {openError}
-                        </p>
-                    )}
+                    {openError && <p className="text-xs text-gray-500 dark:text-zinc-400">{openError}</p>}
                     <p className="text-xs text-gray-500 dark:text-zinc-400">
                         Finish the psychometric test in the opened tab to continue.
                     </p>
                 </>
             )}
             <StepActions
-                left={
-                    <button type="button" onClick={onBack} className={ghostBtn}>
-                        Back
-                    </button>
-                }
+                left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>}
                 right={
                     <button
                         type="button"
@@ -731,7 +899,14 @@ function Step3({
     );
 }
 
-function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, inputClass, labelClass, ghostBtn, onChange, onBack, onSubmit, onDragOver, onDragLeave, onDrop, onFileInput, onRemoveFile }: {
+// ---------------------------------------------------------------------------
+// Step 4 — Submit
+// ---------------------------------------------------------------------------
+
+function Step4({
+    data, errors, submitting, dragOver, serverError, fileInputRef, inputClass, labelClass,
+    ghostBtn, onChange, onBack, onSubmit, onDragOver, onDragLeave, onDrop, onFileInput, onRemoveFile,
+}: {
     data: FormState; errors: Record<string, string>; submitting: boolean; dragOver: boolean;
     serverError: string | null;
     fileInputRef: React.RefObject<HTMLInputElement>; inputClass: string; labelClass: string; ghostBtn: string;
@@ -752,17 +927,14 @@ function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, 
     return (
         <div className="space-y-5">
             {serverError && (
-                <div
-                    role="alert"
-                    className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-                >
+                <div role="alert" className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300">
                     <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                     <p>{serverError}</p>
                 </div>
             )}
             <div>
                 <span className={labelClass}>
-                    Upload your CBE transaction history (CSV or Excel){' '}
+                    Upload your transaction history (CSV or Excel){' '}
                     <span className="text-red-600 dark:text-red-400">*</span>
                 </span>
                 <div
@@ -778,16 +950,12 @@ function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, 
                                 <FileText className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">
-                                    {data.transactionFile.name}
-                                </p>
+                                <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100">{data.transactionFile.name}</p>
                                 <p className="mt-0.5 text-xs text-gray-500 dark:text-zinc-400">
                                     {(data.transactionFile.size / 1024).toFixed(1)} KB · ready to submit
                                 </p>
                             </div>
-                            {fileError && (
-                                <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>
-                            )}
+                            {fileError && <p className="text-xs text-red-600 dark:text-red-400">{fileError}</p>}
                             <button
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); onRemoveFile(); }}
@@ -807,9 +975,7 @@ function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, 
                             <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
                                 Include columns: Date, Credit/Inflow, Debit/Outflow (or daily totals per date).
                             </p>
-                            {fileError && (
-                                <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{fileError}</p>
-                            )}
+                            {fileError && <p className="mt-3 text-xs font-medium text-red-600 dark:text-red-400">{fileError}</p>}
                         </>
                     )}
                     <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={onFileInput} />
@@ -843,33 +1009,57 @@ function Step4({ data, errors, submitting, dragOver, serverError, fileInputRef, 
                 disabled={submitting}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-900 bg-gray-900 py-5 text-base font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 disabled:opacity-60"
             >
-                {submitting ? <><Loader2 className="h-5 w-5 animate-spin" />Submitting...</> : <>Submit Application for AI Evaluation<Send className="h-5 w-5" /></>}
+                {submitting
+                    ? <><Loader2 className="h-5 w-5 animate-spin" />Submitting...</>
+                    : <>Submit Application for AI Evaluation<Send className="h-5 w-5" /></>
+                }
             </button>
             <StepActions left={<button type="button" onClick={onBack} className={ghostBtn}>Back</button>} right={null} />
         </div>
     );
 }
 
+// ---------------------------------------------------------------------------
+// Success View
+// ---------------------------------------------------------------------------
+
 function SuccessView({ onClose }: { onClose: () => void }) {
-    const steps = [{ label: 'Submitted', done: true }, { label: 'AI Processing', done: false }, { label: 'Officer Review', done: false }, { label: 'Decision', done: false }];
+    const steps = [
+        { label: 'Submitted', done: true },
+        { label: 'AI Processing', done: false },
+        { label: 'Officer Review', done: false },
+        { label: 'Decision', done: false },
+    ];
     return (
         <div className="py-6 text-center">
             <div className="check-bounce mx-auto flex h-20 w-20 items-center justify-center rounded-full border border-gray-200 bg-gray-50 dark:border-zinc-600 dark:bg-zinc-800">
                 <CheckCircle className="h-10 w-10 text-gray-900 dark:text-zinc-100" />
             </div>
             <h2 className="mt-4 text-2xl font-bold text-gray-900 dark:text-zinc-100">Application Submitted!</h2>
-            <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500 dark:text-zinc-400">Your application is queued for AI evaluation. The loan officer will review your results shortly.</p>
+            <p className="mx-auto mt-2 max-w-sm text-sm text-gray-500 dark:text-zinc-400">
+                Your application is queued for AI evaluation. The loan officer will review your results shortly.
+            </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-2 text-xs">
                 {steps.map((s, i) => (
                     <div key={s.label} className="flex items-center gap-2">
-                        <span className={s.done ? 'font-semibold text-gray-900 dark:text-zinc-100' : 'text-gray-400 dark:text-zinc-500'}>{s.done ? '✓' : '○'} {s.label}</span>
+                        <span className={s.done ? 'font-semibold text-gray-900 dark:text-zinc-100' : 'text-gray-400 dark:text-zinc-500'}>
+                            {s.done ? '✓' : '○'} {s.label}
+                        </span>
                         {i < steps.length - 1 && <span className="text-gray-300 dark:text-zinc-600">────</span>}
                     </div>
                 ))}
             </div>
             <div className="mt-8 flex flex-col items-center gap-3">
-                <button type="button" onClick={onClose} className="rounded-xl border border-gray-900 bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">Close</button>
-                <Link href={route('sme.valuation')} className="text-sm font-medium text-gray-900 hover:underline dark:text-zinc-100">View Status →</Link>
+                <button
+                    type="button"
+                    onClick={onClose}
+                    className="rounded-xl border border-gray-900 bg-gray-900 px-8 py-3 text-sm font-semibold text-white hover:bg-gray-800 dark:border-zinc-100 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                    Close
+                </button>
+                <Link href={route('sme.valuation')} className="text-sm font-medium text-gray-900 hover:underline dark:text-zinc-100">
+                    View Status →
+                </Link>
             </div>
         </div>
     );

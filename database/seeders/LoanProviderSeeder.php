@@ -23,6 +23,8 @@ class LoanProviderSeeder extends Seeder
                 'accepted_risk_bands' => ['low', 'medium'],
                 'min_loan_amount_etb' => 50000,
                 'max_loan_amount_etb' => 5000000,
+                'officer_email' => 'cbe.officer@test.com',
+                'officer_name' => 'CBE Loan Officer',
             ],
             [
                 'name' => 'Awash Bank',
@@ -34,40 +36,66 @@ class LoanProviderSeeder extends Seeder
                 'accepted_risk_bands' => ['low', 'medium', 'high'],
                 'min_loan_amount_etb' => 10000,
                 'max_loan_amount_etb' => 2000000,
+                'officer_email' => 'awash.officer@test.com',
+                'officer_name' => 'Awash Bank Loan Officer',
             ],
             [
-                'name' => 'Amhara Bank',
-                'short_code' => 'AMHARA',
+                'name' => 'Bank of Abyssinia',
+                'short_code' => 'BOA',
                 'type' => 'commercial_bank',
-                'nbe_license_no' => 'AMB-LIC-003',
-                'contact_email' => 'credit@amharabank.com.et',
+                'nbe_license_no' => 'BOA-LIC-003',
+                'contact_email' => 'sme@bankofabyssinia.com',
                 'base_interest_rate' => 0.1550,
-                'accepted_risk_bands' => ['low'],
-                'min_loan_amount_etb' => 100000,
-                'max_loan_amount_etb' => 10000000,
+                'accepted_risk_bands' => ['low', 'medium'],
+                'min_loan_amount_etb' => 25000,
+                'max_loan_amount_etb' => 3000000,
+                'officer_email' => 'boa.officer@test.com',
+                'officer_name' => 'Bank of Abyssinia Loan Officer',
             ],
         ];
 
         foreach ($providers as $data) {
-            $provider = LoanProvider::firstOrCreate(
-                ['short_code' => $data['short_code']],
-                $data
+            $officerEmail = $data['officer_email'];
+            $officerName = $data['officer_name'];
+
+            $providerData = array_diff_key($data, array_flip(['officer_email', 'officer_name']));
+
+            $provider = LoanProvider::updateOrCreate(
+                ['short_code' => $providerData['short_code']],
+                $providerData
             );
 
             $officer = User::firstOrCreate(
-                ['email' => strtolower($data['short_code']).'-officer@ethiosme.test'],
+                ['email' => $officerEmail],
                 [
-                    'name' => $data['short_code'].' Loan Provider',
+                    'name' => $officerName,
                     'password' => Hash::make('password'),
                     'loan_provider_id' => $provider->id,
                 ]
             );
             $officer->update(['loan_provider_id' => $provider->id]);
             $officer->assignRole(RoleName::LoanProvider->value);
+
+            // Also seed legacy short-code-based officer email for backward compat
+            $legacyEmail = strtolower($providerData['short_code']).'-officer@ethiosme.test';
+            if ($legacyEmail !== $officerEmail) {
+                $legacyOfficer = User::firstOrCreate(
+                    ['email' => $legacyEmail],
+                    [
+                        'name' => $providerData['short_code'].' Loan Provider',
+                        'password' => Hash::make('password'),
+                        'loan_provider_id' => $provider->id,
+                    ]
+                );
+                $legacyOfficer->update(['loan_provider_id' => $provider->id]);
+                $legacyOfficer->assignRole(RoleName::LoanProvider->value);
+            }
         }
 
         $cbe = LoanProvider::where('short_code', 'CBE')->first();
-        User::where('email', 'officer@ethiosme.test')
-            ->update(['loan_provider_id' => $cbe?->id]);
+        if ($cbe) {
+            User::where('email', 'officer@ethiosme.test')
+                ->update(['loan_provider_id' => $cbe->id]);
+        }
     }
 }

@@ -55,6 +55,8 @@ class LoanApplication extends Model implements Auditable
         'reason_codes',
         'apr',
         'rejection_narrative',
+        'rejection_reason_code',
+        'officer_notes',
         'decided_at',
         'contract_version',
         'model_versions',
@@ -165,6 +167,11 @@ class LoanApplication extends Model implements Auditable
     public function scopeForBusinessOwner(Builder $query, int $userId): Builder
     {
         return $query->whereHas('business', fn (Builder $b) => $b->where('owner_id', $userId));
+    }
+
+    public function scopeForProvider(Builder $query, int $providerId): Builder
+    {
+        return $query->where('loan_provider_id', $providerId);
     }
 
     public function isTerminal(): bool

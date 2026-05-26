@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Domain\Auth\Enums\RoleName;
 use App\Domain\Lending\Actions\CreateLoanApplicationAction;
 use App\Domain\Lending\Data\CreateLoanApplicationData;
+use App\Models\LoanProvider;
 use App\Domain\Macroeconomics\Actions\UpsertExogenousFactorsAction;
 use App\Domain\Macroeconomics\Data\ExogenousFactorsData;
 use App\Domain\TimeSeries\Support\SupabaseHeartbeatSchema;
@@ -126,11 +127,13 @@ class DevDemoSeeder extends Seeder
             );
 
             if (SmeDailyHeartbeat::query()->forBusiness($business)->exists()) {
+                $cbeId = LoanProvider::where('short_code', 'CBE')->value('id');
                 $createApplication->execute(new CreateLoanApplicationData(
                     businessId: $business->id,
                     requestedAmount: 150000,
                     requestedTenureMonths: 12,
                     idempotencyKey: 'seed:'.$business->id.':app',
+                    loanProviderId: $cbeId,
                 ));
             }
         }

@@ -17,6 +17,8 @@ class LoanDecisionData extends Data
         public readonly ?string $narrative,
         public readonly int $officerId,
         public readonly ?float $apr = null,
+        public readonly ?string $officerNotes = null,
+        public readonly ?string $rejectionReasonCode = null,
     ) {}
 
     public static function fromRequest(Request $request, int $officerId): self
@@ -29,6 +31,8 @@ class LoanDecisionData extends Data
                 : null,
             officerId: $officerId,
             apr: $request->filled('apr') ? (float) $request->input('apr') : null,
+            officerNotes: $request->filled('officer_notes') ? (string) $request->input('officer_notes') : null,
+            rejectionReasonCode: $request->filled('rejection_reason_code') ? (string) $request->input('rejection_reason_code') : null,
         );
     }
 
@@ -44,6 +48,8 @@ class LoanDecisionData extends Data
             narrative: $narrative,
             officerId: $officerId,
             apr: $request->filled('apr') ? (float) $request->input('apr') : null,
+            officerNotes: $request->filled('officer_notes') ? (string) $request->input('officer_notes') : null,
+            rejectionReasonCode: $request->filled('rejection_reason_code') ? (string) $request->input('rejection_reason_code') : null,
         );
     }
 }

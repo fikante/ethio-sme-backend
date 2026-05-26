@@ -4,6 +4,7 @@ import type {
     AiHealth,
     DbHealth,
     LoanOfficerStats,
+    LoanProviderAnalytics,
     SmeOwnerStats,
     SuperAdminStats,
 } from '@/types/dashboard';
@@ -18,16 +19,20 @@ import {
 import {
     ArcElement,
     DoughnutController,
+    BarElement,
+    CategoryScale,
+    LinearScale,
     Chart as ChartJS,
     type ChartData,
     type ChartOptions,
 } from 'chart.js';
-import { Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
     Activity,
     AlertTriangle,
     ArrowDownRight,
     ArrowUpRight,
+    BarChart2,
     Banknote,
     Brain,
     Building2,
@@ -1005,7 +1010,500 @@ function SmeOwnerDashboard({
 
 // ─── Loan Officer ─────────────────────────────────────────────────────────────
 
-function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
+// Colours for each application status (doughnut chart)
+const STATUS_CHART_COLORS: Record<string, string> = {
+    draft:                '#6B7280',
+    submitted:            '#3B82F6',
+    pending_psychometric: '#8B5CF6',
+    pending_data_sync:    '#F59E0B',
+    queued_for_ai:        '#06B6D4',
+    processing:           '#F97316',
+    evaluated:            '#10B981',
+    approved:             '#059669',
+    rejected:             '#EF4444',
+    withdrawn:            '#374151',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+    draft:                'Draft',
+    submitted:            'Submitted',
+    pending_psychometric: 'Pending Psychometric',
+    pending_data_sync:    'Pending Data Sync',
+    queued_for_ai:        'Queued for AI',
+    processing:           'Processing',
+    evaluated:            'Evaluated',
+    approved:             'Approved',
+    rejected:             'Rejected',
+    withdrawn:            'Withdrawn',
+};
+
+const SECTOR_PALETTE = [
+    '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6',
+    '#06B6D4', '#F97316', '#EC4899', '#6B7280',
+];
+
+function formatEtbAbbrev(value: number | null | undefined): string {
+    if (value === null || value === undefined) return '—';
+    if (value >= 1_000_000) return `ETB ${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `ETB ${(value / 1_000).toFixed(0)}K`;
+    return `ETB ${Math.round(value)}`;
+}
+
+// Chart card container with title and empty state support
+function ChartCard({
+    title,
+    isEmpty,
+    emptyMessage,
+    height = 240,
+    children,
+}: {
+    title: string;
+    isEmpty: boolean;
+    emptyMessage: string;
+    height?: number;
+    children: ReactNode;
+}) {
+    return (
+        <div className={`${cardClass} p-5`}>
+            <h3 className="mb-4 text-sm font-semibold text-gray-900 dark:text-zinc-100">
+                {title}
+            </h3>
+            {isEmpty ? (
+                <div
+                    className="flex flex-col items-center justify-center gap-3 text-center"
+                    style={{ height }}
+                >
+                    <BarChart2 className="h-10 w-10 text-gray-300 dark:text-zinc-700" />
+                    <p className={`text-xs ${mutedClass}`}>{emptyMessage}</p>
+                </div>
+            ) : (
+                <div style={{ height }}>{children}</div>
+            )}
+        </div>
+    );
+}
+
+// A) Status Distribution Doughnut
+function StatusDistributionChart({
+    data: rawData,
+}: {
+    data: Record<string, number>;
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+    const entries = Object.entries(rawData).filter(([, v]) => v > 0);
+    const isEmpty = entries.length === 0;
+
+    const chartData: ChartData<'doughnut'> = useMemo(
+        () => ({
+            labels: entries.map(([k]) => STATUS_LABELS[k] ?? k),
+            datasets: [
+                {
+                    data: entries.map(([, v]) => v),
+                    backgroundColor: entries.map(([k]) => STATUS_CHART_COLORS[k] ?? '#6B7280'),
+                    borderWidth: 2,
+                    borderColor: isDark ? '#18181b' : '#ffffff',
+                    hoverOffset: 6,
+                },
+            ],
+        }),
+        [entries, isDark],
+    );
+
+    const options: ChartOptions<'doughnut'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            animation: { duration: 600 },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        boxWidth: 12,
+                        padding: 12,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${ctx.parsed}`,
+                    },
+                },
+                datalabels: { display: false },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <ChartCard title="Application Status Distribution" isEmpty={isEmpty} emptyMessage="No applications yet" height={300}>
+            <Doughnut data={chartData} options={options} />
+        </ChartCard>
+    );
+}
+
+// B) Risk Band Distribution Horizontal Bar
+function RiskBandChart({
+    data: rawData,
+}: {
+    data: { low: number; medium: number; high: number };
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+    const total = rawData.low + rawData.medium + rawData.high;
+    const isEmpty = total === 0;
+
+    const chartData: ChartData<'bar'> = useMemo(
+        () => ({
+            labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+            datasets: [
+                {
+                    label: 'Applications',
+                    data: [rawData.low, rawData.medium, rawData.high],
+                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                    borderRadius: 4,
+                    borderSkipped: false,
+                },
+            ],
+        }),
+        [rawData],
+    );
+
+    const options: ChartOptions<'bar'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y' as const,
+            animation: { duration: 600 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `Count: ${ctx.parsed.x}`,
+                    },
+                },
+                datalabels: { display: false },
+            },
+            scales: {
+                x: {
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                    grid: { color: palette.grid },
+                    border: { color: palette.border },
+                    title: {
+                        display: true,
+                        text: 'Number of Applications',
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+                y: {
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                    grid: { display: false },
+                    border: { display: false },
+                },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <ChartCard title="Risk Band Distribution" isEmpty={isEmpty} emptyMessage="No evaluated applications yet" height={300}>
+            <Bar data={chartData} options={options} />
+        </ChartCard>
+    );
+}
+
+// C) Application Volume Trend Bar
+function VolumeTrendChart({
+    data: rawData,
+}: {
+    data: Array<{ date: string; count: number }>;
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+    const isEmpty = rawData.every((d) => d.count === 0);
+
+    const labels = useMemo(
+        () =>
+            rawData.map((d) =>
+                new Date(d.date + 'T00:00:00').toLocaleDateString('en-ET', {
+                    month: 'short',
+                    day: 'numeric',
+                }),
+            ),
+        [rawData],
+    );
+
+    const chartData: ChartData<'bar'> = useMemo(
+        () => ({
+            labels,
+            datasets: [
+                {
+                    label: 'Applications Submitted',
+                    data: rawData.map((d) => d.count),
+                    backgroundColor: '#3B82F6',
+                    borderRadius: 3,
+                    borderSkipped: false,
+                },
+            ],
+        }),
+        [rawData, labels],
+    );
+
+    const options: ChartOptions<'bar'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `Submitted: ${ctx.parsed.y}`,
+                    },
+                },
+                datalabels: { display: false },
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        maxTicksLimit: 10,
+                        maxRotation: 0,
+                    },
+                    grid: { display: false },
+                    border: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Date',
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+                y: {
+                    ticks: { color: palette.textMuted, font: chartFont(), stepSize: 1 },
+                    grid: { color: palette.grid },
+                    border: { color: palette.border },
+                    title: {
+                        display: true,
+                        text: 'Applications',
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <ChartCard title="Application Volume Trend (Last 30 Days)" isEmpty={isEmpty} emptyMessage="No application data yet" height={240}>
+            <Bar data={chartData} options={options} />
+        </ChartCard>
+    );
+}
+
+// D) Credit Limit Distribution Bar (histogram)
+function CreditLimitDistributionChart({
+    data: rawData,
+}: {
+    data: Record<string, number>;
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+    const bucketOrder = ['0-50K', '50-100K', '100-200K', '200-500K', '500K+'];
+    const values = bucketOrder.map((k) => rawData[k] ?? 0);
+    const isEmpty = values.every((v) => v === 0);
+
+    const chartData: ChartData<'bar'> = useMemo(
+        () => ({
+            labels: bucketOrder,
+            datasets: [
+                {
+                    label: 'Applications',
+                    data: values,
+                    backgroundColor: '#10B981',
+                    borderRadius: 4,
+                    borderSkipped: false,
+                },
+            ],
+        }),
+        [values],
+    );
+
+    const options: ChartOptions<'bar'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 600 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `Count: ${ctx.parsed.y}`,
+                    },
+                },
+                datalabels: { display: false },
+            },
+            scales: {
+                x: {
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                    grid: { display: false },
+                    border: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Credit Limit Range (ETB)',
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+                y: {
+                    ticks: { color: palette.textMuted, font: chartFont(), stepSize: 1 },
+                    grid: { color: palette.grid },
+                    border: { color: palette.border },
+                    title: {
+                        display: true,
+                        text: 'Applications',
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <ChartCard title="Credit Limit Distribution" isEmpty={isEmpty} emptyMessage="No credit limit data yet" height={300}>
+            <Bar data={chartData} options={options} />
+        </ChartCard>
+    );
+}
+
+// E) Sector Breakdown Doughnut
+function SectorBreakdownChart({
+    data: rawData,
+}: {
+    data: Record<string, number>;
+}) {
+    const isDark = useIsDarkMode();
+    const palette = useMemo(() => getChartPalette(isDark), [isDark]);
+    const entries = Object.entries(rawData).filter(([, v]) => v > 0);
+    const isEmpty = entries.length === 0;
+
+    const chartData: ChartData<'doughnut'> = useMemo(
+        () => ({
+            labels: entries.map(([k]) => k),
+            datasets: [
+                {
+                    data: entries.map(([, v]) => v),
+                    backgroundColor: entries.map((_, i) => SECTOR_PALETTE[i % SECTOR_PALETTE.length]),
+                    borderWidth: 2,
+                    borderColor: isDark ? '#18181b' : '#ffffff',
+                    hoverOffset: 6,
+                },
+            ],
+        }),
+        [entries, isDark],
+    );
+
+    const options: ChartOptions<'doughnut'> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '60%',
+            animation: { duration: 600 },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'bottom',
+                    labels: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        boxWidth: 12,
+                        padding: 12,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `${ctx.label}: ${ctx.parsed}`,
+                    },
+                },
+                datalabels: { display: false },
+            },
+        }),
+        [palette],
+    );
+
+    return (
+        <ChartCard title="Sector Breakdown" isEmpty={isEmpty} emptyMessage="No sector data yet" height={300}>
+            <Doughnut data={chartData} options={options} />
+        </ChartCard>
+    );
+}
+
+// Portfolio Analytics section
+function PortfolioAnalytics({ analytics }: { analytics: LoanProviderAnalytics }) {
+    return (
+        <section className="mt-8">
+            <SectionDivider title="Portfolio Analytics" />
+
+            {/* Row 1: Status + Risk Bands */}
+            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <StatusDistributionChart data={analytics.statusDistribution} />
+                <RiskBandChart data={analytics.riskBandDistribution} />
+            </div>
+
+            {/* Row 2: Volume Trend — full width */}
+            <div className="mt-5">
+                <VolumeTrendChart data={analytics.volumeTrend} />
+            </div>
+
+            {/* Row 3: Credit Limit + Sector */}
+            <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
+                <CreditLimitDistributionChart data={analytics.creditLimitDistribution} />
+                <SectorBreakdownChart data={analytics.sectorBreakdown} />
+            </div>
+        </section>
+    );
+}
+
+function LoanOfficerDashboard({
+    stats,
+    analytics,
+}: {
+    stats: LoanOfficerStats;
+    analytics: LoanProviderAnalytics;
+}) {
     const dbHealth = stats.dbHealth ?? {
         status: 'error' as const,
         latency: null,
@@ -1032,6 +1530,7 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                 </p>
             </header>
 
+            {/* 8 KPI cards in 2 rows of 4 */}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 <KpiCard
                     label="Awaiting Evaluation"
@@ -1061,76 +1560,46 @@ function LoanOfficerDashboard({ stats }: { stats: LoanOfficerStats }) {
                 />
             </div>
 
-            <div className={`${cardClass} mt-6 p-6`}>
-                <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-sm font-semibold">Recent Applications</h2>
-                    <Link
-                        href={route('applications.pipeline')}
-                        className="text-xs font-medium text-gray-900 hover:underline dark:text-white"
-                    >
-                        View All →
-                    </Link>
-                </div>
-                <div className="-mx-4 overflow-x-auto sm:mx-0">
-                    <table className="w-full min-w-[640px] text-left text-sm">
-                        <thead>
-                            <tr className={`border-b border-gray-200 text-xs uppercase tracking-wide ${mutedClass} dark:border-zinc-800`}>
-                                <th className="px-4 py-3 font-medium">Business</th>
-                                <th className="px-4 py-3 font-medium">Sector</th>
-                                <th className="px-4 py-3 font-medium">Amount</th>
-                                <th className="px-4 py-3 font-medium">Submitted</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
-                                <th className="px-4 py-3 font-medium">Risk</th>
-                                <th className="px-4 py-3 font-medium">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {stats.recentApps.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={7}
-                                        className={`px-4 py-8 text-center ${mutedClass}`}
-                                    >
-                                        No applications in the pipeline yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                stats.recentApps.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-b border-gray-200/80 transition-colors duration-150 hover:bg-gray-100 dark:border-zinc-800/80 dark:hover:bg-zinc-800/50"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
-                                            {row.business_name ?? '—'}
-                                        </td>
-                                        <td className={`px-4 py-3 ${mutedClass}`}>
-                                            {row.sector ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3 tabular-nums">
-                                            {formatEtb(row.requested_amount)}
-                                        </td>
-                                        <td className={`px-4 py-3 ${mutedClass}`}>
-                                            {formatDate(row.created_at)}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <StatusBadge status={row.status} />
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <RiskBandBadge band={row.ai_risk_band} />
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <PipelineAction
-                                                applicationId={row.id}
-                                                status={row.status}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <KpiCard
+                    label="Total Active"
+                    numericValue={stats.totalActive ?? 0}
+                    subtext="All non-terminal statuses"
+                    icon={<FileStack className="h-6 w-6" />}
+                    color="blue"
+                />
+                <KpiCard
+                    label="Evaluated This Month"
+                    numericValue={stats.evaluatedThisMonth ?? 0}
+                    subtext="AI decisions completed"
+                    icon={<Brain className="h-6 w-6" />}
+                    color="gold"
+                />
+                <KpiCard
+                    label="Avg. AI Risk Score"
+                    displayValue={
+                        stats.avgRiskScore !== null && stats.avgRiskScore !== undefined
+                            ? <span className="text-2xl font-bold">{stats.avgRiskScore}%</span>
+                            : <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">No data</span>
+                    }
+                    subtext="Across evaluated portfolio"
+                    icon={<Activity className="h-6 w-6" />}
+                    color="red"
+                />
+                <KpiCard
+                    label="Avg. NPV Credit Limit"
+                    displayValue={
+                        stats.avgNpvLimit !== null && stats.avgNpvLimit !== undefined
+                            ? <span className="text-2xl font-bold">{formatEtbAbbrev(stats.avgNpvLimit)}</span>
+                            : <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">No data</span>
+                    }
+                    subtext="Across evaluated portfolio"
+                    icon={<Banknote className="h-6 w-6" />}
+                    color="green"
+                />
             </div>
+
+            <PortfolioAnalytics analytics={analytics} />
 
             <div className="mt-6 flex flex-wrap justify-end gap-2">
                 <DbHealthPill health={dbHealth} />
@@ -1483,10 +1952,19 @@ type Props = PageProps<{
     role: string;
     user: { name: string; email: string };
     stats: SmeOwnerStats | LoanOfficerStats | SuperAdminStats | Record<string, never>;
+    analytics?: LoanProviderAnalytics;
 }>;
 
+const emptyAnalytics: LoanProviderAnalytics = {
+    statusDistribution: {},
+    riskBandDistribution: { low: 0, medium: 0, high: 0 },
+    volumeTrend: [],
+    creditLimitDistribution: {},
+    sectorBreakdown: {},
+};
+
 export default function Dashboard() {
-    const { role, user, stats } = usePage<Props>().props;
+    const { role, user, stats, analytics } = usePage<Props>().props;
 
     const content = useMemo(() => {
         if (role === 'sme_owner' || role === 'sme-owner') {
@@ -1499,7 +1977,10 @@ export default function Dashboard() {
         }
         if (isLoanProviderRole(role)) {
             return (
-                <LoanOfficerDashboard stats={stats as LoanOfficerStats} />
+                <LoanOfficerDashboard
+                    stats={stats as LoanOfficerStats}
+                    analytics={analytics ?? emptyAnalytics}
+                />
             );
         }
         if (role === 'super_admin' || role === 'super-admin') {
@@ -1514,7 +1995,7 @@ export default function Dashboard() {
                 ))}
             </div>
         );
-    }, [role, user.name, stats]);
+    }, [role, user.name, stats, analytics]);
 
     return (
         <AuthenticatedLayout

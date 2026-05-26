@@ -20,6 +20,8 @@ class StoreWebLoanDecisionRequest extends FormRequest
             'reason_codes.*' => ['string', 'max:200'],
             'narrative' => ['nullable', 'string', 'max:2000'],
             'rejection_narrative' => ['nullable', 'string', 'max:2000'],
+            'officer_notes' => ['nullable', 'string', 'max:2000'],
+            'rejection_reason_code' => ['nullable', 'string', 'max:200'],
         ];
     }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Web\Admin\ModelTrainingController;
 use App\Http\Controllers\Web\Admin\UserManagementController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
 use App\Http\Controllers\Web\DashboardController;
+use App\Http\Controllers\Web\Lender\ApplicationDetailController;
 use App\Http\Controllers\Web\Lender\ApplicationsPipelineController;
 use App\Http\Controllers\Web\Lender\DecisioningController;
 use App\Http\Controllers\Web\Lender\RiskAndForecastController;
@@ -65,14 +66,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('applications.pipeline');
         Route::post('/applications/{application}/evaluate', [ApplicationsPipelineController::class, 'evaluate'])
             ->name('applications.evaluate');
+        Route::get('/lender/applications/{application}/detail', [ApplicationDetailController::class, 'show'])
+            ->name('lender.application.detail');
         Route::get('/risk-forecast', [RiskAndForecastController::class, 'index'])
             ->name('risk.forecast');
         Route::get('/risk-forecast/{application}', [RiskAndForecastController::class, 'show'])
             ->name('risk.forecast.show');
         Route::post('/decisioning/{application}/decide', [DecisioningController::class, 'decide'])
             ->name('decisioning.decide');
-        Route::get('/decisioning-xai/{application}', [DecisioningController::class, 'show'])
+        Route::get('/decisioning-xai', [DecisioningController::class, 'xaiDashboard'])
             ->name('decisioning.xai');
+        Route::get('/decisioning-xai/{application}', [DecisioningController::class, 'show'])
+            ->name('decisioning.xai.application');
     });
 
     // Super admin / audit

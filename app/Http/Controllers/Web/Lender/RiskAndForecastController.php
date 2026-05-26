@@ -14,7 +14,13 @@ class RiskAndForecastController extends Controller
     {
         $this->authorize('viewPipeline', LoanApplication::class);
 
+        $loanProviderId = $request->user()->loan_provider_id;
+        if ($loanProviderId === null) {
+            abort(403, 'Your account is not associated with a loan provider.');
+        }
+
         $applications = LoanApplication::query()
+            ->forProvider($loanProviderId)
             ->with('business')
             ->whereIn('status', [
                 LoanApplication::STATUS_EVALUATED,
@@ -41,9 +47,15 @@ class RiskAndForecastController extends Controller
     {
         $this->authorize('view', $application);
 
+        $user = $request->user();
+        if ($user->loan_provider_id !== null
+            && $application->loan_provider_id !== $user->loan_provider_id) {
+            abort(403, 'This application does not belong to your institution.');
+        }
+
         if ($application->status === LoanApplication::STATUS_EVALUATED
             && $application->reviewed_by === null) {
-            $application->update(['reviewed_by' => $request->user()->id]);
+            $application->update(['reviewed_by' => $user->id]);
         }
 
         $application->load(['business', 'valuation.shapExplanations', 'reviewer']);

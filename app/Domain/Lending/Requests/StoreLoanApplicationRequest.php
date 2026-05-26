@@ -17,6 +17,7 @@ class StoreLoanApplicationRequest extends FormRequest
             'business_id' => ['required', 'integer', 'exists:businesses,id'],
             'requested_amount' => ['required', 'numeric', 'min:1000'],
             'requested_tenure_months' => ['required', 'integer', 'min:1', 'max:60'],
+            'loan_provider_id' => ['required', 'integer', 'exists:loan_providers,id'],
         ];
     }
 }

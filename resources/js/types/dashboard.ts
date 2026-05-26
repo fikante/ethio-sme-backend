@@ -68,11 +68,23 @@ export type SmeOwnerStats = {
     };
 };
 
+export type LoanProviderAnalytics = {
+    statusDistribution: Record<string, number>;
+    riskBandDistribution: { low: number; medium: number; high: number };
+    volumeTrend: Array<{ date: string; count: number }>;
+    creditLimitDistribution: Record<string, number>;
+    sectorBreakdown: Record<string, number>;
+};
+
 export type LoanOfficerStats = {
     counts: Record<string, number>;
     attentionCount: number;
     todayApproved: number;
     todayRejected: number;
+    totalActive: number;
+    evaluatedThisMonth: number;
+    avgRiskScore: number | null;
+    avgNpvLimit: number | null;
     recentApps: Array<{
         id: number;
         business_id: number;
@@ -85,6 +97,7 @@ export type LoanOfficerStats = {
     }>;
     aiHealth: AiHealth;
     dbHealth: DbHealth;
+    analytics: LoanProviderAnalytics;
 };
 
 export type SuperAdminStats = {

@@ -11,6 +11,21 @@ use Spatie\QueryBuilder\QueryBuilder;
 
 class LoanProviderController extends Controller
 {
+    /**
+     * Unauthenticated endpoint — returns active providers with display-safe fields only.
+     * Used by the SME loan application form to populate the "Choose Your Lender" step.
+     */
+    public function publicIndex(): JsonResponse
+    {
+        $providers = LoanProvider::query()
+            ->active()
+            ->orderBy('name')
+            ->get(['id', 'name', 'short_code', 'logo_url', 'status', 'type',
+                'min_loan_amount_etb', 'max_loan_amount_etb', 'base_interest_rate']);
+
+        return response()->json(['data' => $providers]);
+    }
+
     public function index(): JsonResponse
     {
         $providers = QueryBuilder::for(LoanProvider::class)

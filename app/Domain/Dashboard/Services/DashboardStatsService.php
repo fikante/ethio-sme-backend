@@ -21,7 +21,7 @@ class DashboardStatsService
     {
         return match (self::resolveRole($user)) {
             RoleName::SmeOwner->value => self::smeOwner($user),
-            RoleName::LoanProvider->value => self::loanProvider(),
+            RoleName::LoanProvider->value => self::loanProvider($user),
             RoleName::SuperAdmin->value => self::superAdmin(),
             default => [],
         };
@@ -219,9 +219,20 @@ class DashboardStatsService
         ];
     }
 
-    private static function loanProvider(): array
+    private static function loanProvider(User $user): array
     {
-        $counts = LoanApplication::query()
+        $providerId = $user->loan_provider_id;
+
+        $baseQuery = static function () use ($providerId): \Illuminate\Database\Eloquent\Builder {
+            $q = LoanApplication::query();
+            if ($providerId !== null) {
+                $q->forProvider($providerId);
+            }
+
+            return $q;
+        };
+
+        $counts = $baseQuery()
             ->selectRaw('status, count(*) as count')
             ->groupBy('status')
             ->pluck('count', 'status')
@@ -231,7 +242,46 @@ class DashboardStatsService
             + ($counts[LoanApplication::STATUS_QUEUED_FOR_AI] ?? 0)
             + ($counts[LoanApplication::STATUS_PROCESSING] ?? 0);
 
-        $recent = LoanApplication::query()
+        // Active applications: all non-terminal statuses
+        $activeStatuses = [
+            LoanApplication::STATUS_DRAFT,
+            LoanApplication::STATUS_SUBMITTED,
+            LoanApplication::STATUS_PENDING_PSYCHOMETRIC,
+            LoanApplication::STATUS_PENDING_DATA_SYNC,
+            LoanApplication::STATUS_QUEUED_FOR_AI,
+            LoanApplication::STATUS_PROCESSING,
+            LoanApplication::STATUS_EVALUATED,
+        ];
+        $totalActive = array_sum(array_filter(
+            array_intersect_key($counts, array_flip($activeStatuses)),
+        ));
+
+        // Evaluated this month
+        $evaluatedStatuses = [
+            LoanApplication::STATUS_EVALUATED,
+            LoanApplication::STATUS_APPROVED,
+            LoanApplication::STATUS_REJECTED,
+        ];
+        $evaluatedThisMonth = $baseQuery()
+            ->whereIn('status', $evaluatedStatuses)
+            ->whereMonth('updated_at', now()->month)
+            ->whereYear('updated_at', now()->year)
+            ->count();
+
+        // Average AI risk score across evaluated/approved/rejected (as 0–1 float)
+        $avgRiskScore = $baseQuery()
+            ->whereIn('status', $evaluatedStatuses)
+            ->join('valuations', 'loan_applications.valuation_id', '=', 'valuations.id')
+            ->avg('valuations.ai_risk_score');
+
+        // Average NPV credit limit across evaluated/approved/rejected
+        $avgNpvLimit = $baseQuery()
+            ->whereIn('status', $evaluatedStatuses)
+            ->join('valuations', 'loan_applications.valuation_id', '=', 'valuations.id')
+            ->whereNotNull('valuations.npv_credit_limit')
+            ->avg('valuations.npv_credit_limit');
+
+        $recent = $baseQuery()
             ->with('business')
             ->orderByRaw("CASE status
                 WHEN 'evaluated' THEN 1
@@ -257,17 +307,141 @@ class DashboardStatsService
         return [
             'counts' => $counts,
             'attentionCount' => $attentionCount,
-            'todayApproved' => LoanApplication::query()
+            'todayApproved' => $baseQuery()
                 ->where('status', LoanApplication::STATUS_APPROVED)
                 ->whereDate('updated_at', today())
                 ->count(),
-            'todayRejected' => LoanApplication::query()
+            'todayRejected' => $baseQuery()
                 ->where('status', LoanApplication::STATUS_REJECTED)
                 ->whereDate('updated_at', today())
                 ->count(),
+            'totalActive' => $totalActive,
+            'evaluatedThisMonth' => $evaluatedThisMonth,
+            'avgRiskScore' => $avgRiskScore !== null ? round((float) $avgRiskScore * 100, 1) : null,
+            'avgNpvLimit' => $avgNpvLimit !== null ? (float) $avgNpvLimit : null,
             'recentApps' => $recent,
             'aiHealth' => self::checkAiHealth(),
             'dbHealth' => self::checkDbHealth(),
+            'analytics' => self::loanProviderAnalytics($user),
+        ];
+    }
+
+    public static function loanProviderAnalytics(User $user): array
+    {
+        $providerId = $user->loan_provider_id;
+
+        $baseQuery = static function () use ($providerId): \Illuminate\Database\Eloquent\Builder {
+            $q = LoanApplication::query();
+            if ($providerId !== null) {
+                $q->forProvider($providerId);
+            }
+
+            return $q;
+        };
+
+        $evaluatedStatuses = [
+            LoanApplication::STATUS_EVALUATED,
+            LoanApplication::STATUS_APPROVED,
+            LoanApplication::STATUS_REJECTED,
+        ];
+
+        // A) Status distribution
+        $statusDistribution = $baseQuery()
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // B) Risk band distribution — from valuations joined to evaluated apps
+        $riskBands = $baseQuery()
+            ->whereIn('status', $evaluatedStatuses)
+            ->join('valuations', 'loan_applications.valuation_id', '=', 'valuations.id')
+            ->whereNotNull('valuations.ai_risk_band')
+            ->selectRaw('valuations.ai_risk_band as band, count(*) as count')
+            ->groupBy('valuations.ai_risk_band')
+            ->pluck('count', 'band')
+            ->toArray();
+
+        $riskBandDistribution = [
+            'low'    => (int) ($riskBands['low'] ?? 0),
+            'medium' => (int) ($riskBands['medium'] ?? 0),
+            'high'   => (int) ($riskBands['high'] ?? 0),
+        ];
+
+        // C) Volume trend: submissions per day over last 30 days
+        $volumeTrend = $baseQuery()
+            ->selectRaw("DATE(created_at) as day, count(*) as count")
+            ->where('created_at', '>=', now()->subDays(29)->startOfDay())
+            ->groupBy('day')
+            ->orderBy('day')
+            ->get()
+            ->map(fn ($row) => [
+                'date'  => $row->day,
+                'count' => (int) $row->count,
+            ])
+            ->values()
+            ->toArray();
+
+        // C) Fill in missing days with zero
+        $volumeMap = collect($volumeTrend)->keyBy('date');
+        $volumeTrendFilled = [];
+        for ($i = 29; $i >= 0; $i--) {
+            $day = now()->subDays($i)->toDateString();
+            $volumeTrendFilled[] = [
+                'date'  => $day,
+                'count' => $volumeMap->has($day) ? $volumeMap[$day]['count'] : 0,
+            ];
+        }
+
+        // D) Credit limit distribution
+        $limits = $baseQuery()
+            ->whereIn('loan_applications.status', $evaluatedStatuses)
+            ->join('valuations', 'loan_applications.valuation_id', '=', 'valuations.id')
+            ->whereNotNull('valuations.npv_credit_limit')
+            ->pluck('valuations.npv_credit_limit')
+            ->map(fn ($v) => (float) $v);
+
+        $creditBuckets = ['0-50K' => 0, '50-100K' => 0, '100-200K' => 0, '200-500K' => 0, '500K+' => 0];
+        foreach ($limits as $limit) {
+            if ($limit < 50000) {
+                $creditBuckets['0-50K']++;
+            } elseif ($limit < 100000) {
+                $creditBuckets['50-100K']++;
+            } elseif ($limit < 200000) {
+                $creditBuckets['100-200K']++;
+            } elseif ($limit < 500000) {
+                $creditBuckets['200-500K']++;
+            } else {
+                $creditBuckets['500K+']++;
+            }
+        }
+
+        // E) Sector breakdown — join businesses
+        $sectorRaw = $baseQuery()
+            ->join('businesses', 'loan_applications.business_id', '=', 'businesses.id')
+            ->whereNotNull('businesses.sector')
+            ->selectRaw('businesses.sector as sector, count(*) as count')
+            ->groupBy('businesses.sector')
+            ->orderByDesc('count')
+            ->pluck('count', 'sector')
+            ->toArray();
+
+        // Top 6 + "Other"
+        $sectorsSorted = collect($sectorRaw)->sortDesc();
+        $top6 = $sectorsSorted->take(6);
+        $otherCount = $sectorsSorted->skip(6)->sum();
+
+        $sectorBreakdown = $top6->toArray();
+        if ($otherCount > 0) {
+            $sectorBreakdown['Other'] = $otherCount;
+        }
+
+        return [
+            'statusDistribution'     => $statusDistribution,
+            'riskBandDistribution'   => $riskBandDistribution,
+            'volumeTrend'            => $volumeTrendFilled,
+            'creditLimitDistribution' => $creditBuckets,
+            'sectorBreakdown'        => $sectorBreakdown,
         ];
     }
 

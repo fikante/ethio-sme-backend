@@ -1,4 +1,4 @@
-import ApplyModal from '@/Components/ApplyModal';
+import ApplyModal, { type LoanProviderOption } from '@/Components/ApplyModal';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
     chartFont,
@@ -71,6 +71,7 @@ interface ExistingApplication {
 }
 
 type Props = PageProps<{
+    loanProviders: LoanProviderOption[];
     transactions: TransactionRow[];
     existingApplication: ExistingApplication | null;
     hasBusiness: boolean;
@@ -433,6 +434,7 @@ function WeeklyTxnChart({ weeks }: { weeks: WeeklyTxn[] }) {
 
 export default function LoanApplication() {
     const {
+        loanProviders = [],
         transactions = [],
         existingApplication = null,
         heartbeatDays = 0,
@@ -968,6 +970,7 @@ export default function LoanApplication() {
                 initialSuccess={showSuccess}
                 initialErrors={pageErrors}
                 flashError={flash?.error ?? null}
+                loanProviders={loanProviders}
             />
         </AuthenticatedLayout>
     );

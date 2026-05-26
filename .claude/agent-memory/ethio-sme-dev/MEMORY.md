@@ -3,3 +3,7 @@
 - [Chart.js Patterns](project_chartjs_patterns.md) — Doughnut needs ArcElement+DoughnutController registered locally; ensureChartsRegistered() covers Line/Bar only
 - [SmeDailyHeartbeat Schema](project_heartbeat_schema.md) — Dual Supabase/SQLite schema; always use SupabaseHeartbeatSchema helpers for column names
 - [Psychometric Score Scale](project_psychometric_score_scale.md) — composite_score stored as 0–1; multiply ×100 before passing to UI
+- [Role Consolidation](project_role_consolidation.md) — loan_officer consolidated into loan_provider; WebRoleAlias handles backward compat
+- [Multi-tenancy Provider Scoping](project_multitenancy_provider_scoping.md) — scopeForProvider scope + 403 guards on all lender controllers; DashboardStatsService scoped by user
+- [ApplyModal Lender Step](project_applymmodal_lender_step.md) — 5-step modal; Step 0 is "Choose Your Lender"; LoanProviderOption type exported from ApplyModal
+- [EvaluationPanel Slide-over](project_evaluation_panel.md) — Lender review panel; fetches via JSON endpoint, decisions via Inertia router.post; DecisioningController is now dual JSON/redirect
