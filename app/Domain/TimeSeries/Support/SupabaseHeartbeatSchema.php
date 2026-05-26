@@ -3,6 +3,7 @@
 namespace App\Domain\TimeSeries\Support;
 
 use App\Models\Business;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -21,6 +22,8 @@ final class SupabaseHeartbeatSchema
     public const MAX_SECTOR_MCC_LENGTH = 16;
 
     private static ?bool $isSupabaseLayout = null;
+
+    private static ?bool $netCashflowIsGenerated = null;
 
     /**
      * Live Supabase/Postgres uses business_id + heartbeat_date; SQLite tests use business_uuid + transaction_date.
@@ -72,12 +75,40 @@ final class SupabaseHeartbeatSchema
     }
 
     /**
-     * On Supabase PostgreSQL, `net_cashflow` is a GENERATED column
-     * (typically daily_total_inflow - daily_total_outflow). Inserts must
-     * not include it or PostgreSQL returns SQLSTATE 428C9.
+     * On live Postgres (including Supabase), `net_cashflow` may be a GENERATED
+     * column even when the table still uses Laravel column names (business_uuid).
+     * Inserts must not include it or PostgreSQL returns SQLSTATE 428C9.
      */
     public static function omitNetCashflowOnInsert(): bool
     {
-        return self::isSupabaseLayout();
+        if (self::$netCashflowIsGenerated !== null) {
+            return self::$netCashflowIsGenerated;
+        }
+
+        if (! Schema::hasTable('sme_daily_heartbeat')
+            || ! Schema::hasColumn('sme_daily_heartbeat', 'net_cashflow')) {
+            self::$netCashflowIsGenerated = false;
+
+            return false;
+        }
+
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            self::$netCashflowIsGenerated = false;
+
+            return false;
+        }
+
+        $row = DB::selectOne(
+            "SELECT is_generated
+             FROM information_schema.columns
+             WHERE table_schema = current_schema()
+               AND table_name = 'sme_daily_heartbeat'
+               AND column_name = 'net_cashflow'
+             LIMIT 1"
+        );
+
+        self::$netCashflowIsGenerated = ($row->is_generated ?? '') === 'ALWAYS';
+
+        return self::$netCashflowIsGenerated;
     }
 }

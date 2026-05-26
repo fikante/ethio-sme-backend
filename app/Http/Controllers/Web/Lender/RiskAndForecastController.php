@@ -37,10 +37,32 @@ class RiskAndForecastController extends Controller
         ]);
     }
 
-    public function show(LoanApplication $application): Response
+    public function show(Request $request, LoanApplication $application): Response
     {
         $this->authorize('view', $application);
+
+        if ($application->status === LoanApplication::STATUS_EVALUATED
+            && $application->reviewed_by === null) {
+            $application->update(['reviewed_by' => $request->user()->id]);
+        }
+
         $application->load(['business', 'valuation.shapExplanations', 'reviewer']);
+
+        // #region agent log
+        @file_put_contents(base_path('.cursor/debug-c09a18.log'), json_encode([
+            'sessionId' => 'c09a18',
+            'hypothesisId' => 'B',
+            'location' => 'RiskAndForecastController::show',
+            'message' => 'risk review page opened',
+            'data' => [
+                'applicationId' => $application->id,
+                'status' => $application->status,
+                'reviewed_by' => $application->reviewed_by,
+                'decided_at' => $application->decided_at?->toDateTimeString(),
+            ],
+            'timestamp' => (int) round(microtime(true) * 1000),
+        ])."\n", FILE_APPEND | LOCK_EX);
+        // #endregion
 
         return Inertia::render('Lender/RiskAndForecast', [
             'applications' => [],

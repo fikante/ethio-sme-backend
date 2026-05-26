@@ -163,6 +163,13 @@ export default function ApplicationsPipeline() {
                                                         )}
                                                     </button>
                                                 )}
+                                                {app.is_reviewed &&
+                                                    !app.can_review &&
+                                                    !app.can_view_review && (
+                                                        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                                            Reviewed
+                                                        </span>
+                                                    )}
                                                 {app.can_review && (
                                                     <Link
                                                         href={route(
@@ -179,6 +186,22 @@ export default function ApplicationsPipeline() {
                                                             ? "Review (Degraded) →"
                                                             : "Review →"}
                                                     </Link>
+                                                )}
+                                                {app.can_view_review && (
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                                            Reviewed
+                                                        </span>
+                                                        <Link
+                                                            href={route(
+                                                                "risk.forecast.show",
+                                                                app.id,
+                                                            )}
+                                                            className="text-xs text-zinc-500 underline hover:text-zinc-800 dark:hover:text-zinc-300"
+                                                        >
+                                                            Open to decide →
+                                                        </Link>
+                                                    </div>
                                                 )}
                                             </td>
                                         </tr>

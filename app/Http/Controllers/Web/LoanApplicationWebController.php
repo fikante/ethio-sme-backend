@@ -162,6 +162,21 @@ class LoanApplicationWebController extends Controller
                 ->withInput();
         } catch (\Throwable $e) {
             report($e);
+            // #region agent log
+            @file_put_contents(base_path('.cursor/debug-054501.log'), json_encode([
+                'sessionId' => '054501',
+                'hypothesisId' => 'H1-net-cashflow',
+                'location' => 'LoanApplicationWebController::store',
+                'message' => 'heartbeat import failed',
+                'data' => [
+                    'exception' => $e::class,
+                    'error' => $e->getMessage(),
+                    'omitNetCashflow' => SupabaseHeartbeatSchema::omitNetCashflowOnInsert(),
+                    'isSupabaseLayout' => SupabaseHeartbeatSchema::isSupabaseLayout(),
+                ],
+                'timestamp' => (int) (microtime(true) * 1000),
+            ])."\n", FILE_APPEND);
+            // #endregion
 
             return redirect()
                 ->route('loan-application')
@@ -195,6 +210,23 @@ class LoanApplicationWebController extends Controller
                 ? LoanApplication::STATUS_QUEUED_FOR_AI
                 : LoanApplication::STATUS_PENDING_PSYCHOMETRIC,
         ]);
+
+        // #region agent log
+        @file_put_contents(base_path('.cursor/debug-054501.log'), json_encode([
+            'sessionId' => '054501',
+            'hypothesisId' => 'H1-net-cashflow',
+            'location' => 'LoanApplicationWebController::store',
+            'message' => 'loan application submitted',
+            'data' => [
+                'applicationId' => $application->id,
+                'businessId' => $business->id,
+                'importedDays' => $importedDays,
+                'status' => $application->status,
+                'omitNetCashflow' => SupabaseHeartbeatSchema::omitNetCashflowOnInsert(),
+            ],
+            'timestamp' => (int) (microtime(true) * 1000),
+        ])."\n", FILE_APPEND);
+        // #endregion
 
         return redirect()
             ->route('loan-application')

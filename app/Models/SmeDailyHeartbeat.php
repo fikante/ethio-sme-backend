@@ -82,7 +82,17 @@ class SmeDailyHeartbeat extends Model
     /** @return Attribute<Carbon|null, never> */
     protected function heartbeatDate(): Attribute
     {
-        return Attribute::get(fn () => $this->attributes[SupabaseHeartbeatSchema::dateColumn()] ?? null);
+        return Attribute::get(function (): ?Carbon {
+            $raw = $this->attributes[SupabaseHeartbeatSchema::dateColumn()] ?? null;
+
+            if ($raw === null || $raw === '') {
+                return null;
+            }
+
+            return $raw instanceof Carbon
+                ? $raw
+                : Carbon::parse((string) $raw);
+        });
     }
 
     /** @return Attribute<Carbon|null, never> */

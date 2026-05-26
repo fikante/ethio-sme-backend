@@ -1,13 +1,10 @@
+import CashFlowForecastChart from "@/features/valuation/components/CashFlowForecastChart";
+import ShapAttributionChart from "@/features/valuation/components/ShapAttributionChart";
 import type { ReasonCodeRow, RiskForecastDetail } from "@/features/valuation/types";
-import {
-    formatEtb,
-    formatFeatureName,
-    formatPercentFraction,
-} from "@/lib/format";
+import { formatEtb, formatPercentFraction } from "@/lib/format";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import { PageProps } from "@/types";
 import { Head, router, usePage } from "@inertiajs/react";
-import ReactECharts from "echarts-for-react";
 import { AlertCircle, Check, ChevronDown, ChevronUp, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -81,69 +78,6 @@ export default function RiskAndForecast() {
         ].map(Number);
         return all.length === 0 || all.every((v) => v === 0);
     }, [application]);
-
-    const forecastChartOption = useMemo(() => {
-        if (!application) return {};
-        const days = Array.from({ length: 30 }, (_, i) => `Day ${i + 1}`);
-        return {
-            tooltip: { trigger: "axis" },
-            legend: { data: ["P10", "P50", "P90"] },
-            xAxis: { type: "category", data: days },
-            yAxis: { type: "value", name: "ETB" },
-            series: [
-                {
-                    name: "P10",
-                    type: "line",
-                    data: application.p10_cashflow_forecast.map(Number),
-                    lineStyle: { color: "#dc2626" },
-                    itemStyle: { color: "#dc2626" },
-                },
-                {
-                    name: "P50",
-                    type: "line",
-                    data: application.p50_cashflow_forecast.map(Number),
-                    lineStyle: { color: "#2563eb" },
-                    itemStyle: { color: "#2563eb" },
-                },
-                {
-                    name: "P90",
-                    type: "line",
-                    data: application.p90_cashflow_forecast.map(Number),
-                    lineStyle: { color: "#16a34a" },
-                    itemStyle: { color: "#16a34a" },
-                },
-            ],
-        };
-    }, [application]);
-
-    const shapChartOption = useMemo(() => {
-        const features = shapEntries.map((e) => formatFeatureName(e.feature));
-        const values = shapEntries.map((e) => e.value);
-        return {
-            tooltip: { trigger: "axis" },
-            grid: { left: 120, right: 40 },
-            xAxis: { type: "value" },
-            yAxis: {
-                type: "category",
-                data: features,
-                inverse: true,
-            },
-            series: [
-                {
-                    type: "bar",
-                    data: values.map((v) => ({
-                        value: v,
-                        itemStyle: { color: v >= 0 ? "#16a34a" : "#dc2626" },
-                    })),
-                    label: {
-                        show: true,
-                        position: "right",
-                        formatter: (p: { value: number }) => p.value.toFixed(3),
-                    },
-                },
-            ],
-        };
-    }, [shapEntries]);
 
     const decide = (decision: "approved" | "rejected") => {
         if (!application) return;
@@ -271,9 +205,10 @@ export default function RiskAndForecast() {
                         30-Day Cash Flow Forecast
                     </h3>
                     <div className="relative rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
-                        <ReactECharts
-                            option={forecastChartOption}
-                            style={{ height: 360 }}
+                        <CashFlowForecastChart
+                            p10={application.p10_cashflow_forecast}
+                            p50={application.p50_cashflow_forecast}
+                            p90={application.p90_cashflow_forecast}
                         />
                         {forecastAllZero && (
                             <p className="absolute inset-0 flex items-center justify-center bg-white/80 text-sm font-medium text-zinc-600 dark:bg-zinc-900/80">
@@ -289,10 +224,7 @@ export default function RiskAndForecast() {
                     </h3>
                     <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
                         {shapEntries.length > 0 ? (
-                            <ReactECharts
-                                option={shapChartOption}
-                                style={{ height: Math.max(280, shapEntries.length * 36) }}
-                            />
+                            <ShapAttributionChart entries={shapEntries} />
                         ) : (
                             <p className="text-sm text-zinc-500">
                                 No SHAP values available.

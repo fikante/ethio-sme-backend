@@ -37,6 +37,8 @@ export type PipelineApplication = {
     created_at: string;
     can_run_ai: boolean;
     can_review: boolean;
+    is_reviewed: boolean;
+    can_view_review: boolean;
 };
 
 export type RiskForecastDetail = {
