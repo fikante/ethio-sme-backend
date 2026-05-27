@@ -44,6 +44,7 @@ class DevDemoSeeder extends Seeder
                 ->orderBy('business_id')
                 ->limit(3)
                 ->pluck('business_id')
+                ->filter()  // remove any null business_id values before strict-typed map
                 ->map(fn (int $id) => Business::query()->find($id)?->uuid)
                 ->filter()
                 ->values()

@@ -52,47 +52,49 @@ class ImportTransactionHeartbeatService
             $deleteQuery->delete();
 
             $omitNetCashflow = SupabaseHeartbeatSchema::omitNetCashflowOnInsert();
-            $isSupabase = SupabaseHeartbeatSchema::isSupabaseLayout();
+            $isSupabase      = SupabaseHeartbeatSchema::isSupabaseLayout();
+
+            // Resolve actual column names once — SupabaseHeartbeatSchema now
+            // self-detects whichever names exist on the connected database.
+            $fkCol      = SupabaseHeartbeatSchema::businessFkColumn();   // business_id | business_uuid
+            $fkVal      = SupabaseHeartbeatSchema::businessFkValue($business);
+            $dateCol    = SupabaseHeartbeatSchema::dateColumn();          // transaction_date (both layouts)
+            $inflowCol  = SupabaseHeartbeatSchema::inflowColumn();        // daily_total_inflow (both layouts)
+            $outflowCol = SupabaseHeartbeatSchema::outflowColumn();       // daily_total_outflow (both layouts)
+            $txnCol     = SupabaseHeartbeatSchema::txnCountColumn();      // txn_count (both layouts)
 
             $payload = [];
             foreach ($dailyRows as $date => $metrics) {
-                $inflow = round($metrics['inflow'], 2);
+                $inflow  = round($metrics['inflow'], 2);
                 $outflow = round($metrics['outflow'], 2);
 
-                $row = $isSupabase
-                    ? [
-                        'business_id' => $business->id,
-                        'heartbeat_date' => $date,
-                        'inflow_total' => $inflow,
-                        'outflow_total' => $outflow,
-                        'transaction_count' => (int) $metrics['txn_count'],
-                        'transaction_failure_rate' => 0,
-                        'is_payday' => false,
-                        'is_holiday' => false,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ]
-                    : [
-                        'business_uuid' => $business->uuid,
-                        'transaction_date' => $date,
-                        'daily_total_inflow' => $inflow,
-                        'daily_total_outflow' => $outflow,
-                        'end_of_day_balance' => round($metrics['balance'] ?? 0, 2),
-                        'txn_count' => (int) $metrics['txn_count'],
-                        'unique_cust_count' => (int) ($metrics['unique_cust_count'] ?? 0),
-                        'channel' => $this->truncateForColumn(
-                            $metrics['channel'] ?? 'cbe_upload',
-                            SupabaseHeartbeatSchema::MAX_CHANNEL_LENGTH,
-                        ),
-                        'sector_mcc' => $this->truncateForColumn(
-                            $business->sector,
-                            SupabaseHeartbeatSchema::MAX_SECTOR_MCC_LENGTH,
-                        ),
-                        'location_region' => $this->truncateForColumn($business->sub_city, 64),
-                        'source_type' => self::SOURCE_TYPE_APPLICATION_UPLOAD,
-                        'created_at' => $now,
-                        'updated_at' => $now,
-                    ];
+                $row = [
+                    $fkCol      => $fkVal,
+                    $dateCol    => $date,
+                    $inflowCol  => $inflow,
+                    $outflowCol => $outflow,
+                    'end_of_day_balance' => round($metrics['balance'] ?? 0, 2),
+                    $txnCol     => (int) $metrics['txn_count'],
+                    'unique_cust_count' => (int) ($metrics['unique_cust_count'] ?? 0),
+                    'channel' => $this->truncateForColumn(
+                        $metrics['channel'] ?? 'cbe_upload',
+                        SupabaseHeartbeatSchema::MAX_CHANNEL_LENGTH,
+                    ),
+                    'sector_mcc' => $this->truncateForColumn(
+                        $business->sector,
+                        SupabaseHeartbeatSchema::MAX_SECTOR_MCC_LENGTH,
+                    ),
+                    'location_region' => $this->truncateForColumn($business->sub_city, 64),
+                    'source_type' => self::SOURCE_TYPE_APPLICATION_UPLOAD,
+                    'created_at'  => $now,
+                    'updated_at'  => $now,
+                ];
+
+                // Supabase table carries both FK columns; include business_uuid
+                // so the NOT NULL constraint on that column is satisfied.
+                if ($isSupabase) {
+                    $row['business_uuid'] = $business->uuid;
+                }
 
                 if (! $omitNetCashflow) {
                     $row['net_cashflow'] = round($inflow - $outflow, 2);

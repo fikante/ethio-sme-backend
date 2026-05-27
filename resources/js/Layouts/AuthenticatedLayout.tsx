@@ -233,7 +233,7 @@ export default function Authenticated({
         items: [
             {
                 name: "Decisioning & XAI",
-                href: safeRoute("applications.pipeline"),
+                href: safeRoute("decisioning.xai"),
                 active:
                     safeCurrent("decisioning.xai") ||
                     safeCurrent("decisioning.decide"),

@@ -7,6 +7,7 @@ use App\Models\LoanProvider;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 class LoanProviderSeeder extends Seeder
 {
@@ -59,6 +60,12 @@ class LoanProviderSeeder extends Seeder
             $officerName = $data['officer_name'];
 
             $providerData = array_diff_key($data, array_flip(['officer_email', 'officer_name']));
+
+            // Ensure new records always get a UUID (the model creating hook can
+            // silently miss when updateOrCreate goes through a raw insert path).
+            if (! LoanProvider::where('short_code', $providerData['short_code'])->exists()) {
+                $providerData['uuid'] = (string) Str::uuid();
+            }
 
             $provider = LoanProvider::updateOrCreate(
                 ['short_code' => $providerData['short_code']],

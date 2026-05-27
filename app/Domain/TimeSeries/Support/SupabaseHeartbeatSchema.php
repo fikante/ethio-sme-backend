@@ -25,8 +25,16 @@ final class SupabaseHeartbeatSchema
 
     private static ?bool $netCashflowIsGenerated = null;
 
+    /** Resolved column-name cache so Schema::hasColumn is only called once per process. */
+    private static ?string $dateCol      = null;
+    private static ?string $inflowCol    = null;
+    private static ?string $outflowCol   = null;
+    private static ?string $txnCountCol  = null;
+
     /**
-     * Live Supabase/Postgres uses business_id + heartbeat_date; SQLite tests use business_uuid + transaction_date.
+     * Returns true when the live Supabase table is in use.
+     * Detected by the presence of the `business_id` integer FK column,
+     * which the Supabase-managed schema adds alongside `business_uuid`.
      */
     public static function isSupabaseLayout(): bool
     {
@@ -48,24 +56,65 @@ final class SupabaseHeartbeatSchema
         return self::isSupabaseLayout() ? $business->id : $business->uuid;
     }
 
+    /**
+     * The date column name varies across Supabase deployments.
+     * Some instances use `heartbeat_date`; others retain `transaction_date`.
+     * We detect whichever actually exists rather than hard-coding.
+     */
     public static function dateColumn(): string
     {
-        return self::isSupabaseLayout() ? 'heartbeat_date' : 'transaction_date';
+        if (self::$dateCol === null) {
+            self::$dateCol = (self::isSupabaseLayout() && Schema::hasColumn('sme_daily_heartbeat', 'heartbeat_date'))
+                ? 'heartbeat_date'
+                : 'transaction_date';
+        }
+
+        return self::$dateCol;
     }
 
+    /**
+     * Inflow total column — `inflow_total` on some Supabase deployments,
+     * `daily_total_inflow` on others (and in tests).
+     */
     public static function inflowColumn(): string
     {
-        return self::isSupabaseLayout() ? 'inflow_total' : 'daily_total_inflow';
+        if (self::$inflowCol === null) {
+            self::$inflowCol = (self::isSupabaseLayout() && Schema::hasColumn('sme_daily_heartbeat', 'inflow_total'))
+                ? 'inflow_total'
+                : 'daily_total_inflow';
+        }
+
+        return self::$inflowCol;
     }
 
+    /**
+     * Outflow total column — `outflow_total` on some Supabase deployments,
+     * `daily_total_outflow` on others (and in tests).
+     */
     public static function outflowColumn(): string
     {
-        return self::isSupabaseLayout() ? 'outflow_total' : 'daily_total_outflow';
+        if (self::$outflowCol === null) {
+            self::$outflowCol = (self::isSupabaseLayout() && Schema::hasColumn('sme_daily_heartbeat', 'outflow_total'))
+                ? 'outflow_total'
+                : 'daily_total_outflow';
+        }
+
+        return self::$outflowCol;
     }
 
+    /**
+     * Transaction-count column — `transaction_count` on some Supabase deployments,
+     * `txn_count` on others (and in tests).
+     */
     public static function txnCountColumn(): string
     {
-        return self::isSupabaseLayout() ? 'transaction_count' : 'txn_count';
+        if (self::$txnCountCol === null) {
+            self::$txnCountCol = (self::isSupabaseLayout() && Schema::hasColumn('sme_daily_heartbeat', 'transaction_count'))
+                ? 'transaction_count'
+                : 'txn_count';
+        }
+
+        return self::$txnCountCol;
     }
 
     public static function hasSourceTypeColumn(): bool

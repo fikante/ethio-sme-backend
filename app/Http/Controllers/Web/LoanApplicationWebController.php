@@ -235,23 +235,29 @@ class LoanApplicationWebController extends Controller
             $existingBusiness->restore();
         }
 
-        $business = Business::updateOrCreate(
-            ['owner_id' => $user->id],
-            [
-                'uuid' => $existingBusiness?->uuid ?? (string) Str::uuid(),
-                'business_name' => $validated['business_name'],
-                'sector' => $validated['sector'],
-                'sub_city' => $validated['sub_city'],
-                'established_year' => $validated['established_year'],
-                'employee_count' => (int) $validated['employee_count'],
-                'premises_status' => $validated['premises_status'],
-                'tin_number' => $validated['tin_number'] ?? null,
-                'trade_license_no' => $validated['trade_license_no'] ?? null,
-                'monthly_revenue_estimate' => isset($validated['monthly_revenue_estimate'])
-                    ? (float) $validated['monthly_revenue_estimate']
-                    : null,
-            ]
-        );
+        $businessData = [
+            'uuid'                    => $existingBusiness?->uuid ?? (string) Str::uuid(),
+            'business_name'           => $validated['business_name'],
+            'sector'                  => $validated['sector'],
+            'sub_city'                => $validated['sub_city'],
+            'established_year'        => $validated['established_year'],
+            'employee_count'          => (int) $validated['employee_count'],
+            'premises_status'         => $validated['premises_status'],
+            'monthly_revenue_estimate' => isset($validated['monthly_revenue_estimate'])
+                ? (float) $validated['monthly_revenue_estimate']
+                : null,
+        ];
+
+        // Only update optional identifier fields when the form actually submits
+        // them — never overwrite an existing TIN/license number with null.
+        if (isset($validated['tin_number'])) {
+            $businessData['tin_number'] = $validated['tin_number'];
+        }
+        if (isset($validated['trade_license_no'])) {
+            $businessData['trade_license_no'] = $validated['trade_license_no'];
+        }
+
+        $business = Business::updateOrCreate(['owner_id' => $user->id], $businessData);
 
         $duplicate = LoanApplication::query()
             ->where('business_id', $business->id)
