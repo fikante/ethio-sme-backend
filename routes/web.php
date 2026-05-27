@@ -2,6 +2,8 @@
 
 use App\Domain\Auth\Support\WebRoleAlias;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Web\Admin\AuditLogController;
+use App\Http\Controllers\Web\Admin\LoanProviderController as AdminLoanProviderController;
 use App\Http\Controllers\Web\Admin\ModelTrainingController;
 use App\Http\Controllers\Web\Admin\UserManagementController;
 use App\Http\Controllers\Web\Borrower\SmeValuationController;
@@ -90,6 +92,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('admin.users.update');
         Route::delete('/admin/users/{user}', [UserManagementController::class, 'destroy'])
             ->name('admin.users.destroy');
+
+        Route::get('/admin/loan-providers', [AdminLoanProviderController::class, 'index'])
+            ->name('admin.loan-providers');
+        Route::post('/admin/loan-providers', [AdminLoanProviderController::class, 'store'])
+            ->name('admin.loan-providers.store');
+        Route::patch('/admin/loan-providers/{loanProvider}', [AdminLoanProviderController::class, 'update'])
+            ->name('admin.loan-providers.update');
+        Route::post('/admin/loan-providers/{loanProvider}/toggle-active', [AdminLoanProviderController::class, 'toggleActive'])
+            ->name('admin.loan-providers.toggle-active');
+
+        Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])
+            ->name('admin.audit-logs');
+        Route::get('/admin/audit-logs/export', [AuditLogController::class, 'export'])
+            ->name('admin.audit-logs.export');
 
         Route::get('/admin/macroeconomic-factors', fn () => Inertia::render('Placeholders/MacroeconomicFactors'))
             ->name('admin.macroeconomic');

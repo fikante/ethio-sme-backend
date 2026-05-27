@@ -160,31 +160,6 @@ export default function Authenticated({
                 ),
             },
             {
-                name: "Integrations",
-                href: safeRoute("integrations"),
-                active: safeCurrent("integrations"),
-                icon: (
-                    <svg
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M10 13a5 5 0 0 1 0-7l1-1a5 5 0 0 1 7 7l-1 1"
-                        />
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M14 11a5 5 0 0 1 0 7l-1 1a5 5 0 0 1-7-7l1-1"
-                        />
-                    </svg>
-                ),
-            },
-            {
                 name: "Application Status",
                 href: safeRoute("sme.valuation"),
                 active: safeCurrent("sme.valuation"),
@@ -316,6 +291,36 @@ export default function Authenticated({
                 ),
             },
             {
+                name: "Loan Providers",
+                href: safeRoute("admin.loan-providers"),
+                active: safeCurrent("admin.loan-providers"),
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 21V8l9-5 9 5v13"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M9 21v-6h6v6"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3 8h18"
+                        />
+                    </svg>
+                ),
+            },
+            {
                 name: "Macroeconomic Factors",
                 href: safeRoute("admin.macroeconomic"),
                 active: safeCurrent("admin.macroeconomic"),
@@ -391,6 +396,27 @@ export default function Authenticated({
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             d="M17 8l-2 4a4 4 0 0 0 8 0l-2-4"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                name: "Audit Logs",
+                href: safeRoute("admin.audit-logs"),
+                active: safeCurrent("admin.audit-logs"),
+                icon: (
+                    <svg
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                    >
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M7 8h10M7 12h6M7 16h4"
                         />
                     </svg>
                 ),

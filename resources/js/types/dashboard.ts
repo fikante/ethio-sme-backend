@@ -100,20 +100,90 @@ export type LoanOfficerStats = {
     analytics: LoanProviderAnalytics;
 };
 
+export type DriftData = {
+    mape: number | null;
+    p10_coverage: number | null;
+    ks_stat: number | null;
+    auc_roc: number | null;
+    alert: boolean;
+    source: 'live' | 'validated';
+};
+
+export type ProviderOverviewRow = {
+    id: number;
+    name: string;
+    short_code: string;
+    type: string;
+    status: string;
+    application_count: number;
+    officer_count: number;
+    avg_risk_score: number | null;
+    last_activity: string | null;
+};
+
 export type SuperAdminStats = {
+    // Core KPIs
     totalBusinesses: number;
     totalApplications: number;
+    totalEvaluations: number;
+    approvalRate: number | null;
+    avgRiskScore: number | null;
+    shapPassRate: number | null;
+    avgNpvLimit: number | null;
+    lastAuditDays: number | null;
+    // Legacy / system
     appsByStatus: Record<string, number>;
     lastAuditDate: string | null;
     lastTraining: { status: string; updated_at: string } | null;
     aiHealth: AiHealth;
     dbHealth: DbHealth;
+    activeLoanProviders: number;
+    loanOfficerCount: number;
+    drift: DriftData;
+    // Pipeline analytics
+    applicationsOverTime: {
+        labels: string[];
+        submitted: number[];
+        evaluated: number[];
+        decided: number[];
+    };
+    statusDistribution: Record<string, number>;
+    riskBandByProvider: {
+        providers: string[];
+        low: number[];
+        medium: number[];
+        high: number[];
+    };
+    avgNpvBySector: {
+        sectors: string[];
+        avgLimits: number[];
+    };
+    // AI model performance
+    riskScoreDistribution: {
+        labels: string[];
+        counts: number[];
+    };
+    npvCreditLimitDistribution: {
+        labels: string[];
+        counts: number[];
+        median: number | null;
+    };
+    psychometricVsRisk: Array<{ x: number; y: number; band: string | null }>;
+    // Compliance
+    dataCoverageHealth: {
+        tier_excellent: number;
+        tier_good: number;
+        tier_marginal: number;
+        tier_insufficient: number;
+    };
     recentActivity: Array<{
         created_at: string | null;
         action: string;
         actor_name: string;
         entity_type: string;
     }>;
+    // Provider table
+    providerOverview: ProviderOverviewRow[];
 };
 
 export type DashboardPageProps = {

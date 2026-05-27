@@ -7,3 +7,4 @@
 - [Multi-tenancy Provider Scoping](project_multitenancy_provider_scoping.md) — scopeForProvider scope + 403 guards on all lender controllers; DashboardStatsService scoped by user
 - [ApplyModal Lender Step](project_applymmodal_lender_step.md) — 5-step modal; Step 0 is "Choose Your Lender"; LoanProviderOption type exported from ApplyModal
 - [EvaluationPanel Slide-over](project_evaluation_panel.md) — Lender review panel; fetches via JSON endpoint, decisions via Inertia router.post; DecisioningController is now dual JSON/redirect
+- [Super Admin Dashboard](project_superadmin_dashboard.md) — 7-section rebuild; new stats methods in DashboardStatsService; LoanProviders + AuditLogs pages added
