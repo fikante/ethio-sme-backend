@@ -1,0 +1,1746 @@
+% ============================================================
+%  EthioSME Valuation System — Production Hosting &
+%  Deployment Strategy
+%  Prepared: 2026-06-23
+% ============================================================
+\documentclass[12pt,a4paper]{report}
+
+% ── Packages ────────────────────────────────────────────────
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{mdframed}
+\usepackage{tcolorbox}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+
+% ── Colours ─────────────────────────────────────────────────
+\definecolor{primaryblue}{HTML}{1E3A5F}
+\definecolor{accentblue}{HTML}{2E6DA4}
+\definecolor{lightgray}{HTML}{F5F5F5}
+\definecolor{darkgray}{HTML}{333333}
+\definecolor{successgreen}{HTML}{2E7D32}
+\definecolor{warningorange}{HTML}{E65100}
+\definecolor{dangerred}{HTML}{C62828}
+\definecolor{codebg}{HTML}{F8F8F8}
+\definecolor{codefg}{HTML}{24292E}
+
+% ── Hyperref Setup ──────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=accentblue,
+    urlcolor=accentblue,
+    citecolor=accentblue,
+    pdfauthor={EthioSME Thesis},
+    pdftitle={Production Hosting and Deployment Strategy},
+    pdfsubject={DevOps Architecture},
+}
+
+% ── Listings (code blocks) ──────────────────────────────────
+\lstdefinestyle{shell}{
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize\color{codefg},
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    framesep=4pt,
+    rulecolor=\color{lightgray},
+    xleftmargin=8pt,
+    xrightmargin=8pt,
+    captionpos=b,
+    numbers=none,
+    showstringspaces=false,
+}
+
+\lstdefinestyle{yaml}{
+    style=shell,
+    morekeywords={true,false,null},
+    keywordstyle=\color{accentblue}\bfseries,
+}
+
+\lstset{style=shell}
+
+% ── Section Formatting ──────────────────────────────────────
+\titleformat{\chapter}[display]
+    {\normalfont\Large\bfseries\color{primaryblue}}
+    {\chaptertitlename\ \thechapter}{10pt}{\Huge}
+\titleformat{\section}
+    {\normalfont\Large\bfseries\color{primaryblue}}
+    {\thesection}{1em}{}
+\titleformat{\subsection}
+    {\normalfont\large\bfseries\color{accentblue}}
+    {\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+    {\normalfont\normalsize\bfseries\color{darkgray}}
+    {\thesubsubsection}{1em}{}
+
+% ── Header / Footer ─────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{accentblue}EthioSME Valuation System}
+\fancyhead[R]{\small\color{accentblue}Deployment Strategy}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{accentblue}\leaders\hrule height \headrulewidth\hfill}}
+
+% ── Info Boxes ──────────────────────────────────────────────
+\tcbuselibrary{skins,breakable}
+
+\newtcolorbox{infobox}[1][]{
+    colback=accentblue!8,
+    colframe=accentblue,
+    fonttitle=\bfseries,
+    title=#1,
+    breakable,
+    before upper={\parindent0pt},
+}
+
+\newtcolorbox{warningbox}[1][]{
+    colback=warningorange!10,
+    colframe=warningorange,
+    fonttitle=\bfseries,
+    title=#1,
+    breakable,
+}
+
+\newtcolorbox{dangerbox}[1][]{
+    colback=dangerred!8,
+    colframe=dangerred,
+    fonttitle=\bfseries,
+    title=#1,
+    breakable,
+}
+
+\newtcolorbox{successbox}[1][]{
+    colback=successgreen!8,
+    colframe=successgreen,
+    fonttitle=\bfseries,
+    title=#1,
+    breakable,
+}
+
+% ── Column Types ────────────────────────────────────────────
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+\newcolumntype{R}[1]{>{\raggedleft\arraybackslash}p{#1}}
+
+% ── Document ────────────────────────────────────────────────
+\begin{document}
+
+% ── Title Page ──────────────────────────────────────────────
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+
+    {\color{primaryblue}\rule{\linewidth}{2pt}}
+    \vspace{0.5cm}
+
+    {\Huge\bfseries\color{primaryblue}
+        EthioSME Valuation System\\[0.4em]
+        Production Hosting \&\\[0.2em]
+        Deployment Strategy
+    }
+
+    \vspace{0.5cm}
+    {\color{primaryblue}\rule{\linewidth}{2pt}}
+
+    \vspace{1.5cm}
+
+    {\large\color{darkgray}Senior DevOps Architecture Analysis}
+
+    \vspace{0.8cm}
+
+    \begin{tabular}{rl}
+        \textbf{Prepared:}  & 23 June 2026 \\[4pt]
+        \textbf{Scope:}     & Laravel 12 + React/Inertia.js Backend \\[2pt]
+                            & Python FastAPI AI Service \\[2pt]
+                            & Supabase PostgreSQL \\[2pt]
+                            & HuggingFace Model Storage \\[4pt]
+        \textbf{Version:}   & 1.0.0 \\
+    \end{tabular}
+
+    \vfill
+
+    {\small\color{darkgray}
+        This document constitutes the complete production deployment
+        strategy for the EthioSME Valuation System thesis project.
+        It covers architecture, infrastructure, security, CI/CD,
+        monitoring, backup, cost estimation, and a deployment roadmap.
+    }
+
+    \vspace{1cm}
+    {\color{primaryblue}\rule{\linewidth}{1pt}}
+\end{titlepage}
+
+% ── Table of Contents ───────────────────────────────────────
+\tableofcontents
+\newpage
+
+% ════════════════════════════════════════════════════════════
+\chapter{Baseline Reality Check}
+\label{ch:baseline}
+% ════════════════════════════════════════════════════════════
+
+Before any recommendations, it is essential to understand the exact
+current state of the system. The following analysis is derived from
+direct inspection of both codebases.
+
+\section{Current System Inventory}
+
+\begin{longtable}{L{4cm} L{5.5cm} C{2.5cm}}
+    \toprule
+    \textbf{Concern} & \textbf{Current State} & \textbf{Production-Ready?} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Concern} & \textbf{Current State} & \textbf{Production-Ready?} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Database &
+    Supabase PostgreSQL, SSL configured &
+    \textcolor{successgreen}{\textbf{Yes}} \\[4pt]
+
+    AI Service &
+    HuggingFace Spaces (\texttt{leykun-code-...hf.space}) &
+    \textcolor{warningorange}{\textbf{Partial}} \\[4pt]
+
+    Laravel Dockerfile &
+    Sail dev image, Vite dev server running in container &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    Queue Driver &
+    \texttt{sync} — blocking, no async workers &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    File Storage &
+    Local disk (ephemeral in containers) &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    Session / Cache &
+    File-based drivers &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    SSL / HTTPS &
+    Not configured on application side &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    CI/CD Pipeline &
+    No pipeline exists &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    Background Jobs &
+    No \texttt{app/Jobs/} directory &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    Reverse Proxy &
+    None configured &
+    \textcolor{dangerred}{\textbf{No}} \\[4pt]
+
+    Health Checks &
+    AI service has \texttt{GET /health}; Laravel does not &
+    \textcolor{warningorange}{\textbf{Partial}} \\
+
+\end{longtable}
+
+\begin{infobox}[Key Finding]
+    Two of four core infrastructure concerns — the database (Supabase)
+    and the AI service (HuggingFace Spaces) — are already deployed to
+    the cloud. The critical gap is a production-ready Laravel
+    application deployment with correct process management, storage,
+    session handling, and build pipeline.
+\end{infobox}
+
+\section{System Overview}
+
+\subsection{Laravel Backend}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Full-stack PHP 8.3 application with Domain-Driven Design
+    \item React 18 frontend embedded via Inertia.js (single-origin monolith)
+    \item 21 models, 10 domain modules, 41 controllers
+    \item JWT authentication (API) + session-based (web/Inertia)
+    \item PostgreSQL database via Supabase
+    \item Audit logging via \texttt{owen-it/laravel-auditing}
+    \item No background job infrastructure (sync queue driver)
+\end{itemize}
+
+\subsection{Python AI Service}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item FastAPI microservice for cashflow forecasting and credit scoring
+    \item Three ML models: DeepAR (probabilistic forecasting),
+          XGBoost + SHAP (credit scoring), optional LSTM encoder
+    \item Shared PostgreSQL connection with Laravel (feature SQL queries)
+    \item Model artifact persistence via HuggingFace Hub
+    \item Structured JSON logging via \texttt{structlog}
+    \item Already deployed at HuggingFace Spaces
+\end{itemize}
+
+\subsection{Loan Application State Machine}
+
+\begin{center}
+\small
+\texttt{draft → submitted → pending\_psychometric → pending\_data\_sync}\\
+\texttt{→ queued\_for\_ai → processing → evaluated → \{approved | rejected | withdrawn\}}
+\end{center}
+
+\subsection{Contract Versions}
+
+Both services are pinned to \texttt{AI\_SERVICE\_CONTRACT\_VERSION=v1}.
+The integration endpoint is \texttt{POST /predict} on the Python service,
+called synchronously by Laravel's \texttt{ValuationService}.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Production Architecture Proposal}
+\label{ch:architecture}
+% ════════════════════════════════════════════════════════════
+
+\section{Recommended Architecture}
+
+The recommended approach is a \textbf{cloud-native managed services}
+architecture, optimised for thesis demonstration requirements: low cost,
+high reliability for demo sessions, minimal operational overhead, and
+no over-engineering beyond what the project requires.
+
+\subsection{Architecture Diagram}
+
+\begin{lstlisting}[caption={High-Level Production Architecture}]
++------------------------------------------------------------------+
+|                         CLOUDFLARE                               |
+|             DNS + CDN + WAF + SSL Termination                   |
+|         (Free tier -- covers all traffic, HTTPS globally)       |
++----------------------------+---------------------------------+---+
+                             | HTTPS (443)
+                             v
++------------------------------------------------------------------+
+|                    RAILWAY (Primary Host)                        |
+|              Laravel 12 + React/Inertia.js                      |
+|          PHP 8.3 + PHP-FPM + Nginx (production image)           |
+|                                                                  |
+|   +---------------+   +--------------+   +------------------+   |
+|   |  Web Process  |   | Queue Worker |   |   Scheduler      |   |
+|   |  (php-fpm +   |   | (queue:work) |   | (artisan:        |   |
+|   |   nginx)      |   |              |   |  schedule:run)   |   |
+|   +---------------+   +--------------+   +------------------+   |
++-------------+--------------------------------------------+------+
+              |                                            |
+      +-------+------+  +------------------+  +-----------+--------+
+      |   Supabase   |  |  HuggingFace     |  |  Cloudflare R2     |
+      |  PostgreSQL  |  |  Spaces (AI)     |  |  (Object Storage)  |
+      |              |  |  FastAPI +       |  |                    |
+      |  Primary DB  |  |  XGBoost +       |  |  File uploads,     |
+      |  (shared by  |  |  DeepAR + LSTM   |  |  Excel exports     |
+      |  both svcs)  |  |                  |  |                    |
+      +--------------+  +------------------+  +--------------------+
+                               |
+                        Shared PostgreSQL
+                        (same Supabase DB)
+\end{lstlisting}
+
+\subsection{Service Responsibilities}
+
+\begin{longtable}{L{3.5cm} L{3.5cm} L{6cm}}
+    \toprule
+    \textbf{Service} & \textbf{Host} & \textbf{Role} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Service} & \textbf{Host} & \textbf{Role} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Laravel app (web) & Railway / Fly.io &
+        HTTP request handling, Inertia.js rendering, REST API routes \\[4pt]
+
+    Laravel queue worker & Railway (separate process) &
+        Background job processing (valuation callbacks, email) \\[4pt]
+
+    Laravel scheduler & Railway (cron process) &
+        Recurring tasks, keep-alive pings, macroeconomic ingestion \\[4pt]
+
+    FastAPI AI service & HuggingFace Spaces &
+        Valuation endpoint, model training, drift metrics \\[4pt]
+
+    PostgreSQL & Supabase &
+        Primary database shared by both services \\[4pt]
+
+    Object storage & Cloudflare R2 &
+        Excel reports, any uploaded files \\[4pt]
+
+    CDN + SSL + DNS & Cloudflare &
+        HTTPS everywhere, static asset caching, DDoS protection \\[4pt]
+
+    Error tracking & Sentry (free) &
+        Exception capture, performance tracing, alerting \\[4pt]
+
+    Uptime monitoring & UptimeRobot (free) &
+        Availability alerts, endpoint health checks \\
+
+\end{longtable}
+
+\subsection{Data Flow}
+
+\begin{lstlisting}[caption={Request Flow: User to AI Valuation}]
+User (Browser)
+    --> Cloudflare CDN (SSL termination, cache static assets)
+        --> Railway: Laravel (PHP-FPM + Nginx, port 80)
+            --> Supabase: PostgreSQL (read/write application data)
+            --> HuggingFace Spaces: FastAPI
+                    POST /predict (X-Internal-Key header)
+                --> Supabase: PostgreSQL
+                        (read heartbeat, psychometric, exogenous data)
+                --> ML Models (/data/models/ on HF Spaces)
+                        (XGBoost + DeepAR + SHAP computation)
+                <-- PredictResponse (NPV, credit limit, SHAP drivers)
+            --> Supabase: PostgreSQL (persist Valuation + ShapExplanation)
+        <-- Inertia response / JSON
+    <-- HTTPS response
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Infrastructure Requirements}
+\label{ch:infrastructure}
+% ════════════════════════════════════════════════════════════
+
+\section{What Must Change Before Deployment}
+
+\subsection{Critical Blockers}
+
+\subsubsection{Replace the Sail Development Dockerfile}
+
+The current \texttt{Dockerfile} uses \texttt{sail-8.5/app:latest} as
+the base image. This is a development image that includes Xdebug,
+development tooling, and is not hardened for production. Additionally,
+the \texttt{docker-entrypoint.sh} starts both the Vite development
+server and the PHP built-in server (\texttt{php artisan serve}).
+Neither is suitable for production:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item The PHP built-in server is single-threaded and designed only
+          for local development.
+    \item The Vite development server performs hot module replacement
+          (HMR) — a development-only feature.
+\end{itemize}
+
+A production image must use \texttt{php:8.3-fpm-alpine} with
+Nginx as the web server front-end.
+
+\subsubsection{Frontend Assets Must Be Pre-Built}
+
+In production, \texttt{npm run build} must compile all TypeScript/React
+assets to \texttt{public/build/} during the Docker image build stage.
+Nginx then serves these as static files. The Vite development server
+must not run in any production process.
+
+\subsubsection{Queue Driver Must Change from \texttt{sync}}
+
+The current \texttt{QUEUE\_CONNECTION=sync} means all queued work
+blocks the web request and runs synchronously. The valuation pipeline
+— AI service HTTP calls, SHAP storage, audit logging — is already
+computationally heavy. In production, the queue must use the
+\texttt{database} driver with a persistent worker process running
+\texttt{php artisan queue:work}.
+
+\subsubsection{Session and Cache Must Not Use the File Driver}
+
+File-based sessions (\texttt{SESSION\_DRIVER=file}) and file-based
+cache (\texttt{CACHE\_STORE=file}) do not work correctly across
+multiple container instances and are slow under concurrency. Production
+must use the \texttt{database} driver for both.
+
+\subsection{Important Pre-Launch Items}
+
+\subsubsection{Laravel Health Check Endpoint}
+
+The Python AI service exposes \texttt{GET /health}. Laravel has no
+equivalent. A \texttt{/up} route is required for:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Railway health checks (to determine when a deploy is healthy)
+    \item Cloudflare origin health checks
+    \item UptimeRobot monitoring
+\end{itemize}
+
+Laravel 11+ includes a default \texttt{/up} route via
+\texttt{Illuminate\textbackslash Foundation\textbackslash Http\textbackslash Middleware}.
+Verify this is active in the production routing.
+
+\subsubsection{Storage Driver Must Change to S3-Compatible}
+
+Any files written to the \texttt{local} disk are lost on container
+restart (containers use ephemeral storage). The S3 driver is already
+configured in \texttt{config/filesystems.php} but unused. Cloudflare R2
+provides an S3-compatible API with no egress fees and a free tier of
+10\,GB/month.
+
+\subsubsection{Logging Must Go to Standard Output}
+
+In containerised environments, log files in \texttt{storage/logs/} are
+ephemeral and invisible to the platform log viewer. Laravel must be
+configured to write logs to \texttt{stderr} using the \texttt{stderr}
+channel in \texttt{config/logging.php}.
+
+\subsubsection{APP\_KEY and Secrets Management}
+
+\texttt{APP\_KEY}, \texttt{JWT\_SECRET}, \texttt{AI\_SERVICE\_TOKEN},
+and all other secrets must be injected as platform environment variable
+secrets (Railway secret store). They must never appear in any committed
+file.
+
+\subsubsection{HuggingFace Spaces Cold Start}
+
+The HuggingFace Spaces free tier suspends spaces after 48 hours of
+inactivity. The Laravel \texttt{AI\_SERVICE\_FALLBACK\_ENABLED=true}
+flag provides degraded mode, but a sleeping Space means the core
+valuation feature is unavailable. A keep-alive cron job that pings
+the \texttt{/health} endpoint every 30 minutes is essential.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Technology Stack Recommendations}
+\label{ch:techstack}
+% ════════════════════════════════════════════════════════════
+
+\section{Laravel Hosting: Railway}
+
+\begin{warningbox}[Primary Recommendation: Railway.app]
+    Railway is the recommended host for the Laravel application.
+    It supports multi-process Docker deployments, never sleeps, provides
+    built-in environment variable secrets, and costs \$0--5/month at
+    thesis scale.
+\end{warningbox}
+
+\subsection{Comparison of Laravel Hosting Options}
+
+\begin{longtable}{L{2.8cm} C{2cm} L{7.5cm}}
+    \toprule
+    \textbf{Platform} & \textbf{Verdict} & \textbf{Rationale} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Platform} & \textbf{Verdict} & \textbf{Rationale} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    \textbf{Railway} &
+    \textcolor{successgreen}{\textbf{Recommended}} &
+    Docker-native; multiple processes per project (web, worker,
+    scheduler); \$5/mo credits; never sleeps; environment variable
+    management; GitHub auto-deploy \\[6pt]
+
+    Fly.io &
+    \textcolor{accentblue}{Alternative} &
+    More control; generous free tier; global edge; but requires
+    \texttt{fly.toml} and additional CLI configuration \\[6pt]
+
+    Render.com &
+    \textcolor{warningorange}{Acceptable} &
+    Docker deploy works, but free tier spins down after 15 minutes
+    --- fatal for a thesis demo \\[6pt]
+
+    Vercel &
+    \textcolor{warningorange}{Possible but wrong fit} &
+    Serverless PHP has critical limitations: no persistent queue
+    workers, no storage, cold starts, 10-second function timeout;
+    despite \texttt{laravel-vercel-installer} being present, this
+    architecture is too stateful for serverless \\[6pt]
+
+    DigitalOcean App Platform &
+    \textcolor{accentblue}{Solid} &
+    \$12/mo, managed containers, good CLI, slightly more expensive \\[6pt]
+
+    AWS ECS / Fargate &
+    \textcolor{dangerred}{Overkill} &
+    Correct tool for enterprise scale; excessive operational overhead
+    for a single-developer thesis project \\[6pt]
+
+    Self-managed VPS &
+    \textcolor{warningorange}{Possible} &
+    \$6/mo, full control, but requires manual Nginx/SSL/deployment
+    setup and ongoing maintenance \\
+
+\end{longtable}
+
+\subsection{Why Railway is Correct for This Project}
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item One \texttt{railway up} deployment from a Dockerfile
+    \item Supports multiple services (web, worker, cron) in one project
+    \item Built-in environment variable secrets management
+    \item Auto-deploys on \texttt{git push} via GitHub integration
+    \item \$5/month free credits sufficient for thesis traffic
+    \item Persistent storage volumes available if needed
+    \item Services never sleep between requests
+    \item Web dashboard for log viewing and rollbacks
+\end{enumerate}
+
+\section{Database: Supabase PostgreSQL (Keep Existing)}
+
+The database is already configured, connected, and working. Supabase
+provides the following without any additional setup:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Connection pooling via PgBouncer (critical for PHP's
+          connection-per-request model)
+    \item SSL enforced (\texttt{DB\_SSLMODE=require} already set)
+    \item Daily automated backups (7-day retention on free tier)
+    \item Row Level Security for multi-tenancy
+    \item Free tier: 500\,MB storage, 5\,GB egress
+\end{itemize}
+
+\begin{warningbox}[Supabase Free Tier Risk]
+    The Supabase free tier pauses the database after 7 days of
+    inactivity. For demo reliability, either upgrade to Supabase Pro
+    (\$25/mo) or implement a database keep-alive cron job.
+\end{warningbox}
+
+\section{AI Service: HuggingFace Spaces (Persistent Tier)}
+
+The FastAPI service is already deployed and the Dockerfile is already
+HuggingFace-compatible (port 7860, non-root user, Python 3.11 slim).
+The model artifact storage via HuggingFace Hub is already integrated in
+\texttt{storage\_service.py}.
+
+\begin{longtable}{L{3cm} L{2.5cm} L{2.5cm} L{4cm}}
+    \toprule
+    \textbf{HF Tier} & \textbf{CPU} & \textbf{RAM} & \textbf{Behaviour} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{HF Tier} & \textbf{CPU} & \textbf{RAM} & \textbf{Behaviour} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Free (CPU) & 2 vCPU & 16\,GB & Sleeps after 48h inactivity \\[4pt]
+    \textbf{Persistent (\$9/mo)} & 2 vCPU & 16\,GB & Never sleeps \\[4pt]
+    GPU A10G (\$1.05/hr) & GPU & 24\,GB & On-demand; only for training \\
+
+\end{longtable}
+
+The \textbf{Persistent CPU tier at \$9/month} is the correct choice.
+Training is performed separately and models are loaded from HF Hub
+at startup; GPU is not required for inference at this scale.
+
+\section{CDN, SSL, and DNS: Cloudflare (Free Tier)}
+
+Cloudflare's free tier provides everything required:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Automatic HTTPS with SSL certificate management
+    \item Global CDN for Vite-compiled static assets
+          (content-hashed filenames allow aggressive caching)
+    \item Web Application Firewall with basic OWASP rule sets
+    \item DDoS protection
+    \item DNS management with \textless 1-minute propagation
+    \item No cost for the coverage needed at thesis scale
+\end{itemize}
+
+\section{Object Storage: Cloudflare R2}
+
+Cloudflare R2 replaces the local disk for file storage:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item S3-compatible API: works with Laravel's existing
+          \texttt{league/flysystem-aws-s3-v3} driver with no code changes
+    \item Free tier: 10\,GB storage, 10 million read operations/month
+    \item Zero egress fees (unlike AWS S3)
+    \item Served through Cloudflare's global network
+\end{itemize}
+
+\section{Cache and Sessions: Database Driver}
+
+At thesis demo scale (low concurrent users), the \texttt{database}
+driver for both sessions and cache avoids introducing Redis as a
+dependency:
+
+\begin{lstlisting}[caption={Production .env session/cache settings}]
+SESSION_DRIVER=database
+CACHE_STORE=database
+\end{lstlisting}
+
+This requires two additional Laravel migrations
+(\texttt{php artisan session:table} and
+\texttt{php artisan cache:table}).
+
+If Redis is desired in future, \textbf{Upstash Redis} is the correct
+choice: serverless Redis with 10,000 free requests/day, pay-per-use
+above that.
+
+\section{Queue Driver: Database}
+
+Since no \texttt{app/Jobs/} directory exists and all current work is
+synchronous:
+
+\begin{lstlisting}[caption={Production .env queue settings}]
+QUEUE_CONNECTION=database
+\end{lstlisting}
+
+Jobs are stored in the PostgreSQL \texttt{jobs} table. A Railway
+worker process runs:
+
+\begin{lstlisting}
+php artisan queue:work --sleep=3 --tries=3 --timeout=60
+\end{lstlisting}
+
+This is sufficient for thesis demo scale without adding Redis
+infrastructure.
+
+\section{Summary Technology Decisions}
+
+\begin{longtable}{L{3cm} L{3.5cm} L{5.5cm}}
+    \toprule
+    \textbf{Decision} & \textbf{Choice} & \textbf{Rationale} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Decision} & \textbf{Choice} & \textbf{Rationale} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Laravel host & Railway & Multi-process, Docker-native, affordable \\[4pt]
+    AI service & HF Spaces (persistent) & Already deployed, HF Hub sync \\[4pt]
+    Database & Supabase & Already configured, SSL, pooling \\[4pt]
+    Object storage & Cloudflare R2 & Free egress, S3-compatible \\[4pt]
+    CDN + SSL & Cloudflare & Free, global, WAF included \\[4pt]
+    CI/CD & GitHub Actions & Free tier sufficient \\[4pt]
+    Queue & Database driver & No Redis overhead at this scale \\[4pt]
+    Session/Cache & Database driver & Same reasoning \\[4pt]
+    Error tracking & Sentry & Best free tier, Laravel + FastAPI plugins \\[4pt]
+    Monitoring & UptimeRobot & Free, sufficient for thesis alerting \\[4pt]
+    Container registry & GHCR & Free, integrated with Actions \\[4pt]
+    Reverse proxy & Nginx (in container) & Standard PHP-FPM companion \\
+
+\end{longtable}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Security Architecture Recommendations}
+\label{ch:security}
+% ════════════════════════════════════════════════════════════
+
+\section{Authentication Security}
+
+The system implements dual-guard authentication:
+\textbf{JWT} (\texttt{tymon/jwt-auth}) for API consumers and
+\textbf{session-based} authentication for the Inertia.js web
+interface. The \texttt{RefreshTokenFamily} model implements token
+rotation and replay attack protection. RBAC is handled by
+\texttt{spatie/laravel-permission}.
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \texttt{JWT\_SECRET} must be a 256-bit random secret injected
+          via Railway environment secrets, never in any committed file.
+    \item \texttt{APP\_KEY} must be injected as a secret.
+    \item JWT \texttt{TTL=60} minutes is reasonable; ensure refresh
+          token expiry is configured appropriately.
+    \item \texttt{SANCTUM\_STATEFUL\_DOMAINS} must be set to the
+          production domain for session-based auth to function correctly.
+\end{itemize}
+
+\section{Network Security}
+
+\subsection{Transport Layer}
+
+All traffic must be HTTPS. Cloudflare handles SSL termination at the
+edge. The origin server (Railway) communicates internally via HTTP
+since Cloudflare encrypts the public edge.
+
+For stricter security, enable Cloudflare's \textbf{Full (strict)} SSL
+mode, which requires a valid origin certificate. Cloudflare provides
+free Origin CA certificates for this purpose.
+
+\subsection{Inter-Service Authentication}
+
+The AI service validates every request using an \texttt{X-Internal-Key}
+header (implemented in \texttt{app/main.py} middleware). This shared
+secret must:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Be a non-guessable string of at least 32 random characters.
+    \item Be stored as a secret in both Railway (\texttt{AI\_SERVICE\_TOKEN})
+          and HuggingFace Spaces (\texttt{INTERNAL\_API\_KEY}).
+    \item Match exactly between both services.
+    \item Be rotated and never committed to any file.
+\end{itemize}
+
+\subsection{Database Security}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Supabase enforces \texttt{DB\_SSLMODE=require} — already correct.
+    \item The database port must not be exposed publicly.
+    \item Use Supabase's Row Level Security for multi-tenant isolation
+          where applicable.
+\end{itemize}
+
+\section{Application Security}
+
+\subsection{HTTP Security Headers}
+
+The Nginx configuration must include:
+
+\begin{lstlisting}[caption={Required Nginx security headers}]
+add_header X-Content-Type-Options "nosniff";
+add_header X-Frame-Options "SAMEORIGIN";
+add_header X-XSS-Protection "1; mode=block";
+add_header Referrer-Policy "strict-origin-when-cross-origin";
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()";
+\end{lstlisting}
+
+A \texttt{Content-Security-Policy} header requires careful configuration
+with Vite's content-hashed asset filenames.
+
+\subsection{CSRF Protection}
+
+Laravel's CSRF protection is already built in for web routes.
+The session domain must be correctly configured in production to match
+the public domain.
+
+\subsection{Rate Limiting}
+
+Laravel's \texttt{throttle} middleware must be applied to API route
+groups in \texttt{routes/api.php} before launch:
+
+\begin{lstlisting}[caption={API rate limiting (routes/api.php)}]
+Route::middleware(['auth:api', 'throttle:60,1'])->group(function () {
+    // ... all API routes
+});
+\end{lstlisting}
+
+\subsection{Debug Mode}
+
+\texttt{APP\_DEBUG} \textbf{must be \texttt{false}} in production.
+Debug mode exposes stack traces, environment variables, and database
+queries directly to the browser.
+
+\section{Compliance and GDPR}
+
+The system already implements GDPR infrastructure:
+\texttt{Consent}, \texttt{DataSubjectRequest}, and
+\texttt{AdverseActionNotice} models are present. For production:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Erasure requests (\texttt{POST /v1/me/privacy/erasure-requests})
+          must actually delete or anonymise data, not merely soft-delete.
+    \item The audit log (\texttt{owen-it/laravel-auditing}) must be
+          append-only and tamper-evident.
+    \item Consent must be captured before any valuation data is
+          processed.
+    \item The Python service's \texttt{structlog} output must not log
+          PII or query parameters.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Deployment Strategy}
+\label{ch:deployment}
+% ════════════════════════════════════════════════════════════
+
+\section{Environment Promotion Path}
+
+For a thesis project, the minimum viable promotion path is:
+
+\begin{center}
+\texttt{local (development)} \(\longrightarrow\) \texttt{production (Railway)}
+\end{center}
+
+With a separate \texttt{.env} for each environment. No code changes
+are required between environments — only environment variable
+differences.
+
+\section{Deployment Topology}
+
+All three Laravel processes run from the same Docker image with
+different start commands within one Railway project:
+
+\begin{lstlisting}[caption={Railway project service layout}]
+Railway Project: ethio-sme
++-- Service: web
+|   Start command: nginx (via PHP-FPM + Nginx entrypoint)
+|   Port: 80
+|   Health check: GET /up
+|
++-- Service: worker
+|   Start command: php artisan queue:work --sleep=3 --tries=3
+|   No port exposed
+|
++-- Service: scheduler
+    Start command: php artisan schedule:run
+    Or: Railway native cron (every minute)
+\end{lstlisting}
+
+All three services share environment variables and connect to the
+same Supabase database.
+
+\section{Production Dockerfile Requirements}
+
+The current \texttt{Dockerfile} (based on Laravel Sail) must be
+replaced. The new production image requires:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Base image:} \texttt{php:8.3-fpm-alpine}
+    \item \textbf{Web server:} Nginx installed in same container
+    \item \textbf{PHP extensions:} \texttt{pgsql}, \texttt{pdo\_pgsql},
+          \texttt{redis}, \texttt{gd}, \texttt{zip}, \texttt{bcmath},
+          \texttt{intl}
+    \item \textbf{Composer dependencies:} \texttt{--no-dev --optimize-autoloader}
+    \item \textbf{Frontend build:} \texttt{npm run build} executed during image build
+    \item \textbf{Laravel caches:} \texttt{config:cache}, \texttt{route:cache},
+          \texttt{view:cache} applied in entrypoint
+    \item \textbf{Non-root user:} Container runs as unprivileged user
+    \item \textbf{Excluded:} Xdebug, Vite dev server, Sail tooling
+\end{enumerate}
+
+\section{Container Entrypoint (Web)}
+
+On container start for the web service:
+
+\begin{lstlisting}[caption={Production entrypoint sequence}]
+1. php artisan migrate --force
+2. php artisan config:cache
+3. php artisan route:cache
+4. php artisan view:cache
+5. Start PHP-FPM (background)
+6. Start Nginx (foreground)
+\end{lstlisting}
+
+\section{Deployment Flow}
+
+\begin{lstlisting}[caption={End-to-end deployment flow}]
+git push origin main
+     |
+     v
+GitHub Actions CI triggered
+     |
+     +-- Run php artisan test (SQLite in-memory)
+     +-- Run vendor/bin/pint --test
+     +-- Run npm run build (verify frontend compiles)
+     |
+     v
+CI passes
+     |
+     v
+Build Docker image
+     |
+     v
+Push to GitHub Container Registry (GHCR)
+     |
+     v
+Railway pulls new image, rolling deploy
+     |
+     v
+Post-deploy hook: php artisan migrate --force
+     |
+     v
+Smoke test: curl /up --> assert 200
+\end{lstlisting}
+
+% ════════════════════════════════════════════════════════════
+\chapter{CI/CD Strategy}
+\label{ch:cicd}
+% ════════════════════════════════════════════════════════════
+
+The project currently has no \texttt{.github/workflows/} directory.
+Two GitHub Actions workflows are required.
+
+\section{Workflow 1: Continuous Integration}
+
+\begin{lstlisting}[caption={CI workflow (every push and pull request to main)}]
+Trigger: push (any branch), pull_request (target: main)
+
+Steps:
+  1.  actions/checkout@v4
+  2.  Setup PHP 8.3 (shivammathur/setup-php)
+  3.  Cache Composer dependencies (actions/cache)
+  4.  composer install --no-interaction --prefer-dist
+  5.  Setup Node.js 20 (actions/setup-node)
+  6.  Cache npm dependencies (actions/cache)
+  7.  npm ci
+  8.  npm run build            (verify TypeScript compiles)
+  9.  cp .env.testing .env
+  10. php artisan config:clear
+  11. php artisan test          (SQLite in-memory per phpunit.xml)
+  12. vendor/bin/pint --test    (lint check, no changes)
+\end{lstlisting}
+
+\section{Workflow 2: Continuous Deployment}
+
+\begin{lstlisting}[caption={Deploy workflow (push to main only, after CI passes)}]
+Trigger: workflow_run (CI workflow: completed + success)
+         (or: push to main with CI as required status check)
+
+Steps:
+  1. actions/checkout@v4
+  2. Log in to GHCR (docker/login-action)
+  3. Build Docker image (docker/build-push-action)
+  4. Push to ghcr.io/<owner>/ethio-sme-backend:latest
+  5. Trigger Railway deploy via Railway CLI
+     (railway up --service=web --detach)
+  6. Run post-deploy migration via Railway CLI
+     (railway run --service=web php artisan migrate --force)
+  7. Smoke test: curl https://<domain>/up
+     Assert HTTP 200 response
+\end{lstlisting}
+
+\section{AI Service CI/CD}
+
+The Python FastAPI service (\texttt{Ethiopian-SME-AI-Service} repo)
+requires a separate, simpler workflow:
+
+\begin{lstlisting}[caption={AI service deploy workflow}]
+Trigger: push to main
+
+Steps:
+  1. actions/checkout@v4
+  2. Setup Python 3.11
+  3. pip install -r requirements.txt
+  4. pytest tests/          (run all tests)
+  5. Push to HuggingFace Spaces via git:
+     git push https://huggingface.co/spaces/<org>/... main
+     (authenticated via HF_TOKEN secret)
+\end{lstlisting}
+
+\section{Branch Strategy}
+
+\begin{lstlisting}
+main          --> auto-deploys to production
+feature/*     --> CI runs, no deploy
+\end{lstlisting}
+
+For a thesis project, trunk-based development is appropriate. No
+need for \texttt{develop}, \texttt{staging}, or \texttt{release}
+branches.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Monitoring and Logging Strategy}
+\label{ch:monitoring}
+% ════════════════════════════════════════════════════════════
+
+\section{Error Tracking: Sentry}
+
+\textbf{Sentry} (free tier: 5,000 errors/month) must be integrated
+in both services.
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Laravel:} Install \texttt{sentry/sentry-laravel}.
+          Configure \texttt{SENTRY\_DSN} as environment variable.
+          Captures unhandled exceptions, slow queries, and deployments.
+    \item \textbf{Python:} Install \texttt{sentry-sdk[fastapi]}.
+          Configure \texttt{SENTRY\_DSN}. Captures unhandled exceptions
+          and transaction traces.
+\end{itemize}
+
+Sentry is the highest-leverage single observability addition for a
+thesis project. It means failures are known before the supervisor
+sees them.
+
+\section{Application Performance Monitoring}
+
+Sentry's built-in performance monitoring (5,000 transactions/month
+on the free tier) captures:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Slow database queries (with query plans)
+    \item Slow external HTTP calls (AI service latency distribution)
+    \item Request duration histograms by endpoint
+    \item Memory usage spikes
+\end{itemize}
+
+\section{Logging Configuration}
+
+\subsection{Laravel}
+
+\begin{lstlisting}[caption={Production logging .env}]
+LOG_CHANNEL=stderr
+LOG_LEVEL=warning
+\end{lstlisting}
+
+Railway captures all \texttt{stderr}/\texttt{stdout} and provides a
+log viewer in the dashboard with 7-day retention. Warning level
+suppresses debug and info noise while preserving actionable messages.
+
+\subsection{Python AI Service}
+
+The AI service already uses \texttt{structlog} for structured JSON
+logging to \texttt{stdout}. HuggingFace Spaces captures this in the
+Space logs panel. Log level should remain at \texttt{info} — the
+structured format is parseable and each request is already logged
+with \texttt{request\_id}, path, status, and latency.
+
+\section{Uptime Monitoring}
+
+\textbf{UptimeRobot} (free tier: 50 monitors, 5-minute check interval)
+must monitor:
+
+\begin{longtable}{L{5cm} L{4cm} L{4cm}}
+    \toprule
+    \textbf{Endpoint} & \textbf{Service} & \textbf{Alert on} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Endpoint} & \textbf{Service} & \textbf{Alert on} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    \texttt{https://domain.com/up} & Laravel & Non-200 response \\[4pt]
+    \texttt{https://...hf.space/health} & FastAPI AI service &
+        Non-200 or model \texttt{loaded: false} \\
+
+\end{longtable}
+
+Alert delivery: email and/or Telegram. Uptime monitoring catches a
+sleeping HuggingFace Space before the demo does.
+
+\section{Business Metrics}
+
+No custom metrics dashboard is required for a thesis project. The
+existing \texttt{FairnessAudit}, \texttt{DriftMetric}, and
+\texttt{AiEvaluationLog} database tables serve as the application's
+own telemetry. The Super Admin dashboard already surfaces these.
+
+% ════════════════════════════════════════════════════════════
+\chapter{Backup and Disaster Recovery}
+\label{ch:backup}
+% ════════════════════════════════════════════════════════════
+
+\section{Database Backups}
+
+\subsection{Supabase Automated Backups}
+
+\begin{longtable}{L{3.5cm} L{3.5cm} L{5cm}}
+    \toprule
+    \textbf{Supabase Tier} & \textbf{Backup Retention} & \textbf{Features} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Supabase Tier} & \textbf{Backup Retention} & \textbf{Features} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Free & 7 days & Daily snapshots only \\[4pt]
+    Pro (\$25/mo) & 30 days & Daily snapshots + PITR (1-day window) \\
+
+\end{longtable}
+
+\subsection{Manual Pre-Demo Backup}
+
+Before major demonstrations, a manual \texttt{pg\_dump} backup must
+be taken and stored offline:
+
+\begin{lstlisting}[caption={Manual database backup command}]
+pg_dump "postgresql://postgres.<ref>:<password>@aws-1-eu-central-1.pooler.supabase.com:5432/postgres" \
+    --format=custom \
+    --file="backup-$(date +%Y%m%d-%H%M).dump"
+\end{lstlisting}
+
+Store in a private GitHub repository or Cloudflare R2 bucket.
+
+\section{Model Artifact Backups}
+
+The \texttt{storage\_service.py} already syncs trained models to
+HuggingFace Hub. This provides:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item Versioned artifact store with git-based history
+    \item \texttt{versions.json} tracks current model versions and
+          training dates
+    \item Rollback to any previous version by updating \texttt{versions.json}
+\end{itemize}
+
+No additional model backup infrastructure is required.
+
+\section{Application Code}
+
+Git history on GitHub is the primary code backup. No additional code
+backup is necessary.
+
+\section{Disaster Recovery Scenarios}
+
+\begin{longtable}{L{3.5cm} C{1.8cm} C{1.8cm} L{4cm}}
+    \toprule
+    \textbf{Scenario} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Recovery Action} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Scenario} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Recovery Action} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Railway deploy fails &
+    \textcolor{warningorange}{Low} &
+    \textcolor{dangerred}{High} &
+    Railway dashboard: 1-click rollback to previous deployment \\[6pt]
+
+    Database corruption &
+    \textcolor{successgreen}{Very Low} &
+    \textcolor{dangerred}{High} &
+    Restore from Supabase daily backup \\[6pt]
+
+    HF Space sleeping during demo &
+    \textcolor{dangerred}{High (free tier)} &
+    \textcolor{dangerred}{High} &
+    Upgrade to persistent; keep-alive pings every 30 min \\[6pt]
+
+    ML models not loaded &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{dangerred}{High} &
+    \texttt{GET /health} check in CI; retry logic in \texttt{ValuationService} \\[6pt]
+
+    Valuation timeout &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{warningorange}{Medium} &
+    Increase \texttt{AI\_SERVICE\_TIMEOUT} to 120 seconds \\[6pt]
+
+    Environment variable missing &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    Validate all required vars in entrypoint script \\[6pt]
+
+    Supabase paused (inactivity) &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{dangerred}{High} &
+    Hourly DB ping via cron; or upgrade to Pro \\[6pt]
+
+    Model artifacts corrupted &
+    \textcolor{successgreen}{Low} &
+    \textcolor{warningorange}{Medium} &
+    Reload previous version from HF Hub via \texttt{versions.json} \\[6pt]
+
+    Contract version mismatch &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    Pin \texttt{AI\_SERVICE\_CONTRACT\_VERSION=v1} in both services \\
+
+\end{longtable}
+
+\textbf{RTO (Recovery Time Objective) for thesis:} 15 minutes for all
+scenarios except database restore (up to 24 hours for full restore;
+partial restore faster).
+
+% ════════════════════════════════════════════════════════════
+\chapter{Estimated Hosting Cost}
+\label{ch:cost}
+% ════════════════════════════════════════════════════════════
+
+\section{Baseline (Thesis Demo) Cost}
+
+\begin{longtable}{L{5cm} L{3.5cm} R{3cm}}
+    \toprule
+    \textbf{Service} & \textbf{Tier} & \textbf{Monthly Cost} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Service} & \textbf{Tier} & \textbf{Monthly Cost} \\
+    \midrule
+    \endhead
+    \midrule
+    \textbf{Total} & & \textbf{\$9 -- \$14 / month} \\
+    \bottomrule
+    \endlastfoot
+
+    Railway (web + worker + cron) & Starter (\$5 credit/mo free) & \$0 -- 5 \\[4pt]
+    Supabase PostgreSQL & Free tier & \$0 \\[4pt]
+    HuggingFace Spaces (AI) & Persistent CPU & \$9 \\[4pt]
+    Cloudflare (CDN + SSL + DNS) & Free & \$0 \\[4pt]
+    Cloudflare R2 (object storage) & Free (10\,GB) & \$0 \\[4pt]
+    GitHub Actions (CI/CD) & Free (2,000 min/mo) & \$0 \\[4pt]
+    Sentry (error tracking) & Free (5K events) & \$0 \\[4pt]
+    UptimeRobot (monitoring) & Free & \$0 \\[4pt]
+    Domain name (optional) & Namecheap annual & \$1 \\
+
+\end{longtable}
+
+\begin{infobox}[Cost Summary]
+    The full production stack — with zero infrastructure compromises
+    for a thesis demonstration — costs \textbf{\$9 to \$14 per month}.
+    If the HuggingFace free tier is kept warm via pings and monitored
+    carefully, the cost can be reduced to \textbf{\$0 to \$5 per month}.
+\end{infobox}
+
+\section{Upgrade Triggers and Costs}
+
+\begin{longtable}{L{4.5cm} L{4cm} R{3.5cm}}
+    \toprule
+    \textbf{Trigger} & \textbf{Upgrade} & \textbf{Additional Cost} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Trigger} & \textbf{Upgrade} & \textbf{Additional Cost} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    Supabase pausing repeatedly & Supabase Pro & +\$25/mo \\[4pt]
+    Railway CPU exhaustion & Railway Pro & +\$5 -- 20/mo \\[4pt]
+    AI inference too slow & HF Spaces GPU A10G & +\$1.05/hr (on-demand) \\[4pt]
+    File storage \textgreater\ 10\,GB & R2 paid tier & +\$0.015/GB \\[4pt]
+    High concurrent users & Redis (Upstash) & +\$0 -- 10/mo \\
+
+\end{longtable}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Step-by-Step Deployment Roadmap}
+\label{ch:roadmap}
+% ════════════════════════════════════════════════════════════
+
+\section{Phase 1: Production-Ready Application (Week 1)}
+
+\textbf{Goal:} Make the Laravel codebase deployable to any Docker-based
+platform without localhost assumptions.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}]
+
+    \item \textbf{Replace Dockerfile} \\
+    Write a production Dockerfile using \texttt{php:8.3-fpm-alpine} +
+    Nginx. Remove the Sail base image. Ensure \texttt{npm run build}
+    runs during the Docker build stage. Multi-stage build recommended
+    (Node.js stage for assets, PHP stage for application).
+
+    \item \textbf{Replace docker-entrypoint.sh} \\
+    New entrypoint for the web service: run migrations, cache config,
+    routes, and views, then start PHP-FPM and Nginx. No Vite dev server.
+
+    \item \textbf{Update .env for production} \\
+    Set: \texttt{APP\_ENV=production}, \texttt{APP\_DEBUG=false},
+    \texttt{LOG\_CHANNEL=stderr}, \texttt{SESSION\_DRIVER=database},
+    \texttt{CACHE\_STORE=database}, \texttt{QUEUE\_CONNECTION=database},
+    \texttt{FILESYSTEM\_DISK=s3}.
+
+    \item \textbf{Add database migrations} \\
+    Run \texttt{php artisan session:table}, \texttt{cache:table},
+    \texttt{queue:table} to generate the required migrations.
+    Commit the generated migration files.
+
+    \item \textbf{Verify health endpoint} \\
+    Confirm \texttt{GET /up} returns 200 (Laravel 11+ default route).
+    If not present, add it to \texttt{routes/web.php}.
+
+    \item \textbf{Switch logging to stderr} \\
+    Update \texttt{config/logging.php} to add a \texttt{stderr}
+    channel and set it as the default in the production environment.
+
+\end{enumerate}
+
+\section{Phase 2: Infrastructure Setup (Week 1--2)}
+
+\textbf{Goal:} Provision all cloud services and connect them.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=7]
+
+    \item \textbf{Domain registration (optional)} \\
+    Register a domain via Namecheap (\textasciitilde\$10/year) or use
+    the free Railway subdomain (e.g., \texttt{ethio-sme.up.railway.app})
+    for the thesis.
+
+    \item \textbf{Cloudflare setup} \\
+    Add domain to Cloudflare. Update nameservers at the registrar.
+    Enable proxy (orange cloud) for all A/CNAME records. This activates
+    SSL, CDN, and WAF automatically.
+
+    \item \textbf{Railway project creation} \\
+    Create a Railway project. Connect the GitHub repository. Add all
+    environment variables (all values from the production \texttt{.env}).
+    Never commit secrets.
+
+    \item \textbf{Railway services} \\
+    Create three services from the same Docker image:
+    \texttt{web} (Nginx + PHP-FPM), \texttt{worker}
+    (\texttt{queue:work}), \texttt{scheduler}
+    (\texttt{schedule:run} cron).
+
+    \item \textbf{Cloudflare R2 bucket} \\
+    Create an R2 bucket. Generate API access key. Add
+    \texttt{AWS\_ACCESS\_KEY\_ID}, \texttt{AWS\_SECRET\_ACCESS\_KEY},
+    \texttt{AWS\_BUCKET}, \texttt{AWS\_ENDPOINT} (R2-specific endpoint)
+    to Railway environment secrets.
+
+    \item \textbf{HuggingFace Space upgrade} \\
+    Upgrade the existing Space to the persistent CPU tier (\$9/mo).
+    Verify the Space URL is accessible and does not suspend.
+
+\end{enumerate}
+
+\section{Phase 3: CI/CD Pipeline (Week 2)}
+
+\textbf{Goal:} Every push to \texttt{main} tests and deploys automatically.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=13]
+
+    \item \textbf{GitHub Actions CI workflow} \\
+    Create \texttt{.github/workflows/ci.yml} that runs tests and
+    linting on every push to any branch.
+
+    \item \textbf{GitHub Actions Deploy workflow} \\
+    Create \texttt{.github/workflows/deploy.yml} that builds and
+    pushes the Docker image to GHCR, then triggers Railway deploy.
+
+    \item \textbf{Test the full pipeline} \\
+    Push a trivial change to \texttt{main}. Verify CI passes, deploy
+    triggers, Railway pulls the new image, and the health check passes.
+
+\end{enumerate}
+
+\section{Phase 4: Security Hardening (Week 2)}
+
+\textbf{Goal:} Apply all production security controls.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=16]
+
+    \item \textbf{Rotate all secrets} \\
+    Generate new \texttt{APP\_KEY} (\texttt{php artisan key:generate
+    --show}), \texttt{JWT\_SECRET}, \texttt{AI\_SERVICE\_TOKEN},
+    \texttt{INTERNAL\_API\_KEY}. Store in Railway secrets. Keep an
+    offline copy in a password manager.
+
+    \item \textbf{Cloudflare WAF rules} \\
+    Enable managed OWASP Core Rule Set on Cloudflare's free WAF.
+    Block known bad user agents.
+
+    \item \textbf{Rate limiting} \\
+    Add \texttt{throttle:60,1} middleware to API route groups in
+    \texttt{routes/api.php}.
+
+    \item \textbf{Security headers in Nginx} \\
+    Add all required HTTP security headers to the production Nginx
+    configuration file.
+
+\end{enumerate}
+
+\section{Phase 5: Monitoring and Observability (Week 2--3)}
+
+\textbf{Goal:} Know about failures before users do.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=20]
+
+    \item \textbf{Sentry integration} \\
+    Add \texttt{sentry/sentry-laravel} to \texttt{composer.json}.
+    Configure \texttt{SENTRY\_DSN} in Railway secrets.
+    Add \texttt{sentry-sdk[fastapi]} to Python \texttt{requirements.txt}.
+    Configure \texttt{SENTRY\_DSN} in HuggingFace Spaces secrets.
+
+    \item \textbf{UptimeRobot monitors} \\
+    Add monitors for \texttt{/up} (Laravel) and \texttt{/health}
+    (AI service). Configure email or Telegram alerts.
+
+    \item \textbf{HuggingFace Space keep-alive} \\
+    Add a Railway cron job (scheduled service) that sends a
+    \texttt{GET} request to
+    \texttt{https://\ldots{}hf.space/health} every 30 minutes.
+    This prevents the Space from sleeping between thesis sessions
+    even on the free tier.
+
+\end{enumerate}
+
+\section{Phase 6: Demo Data and Smoke Testing (Week 3)}
+
+\textbf{Goal:} Confirm all features work end-to-end on the production URL.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=23]
+
+    \item \textbf{Run migrations on production} \\
+    \texttt{php artisan migrate --force} via Railway CLI or
+    post-deploy hook. Confirm all tables exist.
+
+    \item \textbf{Seed demo data} \\
+    \texttt{php artisan db:seed --class=DevDemoSeeder} as documented
+    in \texttt{CLAUDE.md}. Verify realistic borrower, application,
+    and valuation records are created.
+
+    \item \textbf{End-to-end smoke test} \\
+    Manually walk through every major user flow:
+    \begin{itemize}[leftmargin=1em]
+        \item Register a borrower (SME owner)
+        \item Submit a loan application
+        \item Complete psychometric assessment
+        \item Trigger valuation (AI pipeline)
+        \item Evaluate as a lender
+        \item Review audit logs as Super Admin
+    \end{itemize}
+
+    \item \textbf{AI service warm-up} \\
+    Trigger a training job (\texttt{POST /train}) after a fresh
+    deploy. Confirm \texttt{GET /health} returns all models as
+    \texttt{loaded: true} before declaring the service ready.
+
+\end{enumerate}
+
+\section{Phase 7: Pre-Defense Hardening (Week Before Defense)}
+
+\textbf{Goal:} Eliminate all variables that could cause a demo failure.
+
+\begin{enumerate}[leftmargin=1.5em, label=\textbf{\arabic*.}, start=27]
+
+    \item \textbf{Database backup} \\
+    Run manual \texttt{pg\_dump} backup. Store offline.
+
+    \item \textbf{Feature freeze} \\
+    No new features or refactors during the week before the defense.
+    Only critical bug fixes allowed.
+
+    \item \textbf{Demo rehearsal} \\
+    Run the complete thesis demo scenario at least twice on the
+    production URL, including model training and valuation.
+
+    \item \textbf{Document failover plan} \\
+    Write and keep accessible: exact steps for the three most likely
+    failures:
+    \begin{itemize}[leftmargin=1em]
+        \item \textbf{App is down:} Railway dashboard → Deployments → Rollback
+        \item \textbf{AI service sleeping:} HuggingFace Spaces dashboard → Restart
+        \item \textbf{Database paused:} Supabase dashboard → Project → Resume
+    \end{itemize}
+
+\end{enumerate}
+
+% ════════════════════════════════════════════════════════════
+\chapter{Risk Register}
+\label{ch:risks}
+% ════════════════════════════════════════════════════════════
+
+\begin{longtable}{L{3.5cm} C{2cm} C{1.8cm} L{5cm}}
+    \toprule
+    \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Risk} & \textbf{Likelihood} & \textbf{Impact} & \textbf{Mitigation} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    HuggingFace Space sleeps during demo &
+    \textcolor{dangerred}{High} &
+    \textcolor{dangerred}{High} &
+    Upgrade to persistent tier; 30-min keep-alive ping \\[6pt]
+
+    Supabase pauses for inactivity &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{dangerred}{High} &
+    Hourly DB ping cron; or Supabase Pro \\[6pt]
+
+    ML models not loaded at startup &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{dangerred}{High} &
+    \texttt{GET /health} check in CI smoke test; retry logic \\[6pt]
+
+    Valuation timeout (DeepAR slow) &
+    \textcolor{warningorange}{Medium} &
+    \textcolor{warningorange}{Medium} &
+    Increase \texttt{AI\_SERVICE\_TIMEOUT} to 120 seconds \\[6pt]
+
+    Railway cold start &
+    \textcolor{successgreen}{Low} &
+    \textcolor{warningorange}{Medium} &
+    UptimeRobot pings keep container warm \\[6pt]
+
+    Env variable missing on deploy &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    Entrypoint validation; offline backup in password manager \\[6pt]
+
+    Schema drift between services &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    Laravel migrations are source of truth; AI uses raw SQL \\[6pt]
+
+    SHAP memory spike &
+    \textcolor{successgreen}{Low} &
+    \textcolor{warningorange}{Medium} &
+    HF persistent CPU has 16\,GB RAM; monitor during load \\[6pt]
+
+    Contract version mismatch (v1) &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    Pin contract version in both services; version-check on \texttt{/health} \\[6pt]
+
+    Secret leaked in logs &
+    \textcolor{successgreen}{Low} &
+    \textcolor{dangerred}{High} &
+    \texttt{LOG\_LEVEL=warning}; structlog no-PII policy; Sentry scrubbing \\
+
+\end{longtable}
+
+% ════════════════════════════════════════════════════════════
+\chapter{What Should Remain Unchanged}
+\label{ch:unchanged}
+% ════════════════════════════════════════════════════════════
+
+The following are well-designed elements of the codebase that
+\textbf{should not be refactored before deployment}. Deployment does
+not change business logic or internal architecture.
+
+\begin{itemize}[leftmargin=1.5em]
+
+    \item \textbf{Domain-Driven Design structure} --- The 10-domain
+    layout in \texttt{app/Domain/} is clean, well-organised, and
+    deployment is orthogonal to it.
+
+    \item \textbf{Supabase PostgreSQL schema} --- Already configured
+    and working. Migrations are the source of truth.
+
+    \item \textbf{HuggingFace Hub model storage} --- The
+    \texttt{storage\_service.py} versioning system is well-designed.
+
+    \item \textbf{Spatie DTOs} --- Type safety via
+    \texttt{spatie/laravel-data} adds no deployment overhead.
+
+    \item \textbf{RBAC via spatie/laravel-permission} --- Role
+    middleware aliases are already correctly configured for both guards.
+
+    \item \textbf{Audit trail via owen-it/laravel-auditing} --- Passive
+    observer; no changes needed.
+
+    \item \textbf{JWT dual-guard authentication} --- The dual-guard
+    pattern is correct for Inertia + REST API.
+
+    \item \textbf{Python service Pydantic schemas} --- The v1 contract
+    is stable.
+
+    \item \textbf{RefreshTokenFamily replay protection} --- Security
+    feature; must not be removed or simplified.
+
+    \item \textbf{AI service middleware chain} --- Key validation,
+    request logging, and exception handling in \texttt{app/main.py}
+    are correct and must not be modified.
+
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════
+\appendix
+% ════════════════════════════════════════════════════════════
+
+\chapter{Environment Variable Reference}
+\label{app:envvars}
+
+The following table lists all environment variables required for the
+production Laravel deployment, grouped by concern.
+
+\begin{longtable}{L{5.5cm} L{6.5cm}}
+    \toprule
+    \textbf{Variable} & \textbf{Production Value} \\
+    \midrule
+    \endfirsthead
+    \toprule
+    \textbf{Variable} & \textbf{Production Value} \\
+    \midrule
+    \endhead
+    \bottomrule
+    \endlastfoot
+
+    \multicolumn{2}{l}{\textbf{Application}} \\[4pt]
+    \texttt{APP\_NAME} & EthioSME Valuation \\
+    \texttt{APP\_ENV} & production \\
+    \texttt{APP\_DEBUG} & false \\
+    \texttt{APP\_KEY} & (generate: \texttt{php artisan key:generate --show}) \\
+    \texttt{APP\_URL} & \texttt{https://your-domain.com} \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{Database (Supabase)}} \\[4pt]
+    \texttt{DB\_CONNECTION} & pgsql \\
+    \texttt{DB\_HOST} & (Supabase pooler host) \\
+    \texttt{DB\_PORT} & 5432 \\
+    \texttt{DB\_DATABASE} & postgres \\
+    \texttt{DB\_USERNAME} & postgres.\textit{ref} \\
+    \texttt{DB\_PASSWORD} & (Supabase DB password) \\
+    \texttt{DB\_SSLMODE} & require \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{Session, Cache, Queue}} \\[4pt]
+    \texttt{SESSION\_DRIVER} & database \\
+    \texttt{CACHE\_STORE} & database \\
+    \texttt{QUEUE\_CONNECTION} & database \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{File Storage (Cloudflare R2)}} \\[4pt]
+    \texttt{FILESYSTEM\_DISK} & s3 \\
+    \texttt{AWS\_ACCESS\_KEY\_ID} & (R2 access key) \\
+    \texttt{AWS\_SECRET\_ACCESS\_KEY} & (R2 secret key) \\
+    \texttt{AWS\_BUCKET} & (R2 bucket name) \\
+    \texttt{AWS\_ENDPOINT} & (R2 S3-compatible endpoint URL) \\
+    \texttt{AWS\_DEFAULT\_REGION} & auto \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{Authentication}} \\[4pt]
+    \texttt{JWT\_SECRET} & (256-bit random secret) \\
+    \texttt{JWT\_TTL} & 60 \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{AI Service}} \\[4pt]
+    \texttt{AI\_SERVICE\_URL} & (HuggingFace Spaces URL) \\
+    \texttt{AI\_SERVICE\_TOKEN} & (32+ char shared secret) \\
+    \texttt{AI\_SERVICE\_TIMEOUT} & 120 \\
+    \texttt{AI\_SERVICE\_CONTRACT\_VERSION} & v1 \\
+    \texttt{AI\_SERVICE\_FALLBACK\_ENABLED} & true \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{Logging and Monitoring}} \\[4pt]
+    \texttt{LOG\_CHANNEL} & stderr \\
+    \texttt{LOG\_LEVEL} & warning \\
+    \texttt{SENTRY\_DSN} & (Sentry project DSN) \\[8pt]
+
+    \multicolumn{2}{l}{\textbf{Mail (Resend)}} \\[4pt]
+    \texttt{MAIL\_MAILER} & resend \\
+    \texttt{RESEND\_API\_KEY} & (Resend API key) \\
+    \texttt{MAIL\_FROM\_ADDRESS} & noreply@your-domain.com \\
+
+\end{longtable}
+
+\chapter{Deployment Checklist}
+\label{app:checklist}
+
+Use this checklist immediately before and after each production
+deployment.
+
+\subsection*{Pre-Deployment}
+
+\begin{itemize}[leftmargin=1.5em, label=$\square$]
+    \item All environment variables set in Railway secrets
+    \item \texttt{APP\_DEBUG=false} confirmed
+    \item \texttt{APP\_ENV=production} confirmed
+    \item CI pipeline passes (tests + lint)
+    \item Docker image builds successfully locally
+    \item HuggingFace Space is awake (\texttt{GET /health} returns 200)
+    \item Supabase project is active (not paused)
+\end{itemize}
+
+\subsection*{Post-Deployment}
+
+\begin{itemize}[leftmargin=1.5em, label=$\square$]
+    \item \texttt{GET /up} returns 200
+    \item \texttt{php artisan migrate --force} completed successfully
+    \item No errors in Railway deployment logs
+    \item \texttt{GET https://...hf.space/health} returns all models
+          as \texttt{loaded: true}
+    \item Sentry receives a test exception (or no new alerts)
+    \item UptimeRobot shows all monitors green
+    \item Login flow works end-to-end
+    \item Valuation pipeline completes without timeout
+\end{itemize}
+
+\end{document}

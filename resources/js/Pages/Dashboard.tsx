@@ -1,5 +1,5 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import type { PageProps } from '@/types';
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
+import type { PageProps } from "@/types";
 import type {
     AiHealth,
     DbHealth,
@@ -7,15 +7,15 @@ import type {
     LoanProviderAnalytics,
     SmeOwnerStats,
     SuperAdminStats,
-} from '@/types/dashboard';
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { isLoanProviderRole } from '@/lib/roles';
+} from "@/types/dashboard";
+import { Head, Link, router, usePage } from "@inertiajs/react";
+import { isLoanProviderRole } from "@/lib/roles";
 import {
     ensureChartsRegistered,
     getChartPalette,
     chartFont,
     useIsDarkMode,
-} from '@/lib/chartTheme';
+} from "@/lib/chartTheme";
 import {
     ArcElement,
     DoughnutController,
@@ -25,8 +25,8 @@ import {
     Chart as ChartJS,
     type ChartData,
     type ChartOptions,
-} from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+} from "chart.js";
+import { Bar, Doughnut, Line } from "react-chartjs-2";
 import {
     Activity,
     AlertTriangle,
@@ -49,14 +49,8 @@ import {
     TrendingDown,
     TrendingUp,
     XCircle,
-} from 'lucide-react';
-import {
-    ReactNode,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from 'react';
+} from "lucide-react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 // Register Chart.js components needed for SME owner dashboard
 // (ArcElement/DoughnutController are not in ensureChartsRegistered — register them here)
@@ -66,40 +60,40 @@ ensureChartsRegistered();
 
 // ─── Formatters ───────────────────────────────────────────────────────────────
 
-const etbFormatter = new Intl.NumberFormat('en-ET', {
+const etbFormatter = new Intl.NumberFormat("en-ET", {
     maximumFractionDigits: 0,
 });
 
 export function formatEtb(amount: string | number | null | undefined): string {
-    if (amount === null || amount === undefined || amount === '') {
-        return 'Pending';
+    if (amount === null || amount === undefined || amount === "") {
+        return "Pending";
     }
-    const n = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (Number.isNaN(n)) return 'Pending';
+    const n = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (Number.isNaN(n)) return "Pending";
     return `${etbFormatter.format(n)} ETB`;
 }
 
 function formatDate(iso: string | null | undefined): string {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-ET', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+    if (!iso) return "—";
+    return new Date(iso).toLocaleDateString("en-ET", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
     });
 }
 
 function formatApr(apr: string | number | null | undefined): string {
-    if (apr === null || apr === undefined || apr === '') return '—';
-    const n = typeof apr === 'string' ? parseFloat(apr) : apr;
-    if (Number.isNaN(n)) return '—';
+    if (apr === null || apr === undefined || apr === "") return "—";
+    const n = typeof apr === "string" ? parseFloat(apr) : apr;
+    if (Number.isNaN(n)) return "—";
     return `${(n * 100).toFixed(1)}%`;
 }
 
 function greeting(): string {
     const h = new Date().getHours();
-    if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
-    return 'Good evening';
+    if (h < 12) return "Good morning";
+    if (h < 17) return "Good afternoon";
+    return "Good evening";
 }
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
@@ -133,13 +127,13 @@ function useCountUp(target: number, duration = 800): number {
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const cardClass =
-    'rounded-2xl border shadow-sm transition-shadow duration-200 hover:shadow-md ' +
-    'bg-white border-gray-200 dark:bg-zinc-900 dark:border-zinc-800';
+    "rounded-2xl border shadow-sm transition-shadow duration-200 hover:shadow-md " +
+    "bg-white border-gray-200 dark:bg-zinc-900 dark:border-zinc-800";
 
 const pageClass =
-    'min-h-full bg-gray-50 p-6 text-gray-900 dark:bg-zinc-950 dark:text-zinc-100';
+    "min-h-full bg-gray-50 p-6 text-gray-900 dark:bg-zinc-950 dark:text-zinc-100";
 
-const mutedClass = 'text-gray-500 dark:text-zinc-400';
+const mutedClass = "text-gray-500 dark:text-zinc-400";
 
 // ─── Status & risk badges ─────────────────────────────────────────────────────
 
@@ -148,55 +142,55 @@ const statusConfig: Record<
     { label: string; bg: string; text: string; dot: string }
 > = {
     draft: {
-        label: 'Draft',
-        bg: 'bg-gray-500/10',
-        text: 'text-gray-500 dark:text-gray-400',
-        dot: 'bg-gray-400',
+        label: "Draft",
+        bg: "bg-gray-500/10",
+        text: "text-gray-500 dark:text-gray-400",
+        dot: "bg-gray-400",
     },
     submitted: {
-        label: 'Submitted',
-        bg: 'bg-gray-500/10',
-        text: 'text-gray-500 dark:text-gray-400',
-        dot: 'bg-gray-400',
+        label: "Submitted",
+        bg: "bg-gray-500/10",
+        text: "text-gray-500 dark:text-gray-400",
+        dot: "bg-gray-400",
     },
     queued_for_ai: {
-        label: 'Queued',
-        bg: 'bg-blue-500/10',
-        text: 'text-blue-600 dark:text-blue-400',
-        dot: 'bg-blue-400',
+        label: "Queued",
+        bg: "bg-blue-500/10",
+        text: "text-blue-600 dark:text-blue-400",
+        dot: "bg-blue-400",
     },
     processing: {
-        label: 'Processing',
-        bg: 'bg-amber-500/10',
-        text: 'text-amber-600 dark:text-amber-400',
-        dot: 'bg-amber-400 animate-pulse',
+        label: "Processing",
+        bg: "bg-amber-500/10",
+        text: "text-amber-600 dark:text-amber-400",
+        dot: "bg-amber-400 animate-pulse",
     },
     evaluated: {
-        label: 'Evaluated',
-        bg: 'bg-purple-500/10',
-        text: 'text-purple-600 dark:text-purple-400',
-        dot: 'bg-purple-400',
+        label: "Evaluated",
+        bg: "bg-purple-500/10",
+        text: "text-purple-600 dark:text-purple-400",
+        dot: "bg-purple-400",
     },
     approved: {
-        label: 'Approved',
-        bg: 'bg-green-500/10',
-        text: 'text-green-600 dark:text-green-400',
-        dot: 'bg-green-400',
+        label: "Approved",
+        bg: "bg-green-500/10",
+        text: "text-green-600 dark:text-green-400",
+        dot: "bg-green-400",
     },
     rejected: {
-        label: 'Rejected',
-        bg: 'bg-red-500/10',
-        text: 'text-red-600 dark:text-red-400',
-        dot: 'bg-red-400',
+        label: "Rejected",
+        bg: "bg-red-500/10",
+        text: "text-red-600 dark:text-red-400",
+        dot: "bg-red-400",
     },
 };
 
 function StatusBadge({ status }: { status: string }) {
     const cfg = statusConfig[status] ?? {
-        label: status.replace(/_/g, ' '),
-        bg: 'bg-gray-500/10',
-        text: 'text-gray-500',
-        dot: 'bg-gray-400',
+        label: status.replace(/_/g, " "),
+        bg: "bg-gray-500/10",
+        text: "text-gray-500",
+        dot: "bg-gray-400",
     };
     return (
         <span
@@ -210,16 +204,16 @@ function StatusBadge({ status }: { status: string }) {
 
 const riskConfig: Record<string, { label: string; color: string }> = {
     low: {
-        label: 'Low Risk',
-        color: 'text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20',
+        label: "Low Risk",
+        color: "text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/20",
     },
     medium: {
-        label: 'Medium Risk',
-        color: 'text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20',
+        label: "Medium Risk",
+        color: "text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20",
     },
     high: {
-        label: 'High Risk',
-        color: 'text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20',
+        label: "High Risk",
+        color: "text-red-600 dark:text-red-400 bg-red-500/10 border-red-500/20",
     },
 };
 
@@ -234,7 +228,7 @@ function RiskBandBadge({ band }: { band: string | null | undefined }) {
     const key = band.toLowerCase();
     const cfg = riskConfig[key] ?? {
         label: band,
-        color: 'text-gray-600 bg-gray-500/10 border-gray-500/20',
+        color: "text-gray-600 bg-gray-500/10 border-gray-500/20",
     };
     return (
         <span
@@ -303,31 +297,31 @@ function SkeletonCard() {
 
 // ─── KPI Card ─────────────────────────────────────────────────────────────────
 
-type KpiColor = 'green' | 'blue' | 'gold' | 'red';
+type KpiColor = "green" | "blue" | "gold" | "red";
 
 const kpiColorStyles: Record<
     KpiColor,
     { iconBg: string; iconText: string; border: string }
 > = {
     green: {
-        iconBg: 'bg-[#085041]/20 dark:bg-[#5DCAA5]/10',
-        iconText: 'text-[#085041] dark:text-[#5DCAA5]',
-        border: 'border-[#085041]/30 dark:border-[#5DCAA5]/30',
+        iconBg: "bg-[#085041]/20 dark:bg-[#5DCAA5]/10",
+        iconText: "text-[#085041] dark:text-[#5DCAA5]",
+        border: "border-[#085041]/30 dark:border-[#5DCAA5]/30",
     },
     blue: {
-        iconBg: 'bg-[#0C447C]/20 dark:bg-[#85B7EB]/10',
-        iconText: 'text-[#0C447C] dark:text-[#85B7EB]',
-        border: 'border-[#0C447C]/30 dark:border-[#85B7EB]/30',
+        iconBg: "bg-[#0C447C]/20 dark:bg-[#85B7EB]/10",
+        iconText: "text-[#0C447C] dark:text-[#85B7EB]",
+        border: "border-[#0C447C]/30 dark:border-[#85B7EB]/30",
     },
     gold: {
-        iconBg: 'bg-[#D4A017]/20',
-        iconText: 'text-[#D4A017]',
-        border: 'border-[#D4A017]/30',
+        iconBg: "bg-[#D4A017]/20",
+        iconText: "text-[#D4A017]",
+        border: "border-[#D4A017]/30",
     },
     red: {
-        iconBg: 'bg-red-500/10',
-        iconText: 'text-red-500 dark:text-red-400',
-        border: 'border-red-500/30',
+        iconBg: "bg-red-500/10",
+        iconText: "text-red-500 dark:text-red-400",
+        border: "border-red-500/30",
     },
 };
 
@@ -345,7 +339,7 @@ function KpiCard({
     numericValue?: number;
     subtext?: string;
     icon: ReactNode;
-    trend?: { direction: 'up' | 'down' | 'neutral'; value: string };
+    trend?: { direction: "up" | "down" | "neutral"; value: string };
     color: KpiColor;
 }) {
     const animated = useCountUp(numericValue ?? 0);
@@ -380,27 +374,29 @@ function KpiCard({
                     </p>
                     <div className="mt-1">{valueContent}</div>
                     {subtext && (
-                        <p className={`mt-1 text-xs ${mutedClass}`}>{subtext}</p>
+                        <p className={`mt-1 text-xs ${mutedClass}`}>
+                            {subtext}
+                        </p>
                     )}
                 </div>
             </div>
             {trend && (
                 <div className="mt-3 flex items-center gap-1 text-xs">
-                    {trend.direction === 'up' && (
+                    {trend.direction === "up" && (
                         <ArrowUpRight className="h-3.5 w-3.5 text-green-500" />
                     )}
-                    {trend.direction === 'down' && (
+                    {trend.direction === "down" && (
                         <ArrowDownRight className="h-3.5 w-3.5 text-red-500" />
                     )}
-                    {trend.direction === 'neutral' && (
+                    {trend.direction === "neutral" && (
                         <Minus className="h-3.5 w-3.5 text-gray-400" />
                     )}
                     <span
                         className={
-                            trend.direction === 'up'
-                                ? 'text-green-600 dark:text-green-400'
-                                : trend.direction === 'down'
-                                  ? 'text-red-600 dark:text-red-400'
+                            trend.direction === "up"
+                                ? "text-green-600 dark:text-green-400"
+                                : trend.direction === "down"
+                                  ? "text-red-600 dark:text-red-400"
                                   : mutedClass
                         }
                     >
@@ -416,29 +412,28 @@ function DataCoverageValue({ days }: { days: number }) {
     const animated = useCountUp(days);
     return (
         <span className="text-3xl font-bold tabular-nums text-[#0F1A16] dark:text-[#F0FDF4]">
-            {animated}{' '}
-            <span className="text-lg font-semibold">days</span>
+            {animated} <span className="text-lg font-semibold">days</span>
         </span>
     );
 }
 
 function AiHealthPill({ health }: { health: AiHealth }) {
-    const online = health.status === 'healthy';
+    const online = health.status === "healthy";
     return (
         <div
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
                 online
-                    ? 'border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400'
-                    : 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400'
+                    ? "border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400"
+                    : "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400"
             }`}
         >
             <span
                 className={`h-2 w-2 rounded-full ${
-                    online ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                    online ? "bg-green-500 animate-pulse" : "bg-red-500"
                 }`}
-                style={online ? { animationDuration: '3s' } : undefined}
+                style={online ? { animationDuration: "3s" } : undefined}
             />
-            {online ? 'AI Service Online' : 'AI Service Offline'}
+            {online ? "AI Service Online" : "AI Service Offline"}
             {health.latency !== null && online && (
                 <span className={mutedClass}>· {health.latency}ms</span>
             )}
@@ -447,18 +442,18 @@ function AiHealthPill({ health }: { health: AiHealth }) {
 }
 
 function DbHealthPill({ health }: { health: DbHealth }) {
-    const online = health.status === 'connected';
+    const online = health.status === "connected";
     return (
         <div
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
                 online
-                    ? 'border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400'
-                    : 'border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400'
+                    ? "border-green-500/20 bg-green-500/10 text-green-700 dark:text-green-400"
+                    : "border-red-500/20 bg-red-500/10 text-red-700 dark:text-red-400"
             }`}
         >
             <span
                 className={`h-2 w-2 rounded-full ${
-                    online ? 'bg-green-500' : 'bg-red-500'
+                    online ? "bg-green-500" : "bg-red-500"
                 }`}
             />
             {online ? `${health.host} Connected` : `${health.host} Error`}
@@ -471,17 +466,41 @@ function DbHealthPill({ health }: { health: DbHealth }) {
 
 // ─── SME Owner ────────────────────────────────────────────────────────────────
 
-const APPLICATION_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-    draft:                { label: 'Draft — complete your application',     color: 'text-zinc-400' },
-    submitted:            { label: 'Submitted — under review',              color: 'text-blue-400' },
-    pending_psychometric: { label: 'Action Required — complete assessment', color: 'text-amber-400' },
-    pending_data_sync:    { label: 'Syncing your financial data…',          color: 'text-blue-400' },
-    queued_for_ai:        { label: 'In queue for AI evaluation',            color: 'text-blue-400' },
-    processing:           { label: 'AI is evaluating your application',     color: 'text-purple-400' },
-    evaluated:            { label: 'Evaluation complete',                   color: 'text-green-400' },
-    approved:             { label: 'Congratulations — Approved!',           color: 'text-emerald-400' },
-    rejected:             { label: 'Decision: Not approved at this time',   color: 'text-red-400' },
-    withdrawn:            { label: 'Application withdrawn',                 color: 'text-zinc-500' },
+const APPLICATION_STATUS_LABELS: Record<
+    string,
+    { label: string; color: string }
+> = {
+    draft: {
+        label: "Draft — complete your application",
+        color: "text-zinc-400",
+    },
+    submitted: { label: "Submitted — under review", color: "text-blue-400" },
+    pending_psychometric: {
+        label: "Action Required — complete assessment",
+        color: "text-amber-400",
+    },
+    pending_data_sync: {
+        label: "Syncing your financial data…",
+        color: "text-blue-400",
+    },
+    queued_for_ai: {
+        label: "In queue for AI evaluation",
+        color: "text-blue-400",
+    },
+    processing: {
+        label: "AI is evaluating your application",
+        color: "text-purple-400",
+    },
+    evaluated: { label: "Evaluation complete", color: "text-green-400" },
+    approved: {
+        label: "Congratulations — Approved!",
+        color: "text-emerald-400",
+    },
+    rejected: {
+        label: "Decision: Not approved at this time",
+        color: "text-red-400",
+    },
+    withdrawn: { label: "Application withdrawn", color: "text-zinc-500" },
 };
 
 // ─── SME Owner: Application Status Card ──────────────────────────────────────
@@ -489,12 +508,12 @@ const APPLICATION_STATUS_LABELS: Record<string, { label: string; color: string }
 function AppStatusCard({
     latestApplication,
 }: {
-    latestApplication: SmeOwnerStats['latestApplication'];
+    latestApplication: SmeOwnerStats["latestApplication"];
 }) {
     const cfg = latestApplication
         ? (APPLICATION_STATUS_LABELS[latestApplication.status] ?? {
-              label: latestApplication.status.replace(/_/g, ' '),
-              color: 'text-zinc-400',
+              label: latestApplication.status.replace(/_/g, " "),
+              color: "text-zinc-400",
           })
         : null;
 
@@ -510,16 +529,21 @@ function AppStatusCard({
                     </p>
                     <div className="flex items-center justify-between text-xs text-gray-400 dark:text-zinc-500">
                         <span>
-                            Requested:{' '}
+                            Requested:{" "}
                             <span className="text-gray-700 dark:text-zinc-300 font-medium">
-                                ETB {latestApplication.requested_amount.toLocaleString('en-ET')}
+                                ETB{" "}
+                                {latestApplication.requested_amount.toLocaleString(
+                                    "en-ET",
+                                )}
                             </span>
                         </span>
                         {latestApplication.submitted_at && (
-                            <span>{formatDate(latestApplication.submitted_at)}</span>
+                            <span>
+                                {formatDate(latestApplication.submitted_at)}
+                            </span>
                         )}
                     </div>
-                    {latestApplication.status === 'pending_psychometric' && (
+                    {latestApplication.status === "pending_psychometric" && (
                         <Link
                             href="/psychometrics"
                             className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-amber-400 transition"
@@ -527,16 +551,18 @@ function AppStatusCard({
                             Complete Assessment →
                         </Link>
                     )}
-                    {latestApplication.apr !== null && (
+                    {/* {latestApplication.apr !== null && (
                         <p className="text-xs text-gray-400 dark:text-zinc-500">
                             Indicative APR:{' '}
                             <span className="text-gray-700 dark:text-zinc-300">{formatApr(latestApplication.apr)}</span>
                         </p>
-                    )}
+                    )} */}
                 </div>
             ) : (
                 <div className="space-y-3">
-                    <p className="text-sm text-gray-400 dark:text-zinc-500">No active application.</p>
+                    <p className="text-sm text-gray-400 dark:text-zinc-500">
+                        No active application.
+                    </p>
                     <Link
                         href="/loan-application"
                         className="inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-zinc-900 hover:bg-zinc-100 transition"
@@ -556,10 +582,10 @@ function HealthScoreCard({ score }: { score: number }) {
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
 
     const ringColor =
-        score >= 70 ? '#4ade80' : score >= 40 ? '#fbbf24' : '#f87171';
-    const trackColor = isDark ? '#27272a' : '#e4e4e7';
+        score >= 70 ? "#4ade80" : score >= 40 ? "#fbbf24" : "#f87171";
+    const trackColor = isDark ? "#27272a" : "#e4e4e7";
 
-    const data: ChartData<'doughnut'> = useMemo(
+    const data: ChartData<"doughnut"> = useMemo(
         () => ({
             datasets: [
                 {
@@ -575,7 +601,7 @@ function HealthScoreCard({ score }: { score: number }) {
 
     const centerTextPlugin = useMemo(
         () => ({
-            id: 'centerText',
+            id: "centerText",
             afterDraw(chart: ChartJS) {
                 const { ctx, chartArea } = chart;
                 if (!chartArea) return;
@@ -584,8 +610,8 @@ function HealthScoreCard({ score }: { score: number }) {
                 ctx.save();
                 ctx.font = `bold 28px ${chartFont().family}`;
                 ctx.fillStyle = palette.text;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
                 ctx.fillText(String(score), x, y);
                 ctx.restore();
             },
@@ -593,12 +619,12 @@ function HealthScoreCard({ score }: { score: number }) {
         [score, palette.text],
     );
 
-    const options: ChartOptions<'doughnut'> = useMemo(
+    const options: ChartOptions<"doughnut"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: true,
-            cutout: '72%',
-            animation: { duration: 700, easing: 'easeOutQuart' },
+            cutout: "72%",
+            animation: { duration: 700, easing: "easeOutQuart" },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -631,7 +657,9 @@ function HealthScoreCard({ score }: { score: number }) {
                     plugins={[centerTextPlugin]}
                 />
             </div>
-            <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white">{score}/100</p>
+            <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white">
+                {score}/100
+            </p>
             <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500 text-center">
                 Based on cash flow, transactions &amp; assessment
             </p>
@@ -644,22 +672,22 @@ function HealthScoreCard({ score }: { score: number }) {
 function CashflowTrendCard({
     trend,
 }: {
-    trend: SmeOwnerStats['cashflowTrend'];
+    trend: SmeOwnerStats["cashflowTrend"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
 
     const values = useMemo(() => trend.map((t) => t.net), [trend]);
     const labels = useMemo(() => trend.map((t) => t.date), [trend]);
-    const minVal  = values.length ? Math.min(...values) : 0;
-    const maxVal  = values.length ? Math.max(...values) : 0;
+    const minVal = values.length ? Math.min(...values) : 0;
+    const maxVal = values.length ? Math.max(...values) : 0;
 
-    const data: ChartData<'line'> = useMemo(
+    const data: ChartData<"line"> = useMemo(
         () => ({
             labels,
             datasets: [
                 {
-                    label: 'Net Cash Flow',
+                    label: "Net Cash Flow",
                     data: values,
                     borderColor: palette.positive,
                     backgroundColor: `${palette.positive}22`,
@@ -670,9 +698,11 @@ function CashflowTrendCard({
                     borderWidth: 1.5,
                 },
                 {
-                    label: 'Zero line',
+                    label: "Zero line",
                     data: values.map(() => 0),
-                    borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)',
+                    borderColor: isDark
+                        ? "rgba(255,255,255,0.15)"
+                        : "rgba(0,0,0,0.12)",
                     borderDash: [4, 4],
                     pointRadius: 0,
                     borderWidth: 1,
@@ -683,12 +713,12 @@ function CashflowTrendCard({
         [labels, values, palette, isDark],
     );
 
-    const options: ChartOptions<'line'> = useMemo(
+    const options: ChartOptions<"line"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
             animation: { duration: 500 },
-            interaction: { mode: 'index', intersect: false },
+            interaction: { mode: "index", intersect: false },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -698,11 +728,11 @@ function CashflowTrendCard({
                     titleColor: palette.text,
                     bodyColor: palette.textMuted,
                     callbacks: {
-                        title: (items) => items[0]?.label ?? '',
+                        title: (items) => items[0]?.label ?? "",
                         label: (ctx) =>
                             ctx.datasetIndex === 0
-                                ? `ETB ${Number(ctx.parsed.y).toLocaleString('en-ET')}`
-                                : '',
+                                ? `ETB ${Number(ctx.parsed.y).toLocaleString("en-ET")}`
+                                : "",
                     },
                 },
                 datalabels: { display: false },
@@ -727,16 +757,18 @@ function CashflowTrendCard({
                     </div>
                     <div className="mt-3 flex items-center justify-between text-xs text-gray-400 dark:text-zinc-500">
                         <span>
-                            Low:{' '}
+                            Low:{" "}
                             <span className="text-red-400 font-medium">
-                                ETB {minVal.toLocaleString('en-ET')}
+                                ETB {minVal.toLocaleString("en-ET")}
                             </span>
                         </span>
-                        <span className="text-gray-400 dark:text-zinc-600">Last 30 days</span>
+                        <span className="text-gray-400 dark:text-zinc-600">
+                            Last 30 days
+                        </span>
                         <span>
-                            High:{' '}
+                            High:{" "}
                             <span className="text-green-400 font-medium">
-                                ETB {maxVal.toLocaleString('en-ET')}
+                                ETB {maxVal.toLocaleString("en-ET")}
                             </span>
                         </span>
                     </div>
@@ -755,7 +787,7 @@ function CashflowTrendCard({
 function TxnActivityCard({
     txnActivity,
 }: {
-    txnActivity: SmeOwnerStats['txnActivity'];
+    txnActivity: SmeOwnerStats["txnActivity"];
 }) {
     return (
         <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl p-5">
@@ -773,7 +805,7 @@ function TxnActivityCard({
                         </span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
-                        {txnActivity.direction === 'up' ? (
+                        {txnActivity.direction === "up" ? (
                             <>
                                 <TrendingUp className="h-3.5 w-3.5 text-green-400" />
                                 <span className="text-green-400 font-medium">
@@ -784,14 +816,17 @@ function TxnActivityCard({
                             <>
                                 <TrendingDown className="h-3.5 w-3.5 text-amber-400" />
                                 <span className="text-amber-400 font-medium">
-                                    ↓ {Math.abs(txnActivity.trend_pct)}% vs prior 14 days
+                                    ↓ {Math.abs(txnActivity.trend_pct)}% vs
+                                    prior 14 days
                                 </span>
                             </>
                         )}
                     </div>
                 </div>
             ) : (
-                <p className="text-sm text-gray-400 dark:text-zinc-500">No data yet.</p>
+                <p className="text-sm text-gray-400 dark:text-zinc-500">
+                    No data yet.
+                </p>
             )}
         </div>
     );
@@ -809,8 +844,10 @@ function DataCoverageCard({ days }: { days: number }) {
                 Financial History Coverage
             </p>
             <p className="text-3xl font-bold text-gray-900 dark:text-white tabular-nums">
-                {days}{' '}
-                <span className="text-lg font-semibold text-gray-500 dark:text-zinc-400">days</span>
+                {days}{" "}
+                <span className="text-lg font-semibold text-gray-500 dark:text-zinc-400">
+                    days
+                </span>
             </p>
             <p className="mt-1 text-xs text-gray-400 dark:text-zinc-500">
                 {pct}% toward full 365-day coverage
@@ -835,7 +872,7 @@ function DataCoverageCard({ days }: { days: number }) {
 function PsychometricCard({
     psychometricAssessment,
 }: {
-    psychometricAssessment: SmeOwnerStats['psychometricAssessment'];
+    psychometricAssessment: SmeOwnerStats["psychometricAssessment"];
 }) {
     const done = psychometricAssessment?.completed ?? false;
 
@@ -854,18 +891,23 @@ function PsychometricCard({
                     </div>
                     {psychometricAssessment?.completed_at && (
                         <p className="text-xs text-gray-400 dark:text-zinc-500">
-                            Completed {formatDate(psychometricAssessment.completed_at)}
+                            Completed{" "}
+                            {formatDate(psychometricAssessment.completed_at)}
                         </p>
                     )}
-                    {psychometricAssessment?.composite_score !== null &&
-                        psychometricAssessment?.composite_score !== undefined && (
+                    {/* {psychometricAssessment?.composite_score !== null &&
+                        psychometricAssessment?.composite_score !==
+                            undefined && (
                             <p className="text-xs text-gray-500 dark:text-zinc-400">
-                                Score:{' '}
+                                Score:{" "}
                                 <span className="font-semibold text-gray-900 dark:text-white">
-                                    {Math.round(psychometricAssessment.composite_score)}/100
+                                    {Math.round(
+                                        psychometricAssessment.composite_score,
+                                    )}
+                                    /100
                                 </span>
                             </p>
-                        )}
+                        )} */}
                 </div>
             ) : (
                 <div className="space-y-3">
@@ -876,7 +918,8 @@ function PsychometricCard({
                         </span>
                     </div>
                     <p className="text-xs text-gray-400 dark:text-zinc-500">
-                        Completing the assessment strengthens your credit profile.
+                        Completing the assessment strengthens your credit
+                        profile.
                     </p>
                     <Link
                         href="/psychometrics"
@@ -895,7 +938,7 @@ function PsychometricCard({
 function ShapDriversPanel({
     shapDrivers,
 }: {
-    shapDrivers: SmeOwnerStats['shapDrivers'];
+    shapDrivers: SmeOwnerStats["shapDrivers"];
 }) {
     const hasAny =
         shapDrivers.boosters.length > 0 || shapDrivers.drags.length > 0;
@@ -959,7 +1002,8 @@ function ShapDriversPanel({
                 </div>
             ) : (
                 <p className="text-sm text-gray-400 dark:text-zinc-500 text-center py-4">
-                    Submit your application to see your personalized financial profile analysis.
+                    Submit your application to see your personalized financial
+                    profile analysis.
                 </p>
             )}
         </div>
@@ -979,7 +1023,7 @@ function SmeOwnerDashboard({
         <>
             <header className="mb-8">
                 <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">
-                    {greeting()}, {userName.split(' ')[0]}.
+                    {greeting()}, {userName.split(" ")[0]}.
                 </h1>
                 <p className="mt-1 text-sm text-gray-500 dark:text-zinc-400">
                     Here is your business financial overview.
@@ -997,7 +1041,9 @@ function SmeOwnerDashboard({
             <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
                 <TxnActivityCard txnActivity={stats.txnActivity} />
                 <DataCoverageCard days={stats.coverageDays} />
-                <PsychometricCard psychometricAssessment={stats.psychometricAssessment} />
+                <PsychometricCard
+                    psychometricAssessment={stats.psychometricAssessment}
+                />
             </div>
 
             {/* Row 3 — full width */}
@@ -1012,38 +1058,44 @@ function SmeOwnerDashboard({
 
 // Colours for each application status (doughnut chart)
 const STATUS_CHART_COLORS: Record<string, string> = {
-    draft:                '#6B7280',
-    submitted:            '#3B82F6',
-    pending_psychometric: '#8B5CF6',
-    pending_data_sync:    '#F59E0B',
-    queued_for_ai:        '#06B6D4',
-    processing:           '#F97316',
-    evaluated:            '#10B981',
-    approved:             '#059669',
-    rejected:             '#EF4444',
-    withdrawn:            '#374151',
+    draft: "#6B7280",
+    submitted: "#3B82F6",
+    pending_psychometric: "#8B5CF6",
+    pending_data_sync: "#F59E0B",
+    queued_for_ai: "#06B6D4",
+    processing: "#F97316",
+    evaluated: "#10B981",
+    approved: "#059669",
+    rejected: "#EF4444",
+    withdrawn: "#374151",
 };
 
 const STATUS_LABELS: Record<string, string> = {
-    draft:                'Draft',
-    submitted:            'Submitted',
-    pending_psychometric: 'Pending Psychometric',
-    pending_data_sync:    'Pending Data Sync',
-    queued_for_ai:        'Queued for AI',
-    processing:           'Processing',
-    evaluated:            'Evaluated',
-    approved:             'Approved',
-    rejected:             'Rejected',
-    withdrawn:            'Withdrawn',
+    draft: "Draft",
+    submitted: "Submitted",
+    pending_psychometric: "Pending Psychometric",
+    pending_data_sync: "Pending Data Sync",
+    queued_for_ai: "Queued for AI",
+    processing: "Processing",
+    evaluated: "Evaluated",
+    approved: "Approved",
+    rejected: "Rejected",
+    withdrawn: "Withdrawn",
 };
 
 const SECTOR_PALETTE = [
-    '#3B82F6', '#10B981', '#F59E0B', '#8B5CF6',
-    '#06B6D4', '#F97316', '#EC4899', '#6B7280',
+    "#3B82F6",
+    "#10B981",
+    "#F59E0B",
+    "#8B5CF6",
+    "#06B6D4",
+    "#F97316",
+    "#EC4899",
+    "#6B7280",
 ];
 
 function formatEtbAbbrev(value: number | null | undefined): string {
-    if (value === null || value === undefined) return '—';
+    if (value === null || value === undefined) return "—";
     if (value >= 1_000_000) return `ETB ${(value / 1_000_000).toFixed(1)}M`;
     if (value >= 1_000) return `ETB ${(value / 1_000).toFixed(0)}K`;
     return `ETB ${Math.round(value)}`;
@@ -1094,15 +1146,17 @@ function StatusDistributionChart({
     const entries = Object.entries(rawData).filter(([, v]) => v > 0);
     const isEmpty = entries.length === 0;
 
-    const chartData: ChartData<'doughnut'> = useMemo(
+    const chartData: ChartData<"doughnut"> = useMemo(
         () => ({
             labels: entries.map(([k]) => STATUS_LABELS[k] ?? k),
             datasets: [
                 {
                     data: entries.map(([, v]) => v),
-                    backgroundColor: entries.map(([k]) => STATUS_CHART_COLORS[k] ?? '#6B7280'),
+                    backgroundColor: entries.map(
+                        ([k]) => STATUS_CHART_COLORS[k] ?? "#6B7280",
+                    ),
                     borderWidth: 2,
-                    borderColor: isDark ? '#18181b' : '#ffffff',
+                    borderColor: isDark ? "#18181b" : "#ffffff",
                     hoverOffset: 6,
                 },
             ],
@@ -1110,16 +1164,16 @@ function StatusDistributionChart({
         [entries, isDark],
     );
 
-    const options: ChartOptions<'doughnut'> = useMemo(
+    const options: ChartOptions<"doughnut"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            cutout: "60%",
             animation: { duration: 600 },
             plugins: {
                 legend: {
                     display: true,
-                    position: 'bottom',
+                    position: "bottom",
                     labels: {
                         color: palette.textMuted,
                         font: chartFont(),
@@ -1144,7 +1198,12 @@ function StatusDistributionChart({
     );
 
     return (
-        <ChartCard title="Application Status Distribution" isEmpty={isEmpty} emptyMessage="No applications yet" height={300}>
+        <ChartCard
+            title="Application Status Distribution"
+            isEmpty={isEmpty}
+            emptyMessage="No applications yet"
+            height={300}
+        >
             <Doughnut data={chartData} options={options} />
         </ChartCard>
     );
@@ -1161,14 +1220,14 @@ function RiskBandChart({
     const total = rawData.low + rawData.medium + rawData.high;
     const isEmpty = total === 0;
 
-    const chartData: ChartData<'bar'> = useMemo(
+    const chartData: ChartData<"bar"> = useMemo(
         () => ({
-            labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+            labels: ["Low Risk", "Medium Risk", "High Risk"],
             datasets: [
                 {
-                    label: 'Applications',
+                    label: "Applications",
                     data: [rawData.low, rawData.medium, rawData.high],
-                    backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+                    backgroundColor: ["#10B981", "#F59E0B", "#EF4444"],
                     borderRadius: 4,
                     borderSkipped: false,
                 },
@@ -1177,11 +1236,11 @@ function RiskBandChart({
         [rawData],
     );
 
-    const options: ChartOptions<'bar'> = useMemo(
+    const options: ChartOptions<"bar"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            indexAxis: 'y' as const,
+            indexAxis: "y" as const,
             animation: { duration: 600 },
             plugins: {
                 legend: { display: false },
@@ -1204,7 +1263,7 @@ function RiskBandChart({
                     border: { color: palette.border },
                     title: {
                         display: true,
-                        text: 'Number of Applications',
+                        text: "Number of Applications",
                         color: palette.textMuted,
                         font: chartFont(),
                     },
@@ -1220,7 +1279,12 @@ function RiskBandChart({
     );
 
     return (
-        <ChartCard title="Risk Band Distribution" isEmpty={isEmpty} emptyMessage="No evaluated applications yet" height={300}>
+        <ChartCard
+            title="Risk Band Distribution"
+            isEmpty={isEmpty}
+            emptyMessage="No evaluated applications yet"
+            height={300}
+        >
             <Bar data={chartData} options={options} />
         </ChartCard>
     );
@@ -1239,22 +1303,22 @@ function VolumeTrendChart({
     const labels = useMemo(
         () =>
             rawData.map((d) =>
-                new Date(d.date + 'T00:00:00').toLocaleDateString('en-ET', {
-                    month: 'short',
-                    day: 'numeric',
+                new Date(d.date + "T00:00:00").toLocaleDateString("en-ET", {
+                    month: "short",
+                    day: "numeric",
                 }),
             ),
         [rawData],
     );
 
-    const chartData: ChartData<'bar'> = useMemo(
+    const chartData: ChartData<"bar"> = useMemo(
         () => ({
             labels,
             datasets: [
                 {
-                    label: 'Applications Submitted',
+                    label: "Applications Submitted",
                     data: rawData.map((d) => d.count),
-                    backgroundColor: '#3B82F6',
+                    backgroundColor: "#3B82F6",
                     borderRadius: 3,
                     borderSkipped: false,
                 },
@@ -1263,7 +1327,7 @@ function VolumeTrendChart({
         [rawData, labels],
     );
 
-    const options: ChartOptions<'bar'> = useMemo(
+    const options: ChartOptions<"bar"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
@@ -1294,18 +1358,22 @@ function VolumeTrendChart({
                     border: { display: false },
                     title: {
                         display: true,
-                        text: 'Date',
+                        text: "Date",
                         color: palette.textMuted,
                         font: chartFont(),
                     },
                 },
                 y: {
-                    ticks: { color: palette.textMuted, font: chartFont(), stepSize: 1 },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        stepSize: 1,
+                    },
                     grid: { color: palette.grid },
                     border: { color: palette.border },
                     title: {
                         display: true,
-                        text: 'Applications',
+                        text: "Applications",
                         color: palette.textMuted,
                         font: chartFont(),
                     },
@@ -1316,7 +1384,12 @@ function VolumeTrendChart({
     );
 
     return (
-        <ChartCard title="Application Volume Trend (Last 30 Days)" isEmpty={isEmpty} emptyMessage="No application data yet" height={240}>
+        <ChartCard
+            title="Application Volume Trend (Last 30 Days)"
+            isEmpty={isEmpty}
+            emptyMessage="No application data yet"
+            height={240}
+        >
             <Bar data={chartData} options={options} />
         </ChartCard>
     );
@@ -1330,18 +1403,18 @@ function CreditLimitDistributionChart({
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
-    const bucketOrder = ['0-50K', '50-100K', '100-200K', '200-500K', '500K+'];
+    const bucketOrder = ["0-50K", "50-100K", "100-200K", "200-500K", "500K+"];
     const values = bucketOrder.map((k) => rawData[k] ?? 0);
     const isEmpty = values.every((v) => v === 0);
 
-    const chartData: ChartData<'bar'> = useMemo(
+    const chartData: ChartData<"bar"> = useMemo(
         () => ({
             labels: bucketOrder,
             datasets: [
                 {
-                    label: 'Applications',
+                    label: "Applications",
                     data: values,
-                    backgroundColor: '#10B981',
+                    backgroundColor: "#10B981",
                     borderRadius: 4,
                     borderSkipped: false,
                 },
@@ -1350,7 +1423,7 @@ function CreditLimitDistributionChart({
         [values],
     );
 
-    const options: ChartOptions<'bar'> = useMemo(
+    const options: ChartOptions<"bar"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
@@ -1376,18 +1449,22 @@ function CreditLimitDistributionChart({
                     border: { display: false },
                     title: {
                         display: true,
-                        text: 'Credit Limit Range (ETB)',
+                        text: "Credit Limit Range (ETB)",
                         color: palette.textMuted,
                         font: chartFont(),
                     },
                 },
                 y: {
-                    ticks: { color: palette.textMuted, font: chartFont(), stepSize: 1 },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        stepSize: 1,
+                    },
                     grid: { color: palette.grid },
                     border: { color: palette.border },
                     title: {
                         display: true,
-                        text: 'Applications',
+                        text: "Applications",
                         color: palette.textMuted,
                         font: chartFont(),
                     },
@@ -1398,7 +1475,12 @@ function CreditLimitDistributionChart({
     );
 
     return (
-        <ChartCard title="Credit Limit Distribution" isEmpty={isEmpty} emptyMessage="No credit limit data yet" height={300}>
+        <ChartCard
+            title="Credit Limit Distribution"
+            isEmpty={isEmpty}
+            emptyMessage="No credit limit data yet"
+            height={300}
+        >
             <Bar data={chartData} options={options} />
         </ChartCard>
     );
@@ -1415,15 +1497,17 @@ function SectorBreakdownChart({
     const entries = Object.entries(rawData).filter(([, v]) => v > 0);
     const isEmpty = entries.length === 0;
 
-    const chartData: ChartData<'doughnut'> = useMemo(
+    const chartData: ChartData<"doughnut"> = useMemo(
         () => ({
             labels: entries.map(([k]) => k),
             datasets: [
                 {
                     data: entries.map(([, v]) => v),
-                    backgroundColor: entries.map((_, i) => SECTOR_PALETTE[i % SECTOR_PALETTE.length]),
+                    backgroundColor: entries.map(
+                        (_, i) => SECTOR_PALETTE[i % SECTOR_PALETTE.length],
+                    ),
                     borderWidth: 2,
-                    borderColor: isDark ? '#18181b' : '#ffffff',
+                    borderColor: isDark ? "#18181b" : "#ffffff",
                     hoverOffset: 6,
                 },
             ],
@@ -1431,16 +1515,16 @@ function SectorBreakdownChart({
         [entries, isDark],
     );
 
-    const options: ChartOptions<'doughnut'> = useMemo(
+    const options: ChartOptions<"doughnut"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            cutout: "60%",
             animation: { duration: 600 },
             plugins: {
                 legend: {
                     display: true,
-                    position: 'bottom',
+                    position: "bottom",
                     labels: {
                         color: palette.textMuted,
                         font: chartFont(),
@@ -1465,14 +1549,23 @@ function SectorBreakdownChart({
     );
 
     return (
-        <ChartCard title="Sector Breakdown" isEmpty={isEmpty} emptyMessage="No sector data yet" height={300}>
+        <ChartCard
+            title="Sector Breakdown"
+            isEmpty={isEmpty}
+            emptyMessage="No sector data yet"
+            height={300}
+        >
             <Doughnut data={chartData} options={options} />
         </ChartCard>
     );
 }
 
 // Portfolio Analytics section
-function PortfolioAnalytics({ analytics }: { analytics: LoanProviderAnalytics }) {
+function PortfolioAnalytics({
+    analytics,
+}: {
+    analytics: LoanProviderAnalytics;
+}) {
     return (
         <section className="mt-8">
             <SectionDivider title="Portfolio Analytics" />
@@ -1490,7 +1583,9 @@ function PortfolioAnalytics({ analytics }: { analytics: LoanProviderAnalytics })
 
             {/* Row 3: Credit Limit + Sector */}
             <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <CreditLimitDistributionChart data={analytics.creditLimitDistribution} />
+                <CreditLimitDistributionChart
+                    data={analytics.creditLimitDistribution}
+                />
                 <SectorBreakdownChart data={analytics.sectorBreakdown} />
             </div>
         </section>
@@ -1505,17 +1600,17 @@ function LoanOfficerDashboard({
     analytics: LoanProviderAnalytics;
 }) {
     const dbHealth = stats.dbHealth ?? {
-        status: 'error' as const,
+        status: "error" as const,
         latency: null,
-        host: 'Supabase',
+        host: "Supabase",
     };
     const aiHealth = stats.aiHealth ?? {
-        status: 'unreachable' as const,
+        status: "unreachable" as const,
         latency: null,
     };
     const counts = stats.counts ?? {};
-    const queued = counts['queued_for_ai'] ?? 0;
-    const evaluated = counts['evaluated'] ?? 0;
+    const queued = counts["queued_for_ai"] ?? 0;
+    const evaluated = counts["evaluated"] ?? 0;
 
     return (
         <>
@@ -1525,7 +1620,7 @@ function LoanOfficerDashboard({
                 </h1>
                 <p className={`mt-1 text-sm ${mutedClass}`}>
                     {stats.attentionCount} application
-                    {stats.attentionCount === 1 ? '' : 's'} require your
+                    {stats.attentionCount === 1 ? "" : "s"} require your
                     attention today.
                 </p>
             </header>
@@ -1578,9 +1673,16 @@ function LoanOfficerDashboard({
                 <KpiCard
                     label="Avg. AI Risk Score"
                     displayValue={
-                        stats.avgRiskScore !== null && stats.avgRiskScore !== undefined
-                            ? <span className="text-2xl font-bold">{stats.avgRiskScore}%</span>
-                            : <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">No data</span>
+                        stats.avgRiskScore !== null &&
+                        stats.avgRiskScore !== undefined ? (
+                            <span className="text-2xl font-bold">
+                                {stats.avgRiskScore}%
+                            </span>
+                        ) : (
+                            <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">
+                                No data
+                            </span>
+                        )
                     }
                     subtext="Across evaluated portfolio"
                     icon={<Activity className="h-6 w-6" />}
@@ -1589,9 +1691,16 @@ function LoanOfficerDashboard({
                 <KpiCard
                     label="Avg. NPV Credit Limit"
                     displayValue={
-                        stats.avgNpvLimit !== null && stats.avgNpvLimit !== undefined
-                            ? <span className="text-2xl font-bold">{formatEtbAbbrev(stats.avgNpvLimit)}</span>
-                            : <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">No data</span>
+                        stats.avgNpvLimit !== null &&
+                        stats.avgNpvLimit !== undefined ? (
+                            <span className="text-2xl font-bold">
+                                {formatEtbAbbrev(stats.avgNpvLimit)}
+                            </span>
+                        ) : (
+                            <span className="text-lg font-semibold text-gray-400 dark:text-zinc-500">
+                                No data
+                            </span>
+                        )
                     }
                     subtext="Across evaluated portfolio"
                     icon={<Banknote className="h-6 w-6" />}
@@ -1618,7 +1727,7 @@ function PipelineAction({
 }) {
     const [evaluating, setEvaluating] = useState(false);
 
-    if (status === 'queued_for_ai' || status === 'submitted') {
+    if (status === "queued_for_ai" || status === "submitted") {
         return (
             <button
                 type="button"
@@ -1626,7 +1735,7 @@ function PipelineAction({
                 onClick={() => {
                     setEvaluating(true);
                     router.post(
-                        route('applications.evaluate', applicationId),
+                        route("applications.evaluate", applicationId),
                         {},
                         {
                             preserveScroll: true,
@@ -1642,33 +1751,35 @@ function PipelineAction({
                         Evaluating...
                     </>
                 ) : (
-                    'Run AI →'
+                    "Run AI →"
                 )}
             </button>
         );
     }
-    if (status === 'evaluated') {
+    if (status === "evaluated") {
         return (
             <Link
-                href={route('risk.forecast.show', applicationId)}
+                href={route("risk.forecast.show", applicationId)}
                 className="inline-flex items-center gap-1 rounded-lg bg-[#0C447C] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#0C447C]/90 dark:bg-[#85B7EB] dark:text-[#0F1A16]"
             >
                 Review →
             </Link>
         );
     }
-    if (status === 'processing') {
+    if (status === "processing") {
         return (
-            <span className={`inline-flex items-center gap-1.5 text-xs ${mutedClass}`}>
+            <span
+                className={`inline-flex items-center gap-1.5 text-xs ${mutedClass}`}
+            >
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Evaluating...
             </span>
         );
     }
-    if (status === 'approved' || status === 'rejected') {
+    if (status === "approved" || status === "rejected") {
         return (
             <Link
-                href={route('risk.forecast.show', applicationId)}
+                href={route("risk.forecast.show", applicationId)}
                 className="text-xs font-medium text-gray-600 hover:underline dark:text-zinc-400"
             >
                 View
@@ -1687,36 +1798,34 @@ function ApplicationBreakdown({
 }) {
     const segments = [
         {
-            key: 'approved',
-            label: 'Approved',
-            color: 'bg-green-500',
-            count: appsByStatus['approved'] ?? 0,
+            key: "approved",
+            label: "Approved",
+            color: "bg-green-500",
+            count: appsByStatus["approved"] ?? 0,
         },
         {
-            key: 'evaluated',
-            label: 'Evaluated',
-            color: 'bg-purple-500',
-            count: appsByStatus['evaluated'] ?? 0,
+            key: "evaluated",
+            label: "Evaluated",
+            color: "bg-purple-500",
+            count: appsByStatus["evaluated"] ?? 0,
         },
         {
-            key: 'queued_for_ai',
-            label: 'Queued',
-            color: 'bg-blue-500',
-            count: appsByStatus['queued_for_ai'] ?? 0,
+            key: "queued_for_ai",
+            label: "Queued",
+            color: "bg-blue-500",
+            count: appsByStatus["queued_for_ai"] ?? 0,
         },
         {
-            key: 'rejected',
-            label: 'Rejected',
-            color: 'bg-red-500',
-            count: appsByStatus['rejected'] ?? 0,
+            key: "rejected",
+            label: "Rejected",
+            color: "bg-red-500",
+            count: appsByStatus["rejected"] ?? 0,
         },
     ];
     const total = segments.reduce((s, x) => s + x.count, 0);
 
     if (total === 0) {
-        return (
-            <p className={`text-sm ${mutedClass}`}>No applications yet.</p>
-        );
+        return <p className={`text-sm ${mutedClass}`}>No applications yet.</p>;
     }
 
     return (
@@ -1743,7 +1852,7 @@ function ApplicationBreakdown({
                             className={`h-2.5 w-2.5 rounded-full ${seg.color}`}
                         />
                         <span className={mutedClass}>
-                            {seg.label}:{' '}
+                            {seg.label}:{" "}
                             <strong className="text-gray-900 dark:text-zinc-100">
                                 {seg.count}
                             </strong>
@@ -1762,12 +1871,12 @@ function PlatformHealthBar({
     dbHealth,
     lastTraining,
 }: {
-    aiHealth: SuperAdminStats['aiHealth'];
-    dbHealth: SuperAdminStats['dbHealth'];
-    lastTraining: SuperAdminStats['lastTraining'];
+    aiHealth: SuperAdminStats["aiHealth"];
+    dbHealth: SuperAdminStats["dbHealth"];
+    lastTraining: SuperAdminStats["lastTraining"];
 }) {
-    const aiOk = aiHealth.status === 'healthy';
-    const dbOk = dbHealth.status === 'connected';
+    const aiOk = aiHealth.status === "healthy";
+    const dbOk = dbHealth.status === "connected";
 
     return (
         <div className="mb-6 flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-sm">
@@ -1775,32 +1884,54 @@ function PlatformHealthBar({
                 Platform Health
             </span>
 
-            <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-                aiOk
-                    ? 'border-green-200 bg-green-50 text-green-700'
-                    : 'border-red-200 bg-red-50 text-red-700'
-            }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${aiOk ? 'animate-pulse bg-green-500' : 'bg-red-500'}`} style={aiOk ? { animationDuration: '3s' } : undefined} />
-                AI Service: {aiOk ? 'Online' : aiHealth.status === 'degraded' ? 'Degraded' : 'Offline'}
-                {aiHealth.latency !== null && aiOk && <span className="text-green-500">· {aiHealth.latency}ms</span>}
+            <div
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
+                    aiOk
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-red-200 bg-red-50 text-red-700"
+                }`}
+            >
+                <span
+                    className={`h-1.5 w-1.5 rounded-full ${aiOk ? "animate-pulse bg-green-500" : "bg-red-500"}`}
+                    style={aiOk ? { animationDuration: "3s" } : undefined}
+                />
+                AI Service:{" "}
+                {aiOk
+                    ? "Online"
+                    : aiHealth.status === "degraded"
+                      ? "Degraded"
+                      : "Offline"}
+                {aiHealth.latency !== null && aiOk && (
+                    <span className="text-green-500">
+                        · {aiHealth.latency}ms
+                    </span>
+                )}
             </div>
 
-            <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
-                dbOk
-                    ? 'border-green-200 bg-green-50 text-green-700'
-                    : 'border-red-200 bg-red-50 text-red-700'
-            }`}>
-                <span className={`h-1.5 w-1.5 rounded-full ${dbOk ? 'bg-green-500' : 'bg-red-500'}`} />
-                Database: {dbOk ? 'Connected' : 'Error'}
-                {dbHealth.latency !== null && dbOk && <span className="text-green-500">· {dbHealth.latency}ms</span>}
+            <div
+                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium ${
+                    dbOk
+                        ? "border-green-200 bg-green-50 text-green-700"
+                        : "border-red-200 bg-red-50 text-red-700"
+                }`}
+            >
+                <span
+                    className={`h-1.5 w-1.5 rounded-full ${dbOk ? "bg-green-500" : "bg-red-500"}`}
+                />
+                Database: {dbOk ? "Connected" : "Error"}
+                {dbHealth.latency !== null && dbOk && (
+                    <span className="text-green-500">
+                        · {dbHealth.latency}ms
+                    </span>
+                )}
             </div>
 
             <div className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-medium text-gray-600">
                 <Brain className="h-3 w-3" />
-                Last Training:{' '}
+                Last Training:{" "}
                 {lastTraining
                     ? `${formatDate(lastTraining.updated_at)} (${lastTraining.status})`
-                    : 'Never'}
+                    : "Never"}
             </div>
         </div>
     );
@@ -1811,84 +1942,106 @@ function PlatformHealthBar({
 function ApplicationsOverTimeChart({
     data,
 }: {
-    data: SuperAdminStats['applicationsOverTime'];
+    data: SuperAdminStats["applicationsOverTime"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
-    const isEmpty = data.submitted.every((v) => v === 0) && data.evaluated.every((v) => v === 0);
+    const isEmpty =
+        data.submitted.every((v) => v === 0) &&
+        data.evaluated.every((v) => v === 0);
 
     // Show every 7th label to avoid crowding on 60-day view
     const displayLabels = data.labels.map((l, i) =>
-        i % 7 === 0 ? new Date(l).toLocaleDateString('en-ET', { month: 'short', day: 'numeric' }) : '',
+        i % 7 === 0
+            ? new Date(l).toLocaleDateString("en-ET", {
+                  month: "short",
+                  day: "numeric",
+              })
+            : "",
     );
 
-    const chartData: ChartData<'line'> = useMemo(() => ({
-        labels: displayLabels,
-        datasets: [
-            {
-                label: 'Submitted',
-                data: data.submitted,
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59,130,246,0.08)',
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-            },
-            {
-                label: 'Evaluated',
-                data: data.evaluated,
-                borderColor: '#8b5cf6',
-                backgroundColor: 'rgba(139,92,246,0.06)',
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-            },
-            {
-                label: 'Decided',
-                data: data.decided,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16,185,129,0.06)',
-                pointRadius: 0,
-                tension: 0.4,
-                fill: true,
-            },
-        ],
-    }), [data, displayLabels]);
+    const chartData: ChartData<"line"> = useMemo(
+        () => ({
+            labels: displayLabels,
+            datasets: [
+                {
+                    label: "Submitted",
+                    data: data.submitted,
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59,130,246,0.08)",
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: true,
+                },
+                {
+                    label: "Evaluated",
+                    data: data.evaluated,
+                    borderColor: "#8b5cf6",
+                    backgroundColor: "rgba(139,92,246,0.06)",
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: true,
+                },
+                {
+                    label: "Decided",
+                    data: data.decided,
+                    borderColor: "#10b981",
+                    backgroundColor: "rgba(16,185,129,0.06)",
+                    pointRadius: 0,
+                    tension: 0.4,
+                    fill: true,
+                },
+            ],
+        }),
+        [data, displayLabels],
+    );
 
-    const options: ChartOptions<'line'> = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        animation: { duration: 500 },
-        scales: {
-            x: {
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: { color: palette.textMuted, font: chartFont() },
-            },
-            y: {
-                beginAtZero: true,
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: { color: palette.textMuted, font: chartFont(), precision: 0 },
-            },
-        },
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: { color: palette.text, font: chartFont(), boxWidth: 12, padding: 12 },
-            },
-            tooltip: {
-                backgroundColor: palette.tooltipBg,
-                borderColor: palette.tooltipBorder,
-                borderWidth: 1,
-                titleColor: palette.text,
-                bodyColor: palette.textMuted,
-                callbacks: {
-                    title: (items) => data.labels[items[0].dataIndex] ?? '',
+    const options: ChartOptions<"line"> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            animation: { duration: 500 },
+            scales: {
+                x: {
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        precision: 0,
+                    },
                 },
             },
-            datalabels: { display: false },
-        },
-    }), [palette, isDark, data.labels]);
+            plugins: {
+                legend: {
+                    position: "top",
+                    labels: {
+                        color: palette.text,
+                        font: chartFont(),
+                        boxWidth: 12,
+                        padding: 12,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        title: (items) => data.labels[items[0].dataIndex] ?? "",
+                    },
+                },
+                datalabels: { display: false },
+            },
+        }),
+        [palette, isDark, data.labels],
+    );
 
     return (
         <ChartCard
@@ -1907,53 +2060,88 @@ function ApplicationsOverTimeChart({
 function RiskBandByProviderChart({
     data,
 }: {
-    data: SuperAdminStats['riskBandByProvider'];
+    data: SuperAdminStats["riskBandByProvider"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
     const isEmpty = data.providers.length === 0;
 
-    const chartData: ChartData<'bar'> = useMemo(() => ({
-        labels: data.providers,
-        datasets: [
-            { label: 'Low Risk',    data: data.low,    backgroundColor: '#10b981', borderRadius: 3 },
-            { label: 'Medium Risk', data: data.medium, backgroundColor: '#f59e0b', borderRadius: 3 },
-            { label: 'High Risk',   data: data.high,   backgroundColor: '#ef4444', borderRadius: 3 },
-        ],
-    }), [data]);
+    const chartData: ChartData<"bar"> = useMemo(
+        () => ({
+            labels: data.providers,
+            datasets: [
+                {
+                    label: "Low Risk",
+                    data: data.low,
+                    backgroundColor: "#10b981",
+                    borderRadius: 3,
+                },
+                {
+                    label: "Medium Risk",
+                    data: data.medium,
+                    backgroundColor: "#f59e0b",
+                    borderRadius: 3,
+                },
+                {
+                    label: "High Risk",
+                    data: data.high,
+                    backgroundColor: "#ef4444",
+                    borderRadius: 3,
+                },
+            ],
+        }),
+        [data],
+    );
 
-    const options: ChartOptions<'bar'> = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        animation: { duration: 500 },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: { color: palette.textMuted, font: chartFont() },
+    const options: ChartOptions<"bar"> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: "index", intersect: false },
+            animation: { duration: 500 },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        precision: 0,
+                    },
+                    title: {
+                        display: true,
+                        text: "Applications",
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
             },
-            y: {
-                beginAtZero: true,
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: { color: palette.textMuted, font: chartFont(), precision: 0 },
-                title: { display: true, text: 'Applications', color: palette.textMuted, font: chartFont() },
+            plugins: {
+                legend: {
+                    position: "top",
+                    labels: {
+                        color: palette.text,
+                        font: chartFont(),
+                        boxWidth: 12,
+                        padding: 12,
+                    },
+                },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                },
+                datalabels: { display: false },
             },
-        },
-        plugins: {
-            legend: {
-                position: 'top',
-                labels: { color: palette.text, font: chartFont(), boxWidth: 12, padding: 12 },
-            },
-            tooltip: {
-                backgroundColor: palette.tooltipBg,
-                borderColor: palette.tooltipBorder,
-                borderWidth: 1,
-                titleColor: palette.text,
-                bodyColor: palette.textMuted,
-            },
-            datalabels: { display: false },
-        },
-    }), [palette, isDark]);
+        }),
+        [palette, isDark],
+    );
 
     return (
         <ChartCard
@@ -1972,61 +2160,68 @@ function RiskBandByProviderChart({
 function AvgNpvBySectorChart({
     data,
 }: {
-    data: SuperAdminStats['avgNpvBySector'];
+    data: SuperAdminStats["avgNpvBySector"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
     const isEmpty = data.sectors.length === 0;
 
-    const chartData: ChartData<'bar'> = useMemo(() => ({
-        labels: data.sectors,
-        datasets: [
-            {
-                label: 'Avg NPV Credit Limit (ETB)',
-                data: data.avgLimits,
-                backgroundColor: 'rgba(59,130,246,0.7)',
-                borderColor: '#3b82f6',
-                borderWidth: 1,
-                borderRadius: 4,
-            },
-        ],
-    }), [data]);
+    const chartData: ChartData<"bar"> = useMemo(
+        () => ({
+            labels: data.sectors,
+            datasets: [
+                {
+                    label: "Avg NPV Credit Limit (ETB)",
+                    data: data.avgLimits,
+                    backgroundColor: "rgba(59,130,246,0.7)",
+                    borderColor: "#3b82f6",
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
+        }),
+        [data],
+    );
 
-    const options: ChartOptions<'bar'> = useMemo(() => ({
-        indexAxis: 'y' as const,
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 500 },
-        scales: {
-            x: {
-                beginAtZero: true,
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: {
-                    color: palette.textMuted,
-                    font: chartFont(),
-                    callback: (v) => formatEtbAbbrev(typeof v === 'number' ? v : null),
+    const options: ChartOptions<"bar"> = useMemo(
+        () => ({
+            indexAxis: "y" as const,
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        callback: (v) =>
+                            formatEtbAbbrev(typeof v === "number" ? v : null),
+                    },
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { color: palette.textMuted, font: chartFont() },
                 },
             },
-            y: {
-                grid: { display: false },
-                ticks: { color: palette.textMuted, font: chartFont() },
-            },
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: palette.tooltipBg,
-                borderColor: palette.tooltipBorder,
-                borderWidth: 1,
-                titleColor: palette.text,
-                bodyColor: palette.textMuted,
-                callbacks: {
-                    label: (ctx) => `Avg: ${formatEtb(ctx.parsed.x)}`,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                    callbacks: {
+                        label: (ctx) => `Avg: ${formatEtb(ctx.parsed.x)}`,
+                    },
                 },
+                datalabels: { display: false },
             },
-            datalabels: { display: false },
-        },
-    }), [palette, isDark]);
+        }),
+        [palette, isDark],
+    );
 
     return (
         <ChartCard
@@ -2045,81 +2240,113 @@ function AvgNpvBySectorChart({
 function RiskScoreDistributionChart({
     data,
 }: {
-    data: SuperAdminStats['riskScoreDistribution'];
+    data: SuperAdminStats["riskScoreDistribution"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
     const isEmpty = data.counts.every((c) => c === 0);
 
-    const chartData: ChartData<'bar'> = useMemo(() => ({
-        labels: data.labels,
-        datasets: [
-            {
-                label: 'Applications',
-                data: data.counts,
-                backgroundColor: data.labels.map((_, i) => {
-                    const mid = (i + 0.5) / 10;
-                    if (mid < 0.35) return 'rgba(16,185,129,0.75)';
-                    if (mid < 0.65) return 'rgba(245,158,11,0.75)';
-                    return 'rgba(239,68,68,0.75)';
-                }),
-                borderWidth: 0,
-                borderRadius: 3,
-            },
-        ],
-    }), [data]);
+    const chartData: ChartData<"bar"> = useMemo(
+        () => ({
+            labels: data.labels,
+            datasets: [
+                {
+                    label: "Applications",
+                    data: data.counts,
+                    backgroundColor: data.labels.map((_, i) => {
+                        const mid = (i + 0.5) / 10;
+                        if (mid < 0.35) return "rgba(16,185,129,0.75)";
+                        if (mid < 0.65) return "rgba(245,158,11,0.75)";
+                        return "rgba(239,68,68,0.75)";
+                    }),
+                    borderWidth: 0,
+                    borderRadius: 3,
+                },
+            ],
+        }),
+        [data],
+    );
 
-    const options: ChartOptions<'bar'> = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 500 },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: { color: palette.textMuted, font: chartFont() },
-                title: { display: true, text: 'XGBoost Risk Score', color: palette.textMuted, font: chartFont() },
-            },
-            y: {
-                beginAtZero: true,
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: { color: palette.textMuted, font: chartFont(), precision: 0 },
-                title: { display: true, text: 'Count', color: palette.textMuted, font: chartFont() },
-            },
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: palette.tooltipBg,
-                borderColor: palette.tooltipBorder,
-                borderWidth: 1,
-                titleColor: palette.text,
-                bodyColor: palette.textMuted,
-            },
-            datalabels: { display: false },
-            annotation: {
-                annotations: {
-                    lowLine: {
-                        type: 'line' as const,
-                        scaleID: 'x',
-                        value: 3.5,
-                        borderColor: '#10b981',
-                        borderWidth: 1,
-                        borderDash: [4, 4],
-                        label: { content: '0.35', enabled: true, position: 'end', color: '#10b981', font: { size: 10 } },
+    const options: ChartOptions<"bar"> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                    title: {
+                        display: true,
+                        text: "XGBoost Risk Score",
+                        color: palette.textMuted,
+                        font: chartFont(),
                     },
-                    highLine: {
-                        type: 'line' as const,
-                        scaleID: 'x',
-                        value: 6.5,
-                        borderColor: '#ef4444',
-                        borderWidth: 1,
-                        borderDash: [4, 4],
-                        label: { content: '0.65', enabled: true, position: 'end', color: '#ef4444', font: { size: 10 } },
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        precision: 0,
+                    },
+                    title: {
+                        display: true,
+                        text: "Count",
+                        color: palette.textMuted,
+                        font: chartFont(),
                     },
                 },
             },
-        },
-    }), [palette, isDark]);
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                },
+                datalabels: { display: false },
+                annotation: {
+                    annotations: {
+                        lowLine: {
+                            type: "line" as const,
+                            scaleID: "x",
+                            value: 3.5,
+                            borderColor: "#10b981",
+                            borderWidth: 1,
+                            borderDash: [4, 4],
+                            label: {
+                                content: "0.35",
+                                enabled: true,
+                                position: "end",
+                                color: "#10b981",
+                                font: { size: 10 },
+                            },
+                        },
+                        highLine: {
+                            type: "line" as const,
+                            scaleID: "x",
+                            value: 6.5,
+                            borderColor: "#ef4444",
+                            borderWidth: 1,
+                            borderDash: [4, 4],
+                            label: {
+                                content: "0.65",
+                                enabled: true,
+                                position: "end",
+                                color: "#ef4444",
+                                font: { size: 10 },
+                            },
+                        },
+                    },
+                },
+            },
+        }),
+        [palette, isDark],
+    );
 
     return (
         <ChartCard
@@ -2130,7 +2357,18 @@ function RiskScoreDistributionChart({
         >
             <>
                 <p className="mb-2 text-xs text-gray-400">
-                    AUC-ROC: <strong className="text-gray-700 dark:text-zinc-300">0.8842</strong> · KS Stat: <strong className="text-gray-700 dark:text-zinc-300">0.6942</strong> · F1: <strong className="text-gray-700 dark:text-zinc-300">0.8140</strong>
+                    AUC-ROC:{" "}
+                    <strong className="text-gray-700 dark:text-zinc-300">
+                        0.8842
+                    </strong>{" "}
+                    · KS Stat:{" "}
+                    <strong className="text-gray-700 dark:text-zinc-300">
+                        0.6942
+                    </strong>{" "}
+                    · F1:{" "}
+                    <strong className="text-gray-700 dark:text-zinc-300">
+                        0.8140
+                    </strong>
                 </p>
                 <div style={{ height: 220 }}>
                     <Bar data={chartData} options={options} />
@@ -2145,82 +2383,113 @@ function RiskScoreDistributionChart({
 function NpvCreditLimitDistributionChart({
     data,
 }: {
-    data: SuperAdminStats['npvCreditLimitDistribution'];
+    data: SuperAdminStats["npvCreditLimitDistribution"];
 }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
     const isEmpty = data.counts.every((c) => c === 0);
 
-    const chartData: ChartData<'bar'> = useMemo(() => ({
-        labels: data.labels,
-        datasets: [
-            {
-                label: 'Businesses',
-                data: data.counts,
-                backgroundColor: 'rgba(59,130,246,0.65)',
-                borderColor: '#3b82f6',
-                borderWidth: 1,
-                borderRadius: 4,
-            },
-        ],
-    }), [data]);
+    const chartData: ChartData<"bar"> = useMemo(
+        () => ({
+            labels: data.labels,
+            datasets: [
+                {
+                    label: "Businesses",
+                    data: data.counts,
+                    backgroundColor: "rgba(59,130,246,0.65)",
+                    borderColor: "#3b82f6",
+                    borderWidth: 1,
+                    borderRadius: 4,
+                },
+            ],
+        }),
+        [data],
+    );
 
     const medianBucketIndex = useMemo(() => {
         if (data.median === null) return null;
-        const limits = [50000, 100000, 200000, 300000, 500000, 1000000, 2000000, Infinity];
+        const limits = [
+            50000,
+            100000,
+            200000,
+            300000,
+            500000,
+            1000000,
+            2000000,
+            Infinity,
+        ];
         return limits.findIndex((upper) => (data.median ?? 0) < upper);
     }, [data.median]);
 
-    const options: ChartOptions<'bar'> = useMemo(() => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 500 },
-        scales: {
-            x: {
-                grid: { display: false },
-                ticks: { color: palette.textMuted, font: chartFont() },
-                title: { display: true, text: 'Credit Limit (ETB)', color: palette.textMuted, font: chartFont() },
-            },
-            y: {
-                beginAtZero: true,
-                grid: { color: isDark ? '#27272a' : '#f3f4f6' },
-                ticks: { color: palette.textMuted, font: chartFont(), precision: 0 },
-                title: { display: true, text: 'Count', color: palette.textMuted, font: chartFont() },
-            },
-        },
-        plugins: {
-            legend: { display: false },
-            tooltip: {
-                backgroundColor: palette.tooltipBg,
-                borderColor: palette.tooltipBorder,
-                borderWidth: 1,
-                titleColor: palette.text,
-                bodyColor: palette.textMuted,
-            },
-            datalabels: { display: false },
-            ...(medianBucketIndex !== null ? {
-                annotation: {
-                    annotations: {
-                        medianLine: {
-                            type: 'line' as const,
-                            scaleID: 'x',
-                            value: medianBucketIndex,
-                            borderColor: '#f59e0b',
-                            borderWidth: 2,
-                            borderDash: [6, 3],
-                            label: {
-                                content: `Median: ${formatEtbAbbrev(data.median)}`,
-                                enabled: true,
-                                position: 'start',
-                                color: '#f59e0b',
-                                font: { size: 10 },
-                            },
-                        },
+    const options: ChartOptions<"bar"> = useMemo(
+        () => ({
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 500 },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { color: palette.textMuted, font: chartFont() },
+                    title: {
+                        display: true,
+                        text: "Credit Limit (ETB)",
+                        color: palette.textMuted,
+                        font: chartFont(),
                     },
                 },
-            } : {}),
-        },
-    }), [palette, isDark, medianBucketIndex, data.median]);
+                y: {
+                    beginAtZero: true,
+                    grid: { color: isDark ? "#27272a" : "#f3f4f6" },
+                    ticks: {
+                        color: palette.textMuted,
+                        font: chartFont(),
+                        precision: 0,
+                    },
+                    title: {
+                        display: true,
+                        text: "Count",
+                        color: palette.textMuted,
+                        font: chartFont(),
+                    },
+                },
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: palette.tooltipBg,
+                    borderColor: palette.tooltipBorder,
+                    borderWidth: 1,
+                    titleColor: palette.text,
+                    bodyColor: palette.textMuted,
+                },
+                datalabels: { display: false },
+                ...(medianBucketIndex !== null
+                    ? {
+                          annotation: {
+                              annotations: {
+                                  medianLine: {
+                                      type: "line" as const,
+                                      scaleID: "x",
+                                      value: medianBucketIndex,
+                                      borderColor: "#f59e0b",
+                                      borderWidth: 2,
+                                      borderDash: [6, 3],
+                                      label: {
+                                          content: `Median: ${formatEtbAbbrev(data.median)}`,
+                                          enabled: true,
+                                          position: "start",
+                                          color: "#f59e0b",
+                                          font: { size: 10 },
+                                      },
+                                  },
+                              },
+                          },
+                      }
+                    : {}),
+            },
+        }),
+        [palette, isDark, medianBucketIndex, data.median],
+    );
 
     return (
         <ChartCard
@@ -2239,29 +2508,59 @@ function NpvCreditLimitDistributionChart({
 function DataCoverageHealthBar({
     data,
 }: {
-    data: SuperAdminStats['dataCoverageHealth'];
+    data: SuperAdminStats["dataCoverageHealth"];
 }) {
-    const total = data.tier_excellent + data.tier_good + data.tier_marginal + data.tier_insufficient;
+    const total =
+        data.tier_excellent +
+        data.tier_good +
+        data.tier_marginal +
+        data.tier_insufficient;
 
     const tiers = [
-        { key: 'tier_excellent',    label: '≥365 days',   color: 'bg-green-500',  count: data.tier_excellent },
-        { key: 'tier_good',         label: '180–364 days', color: 'bg-blue-500',   count: data.tier_good },
-        { key: 'tier_marginal',     label: '45–179 days',  color: 'bg-amber-500',  count: data.tier_marginal },
-        { key: 'tier_insufficient', label: '<45 days',     color: 'bg-red-500',    count: data.tier_insufficient },
+        {
+            key: "tier_excellent",
+            label: "≥365 days",
+            color: "bg-green-500",
+            count: data.tier_excellent,
+        },
+        {
+            key: "tier_good",
+            label: "180–364 days",
+            color: "bg-blue-500",
+            count: data.tier_good,
+        },
+        {
+            key: "tier_marginal",
+            label: "45–179 days",
+            color: "bg-amber-500",
+            count: data.tier_marginal,
+        },
+        {
+            key: "tier_insufficient",
+            label: "<45 days",
+            color: "bg-red-500",
+            count: data.tier_insufficient,
+        },
     ];
 
     if (total === 0) {
         return (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
-                <h3 className="mb-3 text-sm font-semibold text-gray-900">Data Coverage Health</h3>
-                <p className="text-xs text-gray-400">No heartbeat data ingested yet.</p>
+                <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                    Data Coverage Health
+                </h3>
+                <p className="text-xs text-gray-400">
+                    No heartbeat data ingested yet.
+                </p>
             </div>
         );
     }
 
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">Data Coverage Health</h3>
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">
+                Data Coverage Health
+            </h3>
             <div className="flex h-5 overflow-hidden rounded-full bg-gray-100">
                 {tiers.map((tier) =>
                     tier.count > 0 ? (
@@ -2277,13 +2576,18 @@ function DataCoverageHealthBar({
             <ul className="mt-3 flex flex-wrap gap-4 text-xs">
                 {tiers.map((tier) => (
                     <li key={tier.key} className="flex items-center gap-1.5">
-                        <span className={`h-2.5 w-2.5 rounded-full ${tier.color}`} />
+                        <span
+                            className={`h-2.5 w-2.5 rounded-full ${tier.color}`}
+                        />
                         <span className="text-gray-500">{tier.label}:</span>
                         <strong className="text-gray-800">{tier.count}</strong>
                     </li>
                 ))}
             </ul>
-            <p className="mt-2 text-xs text-gray-400">Total businesses with heartbeat data: <strong className="text-gray-700">{total}</strong></p>
+            <p className="mt-2 text-xs text-gray-400">
+                Total businesses with heartbeat data:{" "}
+                <strong className="text-gray-700">{total}</strong>
+            </p>
         </div>
     );
 }
@@ -2292,28 +2596,39 @@ function DataCoverageHealthBar({
 
 function PdppComplianceCard() {
     const items = [
-        { label: 'Data minimisation principle applied',         done: true },
-        { label: 'Informed consent collected at onboarding',    done: true },
-        { label: 'Adverse action notice system implemented',    done: true },
-        { label: 'Data subject erasure endpoint available',     done: true },
-        { label: 'Audit trail for all model decisions',         done: true },
-        { label: 'SHAP explanations stored per valuation',      done: true },
-        { label: 'NBE-compliant reason codes on rejections',    done: true },
-        { label: 'External audit scheduled',                    done: false },
+        { label: "Data minimisation principle applied", done: true },
+        { label: "Informed consent collected at onboarding", done: true },
+        { label: "Adverse action notice system implemented", done: true },
+        { label: "Data subject erasure endpoint available", done: true },
+        { label: "Audit trail for all model decisions", done: true },
+        { label: "SHAP explanations stored per valuation", done: true },
+        { label: "NBE-compliant reason codes on rejections", done: true },
+        { label: "External audit scheduled", done: false },
     ];
 
     return (
         <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="mb-4 text-sm font-semibold text-gray-900">PDPP Compliance Checklist</h3>
+            <h3 className="mb-4 text-sm font-semibold text-gray-900">
+                PDPP Compliance Checklist
+            </h3>
             <ul className="space-y-2">
                 {items.map((item) => (
-                    <li key={item.label} className="flex items-start gap-2.5 text-xs">
+                    <li
+                        key={item.label}
+                        className="flex items-start gap-2.5 text-xs"
+                    >
                         {item.done ? (
                             <CheckCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-green-500" />
                         ) : (
                             <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
                         )}
-                        <span className={item.done ? 'text-gray-700' : 'text-amber-700'}>{item.label}</span>
+                        <span
+                            className={
+                                item.done ? "text-gray-700" : "text-amber-700"
+                            }
+                        >
+                            {item.label}
+                        </span>
                     </li>
                 ))}
             </ul>
@@ -2326,13 +2641,15 @@ function PdppComplianceCard() {
 function ProviderOverviewTable({
     rows,
 }: {
-    rows: SuperAdminStats['providerOverview'];
+    rows: SuperAdminStats["providerOverview"];
 }) {
     if (rows.length === 0) {
         return (
             <div className="rounded-xl border border-gray-200 bg-white p-6 text-center">
                 <Building2 className="mx-auto mb-2 h-8 w-8 text-gray-300" />
-                <p className="text-sm text-gray-400">No loan providers registered yet.</p>
+                <p className="text-sm text-gray-400">
+                    No loan providers registered yet.
+                </p>
                 <Link
                     href="/admin/loan-providers"
                     className="mt-3 inline-flex items-center gap-1 rounded-lg bg-gray-900 px-4 py-2 text-xs font-medium text-white hover:bg-gray-800"
@@ -2346,7 +2663,9 @@ function ProviderOverviewTable({
     return (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-                <h3 className="text-sm font-semibold text-gray-900">Loan Provider Overview</h3>
+                <h3 className="text-sm font-semibold text-gray-900">
+                    Loan Provider Overview
+                </h3>
                 <Link
                     href="/admin/loan-providers"
                     className="text-xs font-medium text-blue-600 hover:text-blue-800"
@@ -2361,7 +2680,9 @@ function ProviderOverviewTable({
                             <th className="px-4 py-3">Provider</th>
                             <th className="px-4 py-3">Type</th>
                             <th className="px-4 py-3 text-center">Status</th>
-                            <th className="px-4 py-3 text-right">Applications</th>
+                            <th className="px-4 py-3 text-right">
+                                Applications
+                            </th>
                             <th className="px-4 py-3 text-right">Officers</th>
                             <th className="px-4 py-3 text-right">Avg Risk</th>
                             <th className="px-4 py-3">Last Activity</th>
@@ -2369,20 +2690,29 @@ function ProviderOverviewTable({
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                         {rows.map((row) => (
-                            <tr key={row.id} className="hover:bg-gray-50/60 transition-colors">
+                            <tr
+                                key={row.id}
+                                className="hover:bg-gray-50/60 transition-colors"
+                            >
                                 <td className="px-4 py-3">
-                                    <div className="font-medium text-gray-900">{row.name}</div>
-                                    <div className="text-gray-400">{row.short_code}</div>
+                                    <div className="font-medium text-gray-900">
+                                        {row.name}
+                                    </div>
+                                    <div className="text-gray-400">
+                                        {row.short_code}
+                                    </div>
                                 </td>
                                 <td className="px-4 py-3 capitalize text-gray-600">
-                                    {row.type.replace(/_/g, ' ')}
+                                    {row.type.replace(/_/g, " ")}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                        row.status === 'active'
-                                            ? 'bg-green-100 text-green-700'
-                                            : 'bg-red-100 text-red-700'
-                                    }`}>
+                                    <span
+                                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                            row.status === "active"
+                                                ? "bg-green-100 text-green-700"
+                                                : "bg-red-100 text-red-700"
+                                        }`}
+                                    >
                                         {row.status}
                                     </span>
                                 </td>
@@ -2394,21 +2724,28 @@ function ProviderOverviewTable({
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums">
                                     {row.avg_risk_score !== null ? (
-                                        <span className={
-                                            row.avg_risk_score < 0.35
-                                                ? 'text-green-600'
-                                                : row.avg_risk_score < 0.65
-                                                  ? 'text-amber-600'
-                                                  : 'text-red-600'
-                                        }>
-                                            {(row.avg_risk_score * 100).toFixed(1)}%
+                                        <span
+                                            className={
+                                                row.avg_risk_score < 0.35
+                                                    ? "text-green-600"
+                                                    : row.avg_risk_score < 0.65
+                                                      ? "text-amber-600"
+                                                      : "text-red-600"
+                                            }
+                                        >
+                                            {(row.avg_risk_score * 100).toFixed(
+                                                1,
+                                            )}
+                                            %
                                         </span>
                                     ) : (
                                         <span className="text-gray-400">—</span>
                                     )}
                                 </td>
                                 <td className="px-4 py-3 text-gray-500">
-                                    {row.last_activity ? formatDate(row.last_activity) : '—'}
+                                    {row.last_activity
+                                        ? formatDate(row.last_activity)
+                                        : "—"}
                                 </td>
                             </tr>
                         ))}
@@ -2422,18 +2759,32 @@ function ProviderOverviewTable({
 // ─── Super Admin: Main Dashboard ─────────────────────────────────────────────
 
 function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
-    const aiHealth = stats.aiHealth ?? { status: 'unreachable' as const, latency: null };
-    const dbHealth = stats.dbHealth ?? { status: 'error' as const, latency: null, host: 'Supabase' };
-    const drift = stats.drift ?? { mape: null, p10_coverage: null, ks_stat: null, auc_roc: null, alert: false, source: 'validated' as const };
+    const aiHealth = stats.aiHealth ?? {
+        status: "unreachable" as const,
+        latency: null,
+    };
+    const dbHealth = stats.dbHealth ?? {
+        status: "error" as const,
+        latency: null,
+        host: "Supabase",
+    };
+    const drift = stats.drift ?? {
+        mape: null,
+        p10_coverage: null,
+        ks_stat: null,
+        auc_roc: null,
+        alert: false,
+        source: "validated" as const,
+    };
 
     const aiRiskColor =
         stats.avgRiskScore === null
-            ? 'text-gray-500'
+            ? "text-gray-500"
             : stats.avgRiskScore < 0.35
-              ? 'text-green-600'
+              ? "text-green-600"
               : stats.avgRiskScore < 0.65
-                ? 'text-amber-600'
-                : 'text-red-600';
+                ? "text-amber-600"
+                : "text-red-600";
 
     return (
         <div className="space-y-6">
@@ -2478,7 +2829,9 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                     label="Approval Rate"
                     displayValue={
                         <span className="text-2xl font-bold text-gray-900">
-                            {stats.approvalRate !== null ? `${stats.approvalRate}%` : '—'}
+                            {stats.approvalRate !== null
+                                ? `${stats.approvalRate}%`
+                                : "—"}
                         </span>
                     }
                     icon={<CheckCircle className="h-6 w-6" />}
@@ -2491,22 +2844,26 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         <span className={`text-2xl font-bold ${aiRiskColor}`}>
                             {stats.avgRiskScore !== null
                                 ? `${(stats.avgRiskScore * 100).toFixed(1)}%`
-                                : '—'}
+                                : "—"}
                         </span>
                     }
                     icon={<Scale className="h-6 w-6" />}
                     color={
                         stats.avgRiskScore === null
-                            ? 'blue'
+                            ? "blue"
                             : stats.avgRiskScore < 0.35
-                              ? 'green'
+                              ? "green"
                               : stats.avgRiskScore < 0.65
-                                ? 'gold'
-                                : 'red'
+                                ? "gold"
+                                : "red"
                     }
                     subtext={
                         stats.avgRiskScore !== null
-                            ? stats.avgRiskScore < 0.35 ? 'Low risk portfolio' : stats.avgRiskScore < 0.65 ? 'Medium risk portfolio' : 'High risk portfolio'
+                            ? stats.avgRiskScore < 0.35
+                                ? "Low risk portfolio"
+                                : stats.avgRiskScore < 0.65
+                                  ? "Medium risk portfolio"
+                                  : "High risk portfolio"
                             : undefined
                     }
                 />
@@ -2514,7 +2871,9 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                     label="SHAP Integrity Pass Rate"
                     displayValue={
                         <span className="text-2xl font-bold text-gray-900">
-                            {stats.shapPassRate !== null ? `${stats.shapPassRate}%` : '—'}
+                            {stats.shapPassRate !== null
+                                ? `${stats.shapPassRate}%`
+                                : "—"}
                         </span>
                     }
                     icon={<ShieldCheck className="h-6 w-6" />}
@@ -2538,33 +2897,47 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         <span className="text-2xl font-bold text-gray-900">
                             {stats.lastAuditDays !== null
                                 ? `${stats.lastAuditDays}d ago`
-                                : 'Never run'}
+                                : "Never run"}
                         </span>
                     }
                     icon={<FileText className="h-6 w-6" />}
-                    color={stats.lastAuditDays !== null && stats.lastAuditDays > 90 ? 'red' : 'blue'}
-                    subtext={stats.lastAuditDate ? formatDate(stats.lastAuditDate) : undefined}
+                    color={
+                        stats.lastAuditDays !== null && stats.lastAuditDays > 90
+                            ? "red"
+                            : "blue"
+                    }
+                    subtext={
+                        stats.lastAuditDate
+                            ? formatDate(stats.lastAuditDate)
+                            : undefined
+                    }
                 />
             </div>
 
             {/* Section 3: Enhanced System Health Panel */}
             <div className="grid gap-4 lg:grid-cols-3">
                 <div className="rounded-xl border border-gray-200 bg-white p-5">
-                    <h3 className="mb-4 text-sm font-semibold text-gray-900">System Health</h3>
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900">
+                        System Health
+                    </h3>
                     <ul className="space-y-3 text-sm">
                         <li className="flex items-center justify-between">
                             <span className="flex items-center gap-2 text-gray-600">
                                 <Building2 className="h-4 w-4 text-blue-500" />
                                 Active Loan Providers
                             </span>
-                            <strong className="text-gray-900">{stats.activeLoanProviders}</strong>
+                            <strong className="text-gray-900">
+                                {stats.activeLoanProviders}
+                            </strong>
                         </li>
                         <li className="flex items-center justify-between">
                             <span className="flex items-center gap-2 text-gray-600">
                                 <FileText className="h-4 w-4 text-purple-500" />
                                 Registered Loan Officers
                             </span>
-                            <strong className="text-gray-900">{stats.loanOfficerCount}</strong>
+                            <strong className="text-gray-900">
+                                {stats.loanOfficerCount}
+                            </strong>
                         </li>
                         <li className="flex items-center justify-between">
                             <span className="flex items-center gap-2 text-gray-600">
@@ -2577,7 +2950,9 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                         </li>
                         <li className="flex items-center justify-between">
                             <span className="flex items-center gap-2 text-gray-600">
-                                <AlertTriangle className={`h-4 w-4 ${drift.alert ? 'text-red-500' : 'text-gray-400'}`} />
+                                <AlertTriangle
+                                    className={`h-4 w-4 ${drift.alert ? "text-red-500" : "text-gray-400"}`}
+                                />
                                 Model Drift Alert
                             </span>
                             {drift.alert ? (
@@ -2594,8 +2969,12 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                 </div>
 
                 <div className="rounded-xl border border-gray-200 bg-white p-5 lg:col-span-2">
-                    <h3 className="mb-4 text-sm font-semibold text-gray-900">Application Status Breakdown</h3>
-                    <ApplicationBreakdown appsByStatus={stats.appsByStatus ?? {}} />
+                    <h3 className="mb-4 text-sm font-semibold text-gray-900">
+                        Application Status Breakdown
+                    </h3>
+                    <ApplicationBreakdown
+                        appsByStatus={stats.appsByStatus ?? {}}
+                    />
                 </div>
             </div>
 
@@ -2603,10 +2982,37 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
             <div>
                 <SectionDivider title="Application Pipeline Analytics" />
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <ApplicationsOverTimeChart data={stats.applicationsOverTime ?? { labels: [], submitted: [], evaluated: [], decided: [] }} />
-                    <StatusDistributionChart data={stats.statusDistribution ?? {}} />
-                    <RiskBandByProviderChart data={stats.riskBandByProvider ?? { providers: [], low: [], medium: [], high: [] }} />
-                    <AvgNpvBySectorChart data={stats.avgNpvBySector ?? { sectors: [], avgLimits: [] }} />
+                    <ApplicationsOverTimeChart
+                        data={
+                            stats.applicationsOverTime ?? {
+                                labels: [],
+                                submitted: [],
+                                evaluated: [],
+                                decided: [],
+                            }
+                        }
+                    />
+                    <StatusDistributionChart
+                        data={stats.statusDistribution ?? {}}
+                    />
+                    <RiskBandByProviderChart
+                        data={
+                            stats.riskBandByProvider ?? {
+                                providers: [],
+                                low: [],
+                                medium: [],
+                                high: [],
+                            }
+                        }
+                    />
+                    <AvgNpvBySectorChart
+                        data={
+                            stats.avgNpvBySector ?? {
+                                sectors: [],
+                                avgLimits: [],
+                            }
+                        }
+                    />
                 </div>
             </div>
 
@@ -2616,65 +3022,183 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                 <div className="mb-4 grid gap-4 lg:grid-cols-3">
                     {/* Validated thesis metrics card */}
                     <div className="rounded-xl border border-gray-200 bg-white p-5">
-                        <h3 className="mb-3 text-sm font-semibold text-gray-900">Validated Performance</h3>
+                        <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                            Validated Performance
+                        </h3>
                         <dl className="space-y-2 text-xs">
-                            <div className="flex justify-between"><dt className="text-gray-500">DeepAR MAPE</dt><dd className="font-semibold text-gray-900">2.94%</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">P10 Coverage</dt><dd className="font-semibold text-gray-900">94.20%</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">XGBoost AUC-ROC</dt><dd className="font-semibold text-gray-900">0.8842</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">XGBoost F1 Score</dt><dd className="font-semibold text-gray-900">0.8140</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">KS Statistic</dt><dd className="font-semibold text-gray-900">0.6942</dd></div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">DeepAR MAPE</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    2.94%
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">P10 Coverage</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    94.20%
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">
+                                    XGBoost AUC-ROC
+                                </dt>
+                                <dd className="font-semibold text-gray-900">
+                                    0.8842
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">
+                                    XGBoost F1 Score
+                                </dt>
+                                <dd className="font-semibold text-gray-900">
+                                    0.8140
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">KS Statistic</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    0.6942
+                                </dd>
+                            </div>
                         </dl>
-                        <div className={`mt-3 rounded-lg px-3 py-2 text-xs ${drift.source === 'live' ? 'bg-blue-50 text-blue-700' : 'bg-gray-50 text-gray-500'}`}>
-                            {drift.source === 'live' ? (
-                                <>Live MAPE: <strong>{drift.mape?.toFixed(2)}%</strong> · AUC-ROC: <strong>{drift.auc_roc?.toFixed(4)}</strong></>
+                        <div
+                            className={`mt-3 rounded-lg px-3 py-2 text-xs ${drift.source === "live" ? "bg-blue-50 text-blue-700" : "bg-gray-50 text-gray-500"}`}
+                        >
+                            {drift.source === "live" ? (
+                                <>
+                                    Live MAPE:{" "}
+                                    <strong>{drift.mape?.toFixed(2)}%</strong> ·
+                                    AUC-ROC:{" "}
+                                    <strong>{drift.auc_roc?.toFixed(4)}</strong>
+                                </>
                             ) : (
-                                'Using thesis-validated baseline metrics'
+                                "Using thesis-validated baseline metrics"
                             )}
                         </div>
                     </div>
                     {/* Psychometric vs Risk scatter — simplified as a summary stat card */}
                     <div className="rounded-xl border border-gray-200 bg-white p-5">
-                        <h3 className="mb-3 text-sm font-semibold text-gray-900">Psychometric vs Risk Score</h3>
-                        {stats.psychometricVsRisk && stats.psychometricVsRisk.length > 0 ? (
+                        <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                            Psychometric vs Risk Score
+                        </h3>
+                        {stats.psychometricVsRisk &&
+                        stats.psychometricVsRisk.length > 0 ? (
                             <>
                                 <p className="mb-3 text-xs text-gray-500">
-                                    {stats.psychometricVsRisk.length} data points sampled. Higher psychometric composite correlates with lower AI risk score.
+                                    {stats.psychometricVsRisk.length} data
+                                    points sampled. Higher psychometric
+                                    composite correlates with lower AI risk
+                                    score.
                                 </p>
                                 <div className="space-y-2 text-xs">
-                                    {(['low', 'medium', 'high'] as const).map((band) => {
-                                        const pts = stats.psychometricVsRisk.filter((p) => p.band === band);
-                                        const avgPsych = pts.length > 0 ? pts.reduce((s, p) => s + p.x, 0) / pts.length : null;
-                                        return (
-                                            <div key={band} className="flex items-center justify-between">
-                                                <span className="text-gray-500 capitalize">{band} risk</span>
-                                                <span className={`font-semibold ${band === 'low' ? 'text-green-600' : band === 'medium' ? 'text-amber-600' : 'text-red-600'}`}>
-                                                    {pts.length} pts · avg psych {avgPsych !== null ? (avgPsych * 100).toFixed(1) : '—'}
-                                                </span>
-                                            </div>
-                                        );
-                                    })}
+                                    {(["low", "medium", "high"] as const).map(
+                                        (band) => {
+                                            const pts =
+                                                stats.psychometricVsRisk.filter(
+                                                    (p) => p.band === band,
+                                                );
+                                            const avgPsych =
+                                                pts.length > 0
+                                                    ? pts.reduce(
+                                                          (s, p) => s + p.x,
+                                                          0,
+                                                      ) / pts.length
+                                                    : null;
+                                            return (
+                                                <div
+                                                    key={band}
+                                                    className="flex items-center justify-between"
+                                                >
+                                                    <span className="text-gray-500 capitalize">
+                                                        {band} risk
+                                                    </span>
+                                                    <span
+                                                        className={`font-semibold ${band === "low" ? "text-green-600" : band === "medium" ? "text-amber-600" : "text-red-600"}`}
+                                                    >
+                                                        {pts.length} pts · avg
+                                                        psych{" "}
+                                                        {avgPsych !== null
+                                                            ? (
+                                                                  avgPsych * 100
+                                                              ).toFixed(1)
+                                                            : "—"}
+                                                    </span>
+                                                </div>
+                                            );
+                                        },
+                                    )}
                                 </div>
                             </>
                         ) : (
-                            <p className="text-xs text-gray-400">Requires both psychometric assessments and completed valuations.</p>
+                            <p className="text-xs text-gray-400">
+                                Requires both psychometric assessments and
+                                completed valuations.
+                            </p>
                         )}
                     </div>
                     {/* Forecast model performance */}
                     <div className="rounded-xl border border-gray-200 bg-white p-5">
-                        <h3 className="mb-3 text-sm font-semibold text-gray-900">Forecast Model (DeepAR)</h3>
+                        <h3 className="mb-3 text-sm font-semibold text-gray-900">
+                            Forecast Model (DeepAR)
+                        </h3>
                         <dl className="space-y-2 text-xs">
-                            <div className="flex justify-between"><dt className="text-gray-500">Architecture</dt><dd className="font-semibold text-gray-900">DeepAR</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">Horizon</dt><dd className="font-semibold text-gray-900">90 days</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">MAPE (test)</dt><dd className="font-semibold text-green-700">2.94%</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">vs ARIMA</dt><dd className="font-semibold text-green-700">−70.7%</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">vs Prophet</dt><dd className="font-semibold text-green-700">−67.0%</dd></div>
-                            <div className="flex justify-between"><dt className="text-gray-500">P10 coverage</dt><dd className="font-semibold text-gray-900">94.20%</dd></div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">Architecture</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    DeepAR
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">Horizon</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    90 days
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">MAPE (test)</dt>
+                                <dd className="font-semibold text-green-700">
+                                    2.94%
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">vs ARIMA</dt>
+                                <dd className="font-semibold text-green-700">
+                                    −70.7%
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">vs Prophet</dt>
+                                <dd className="font-semibold text-green-700">
+                                    −67.0%
+                                </dd>
+                            </div>
+                            <div className="flex justify-between">
+                                <dt className="text-gray-500">P10 coverage</dt>
+                                <dd className="font-semibold text-gray-900">
+                                    94.20%
+                                </dd>
+                            </div>
                         </dl>
                     </div>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
-                    <RiskScoreDistributionChart data={stats.riskScoreDistribution ?? { labels: [], counts: [] }} />
-                    <NpvCreditLimitDistributionChart data={stats.npvCreditLimitDistribution ?? { labels: [], counts: [], median: null }} />
+                    <RiskScoreDistributionChart
+                        data={
+                            stats.riskScoreDistribution ?? {
+                                labels: [],
+                                counts: [],
+                            }
+                        }
+                    />
+                    <NpvCreditLimitDistributionChart
+                        data={
+                            stats.npvCreditLimitDistribution ?? {
+                                labels: [],
+                                counts: [],
+                                median: null,
+                            }
+                        }
+                    />
                 </div>
             </div>
 
@@ -2682,11 +3206,22 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
             <div>
                 <SectionDivider title="Compliance and Governance" />
                 <div className="grid gap-4 lg:grid-cols-3">
-                    <DataCoverageHealthBar data={stats.dataCoverageHealth ?? { tier_excellent: 0, tier_good: 0, tier_marginal: 0, tier_insufficient: 0 }} />
+                    <DataCoverageHealthBar
+                        data={
+                            stats.dataCoverageHealth ?? {
+                                tier_excellent: 0,
+                                tier_good: 0,
+                                tier_marginal: 0,
+                                tier_insufficient: 0,
+                            }
+                        }
+                    />
                     <PdppComplianceCard />
                     <div className="rounded-xl border border-gray-200 bg-white p-5">
                         <div className="mb-4 flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-gray-900">Recent Audit Log</h3>
+                            <h3 className="text-sm font-semibold text-gray-900">
+                                Recent Audit Log
+                            </h3>
                             <Link
                                 href="/admin/audit-logs"
                                 className="text-xs font-medium text-blue-600 hover:text-blue-800"
@@ -2695,23 +3230,38 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
                             </Link>
                         </div>
                         {stats.recentActivity.length === 0 ? (
-                            <p className="text-xs text-gray-400">No audit log entries yet.</p>
+                            <p className="text-xs text-gray-400">
+                                No audit log entries yet.
+                            </p>
                         ) : (
                             <ul className="space-y-2.5">
-                                {stats.recentActivity.slice(0, 8).map((entry, i) => (
-                                    <li
-                                        key={`${entry.created_at}-${i}`}
-                                        className="border-b border-gray-50 pb-2.5 last:border-0 last:pb-0"
-                                    >
-                                        <div className="flex items-start justify-between gap-2">
-                                            <div className="min-w-0">
-                                                <p className="truncate text-xs font-medium text-gray-800">{entry.action}</p>
-                                                <p className="text-xs text-gray-400">{entry.actor_name}{entry.entity_type ? ` · ${entry.entity_type}` : ''}</p>
+                                {stats.recentActivity
+                                    .slice(0, 8)
+                                    .map((entry, i) => (
+                                        <li
+                                            key={`${entry.created_at}-${i}`}
+                                            className="border-b border-gray-50 pb-2.5 last:border-0 last:pb-0"
+                                        >
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div className="min-w-0">
+                                                    <p className="truncate text-xs font-medium text-gray-800">
+                                                        {entry.action}
+                                                    </p>
+                                                    <p className="text-xs text-gray-400">
+                                                        {entry.actor_name}
+                                                        {entry.entity_type
+                                                            ? ` · ${entry.entity_type}`
+                                                            : ""}
+                                                    </p>
+                                                </div>
+                                                <time className="shrink-0 text-xs text-gray-400">
+                                                    {formatDate(
+                                                        entry.created_at,
+                                                    )}
+                                                </time>
                                             </div>
-                                            <time className="shrink-0 text-xs text-gray-400">{formatDate(entry.created_at)}</time>
-                                        </div>
-                                    </li>
-                                ))}
+                                        </li>
+                                    ))}
                             </ul>
                         )}
                     </div>
@@ -2732,7 +3282,11 @@ function SuperAdminDashboard({ stats }: { stats: SuperAdminStats }) {
 type Props = PageProps<{
     role: string;
     user: { name: string; email: string };
-    stats: SmeOwnerStats | LoanOfficerStats | SuperAdminStats | Record<string, never>;
+    stats:
+        | SmeOwnerStats
+        | LoanOfficerStats
+        | SuperAdminStats
+        | Record<string, never>;
     analytics?: LoanProviderAnalytics;
 }>;
 
@@ -2748,7 +3302,7 @@ export default function Dashboard() {
     const { role, user, stats, analytics } = usePage<Props>().props;
 
     const content = useMemo(() => {
-        if (role === 'sme_owner' || role === 'sme-owner') {
+        if (role === "sme_owner" || role === "sme-owner") {
             return (
                 <SmeOwnerDashboard
                     userName={user.name}
@@ -2764,10 +3318,8 @@ export default function Dashboard() {
                 />
             );
         }
-        if (role === 'super_admin' || role === 'super-admin') {
-            return (
-                <SuperAdminDashboard stats={stats as SuperAdminStats} />
-            );
+        if (role === "super_admin" || role === "super-admin") {
+            return <SuperAdminDashboard stats={stats as SuperAdminStats} />;
         }
         return (
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

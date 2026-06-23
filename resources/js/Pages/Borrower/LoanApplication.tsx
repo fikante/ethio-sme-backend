@@ -1,14 +1,14 @@
-import ApplyModal, { type LoanProviderOption } from '@/Components/ApplyModal';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import ApplyModal, { type LoanProviderOption } from "@/Components/ApplyModal";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout";
 import {
     chartFont,
     ensureChartsRegistered,
     getChartPalette,
     useIsDarkMode,
-} from '@/lib/chartTheme';
-import type { PageProps } from '@/types';
-import { Head, usePage } from '@inertiajs/react';
-import { type ChartData, type ChartOptions } from 'chart.js';
+} from "@/lib/chartTheme";
+import type { PageProps } from "@/types";
+import { Head, usePage } from "@inertiajs/react";
+import { type ChartData, type ChartOptions } from "chart.js";
 import {
     AlertTriangle,
     ArrowDownRight,
@@ -19,9 +19,9 @@ import {
     Clock,
     Plus,
     TrendingUp,
-} from 'lucide-react';
-import { useMemo, useState } from 'react';
-import { Bar, Line } from 'react-chartjs-2';
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Bar, Line } from "react-chartjs-2";
 
 ensureChartsRegistered();
 
@@ -58,7 +58,7 @@ interface CashflowStats {
     positive_days: number;
     negative_days: number;
     positive_ratio: number;
-    cashflow_volatility: 'Low' | 'Moderate' | 'High' | 'Insufficient data';
+    cashflow_volatility: "Low" | "Moderate" | "High" | "Insufficient data";
 }
 
 interface ExistingApplication {
@@ -92,51 +92,55 @@ const APPLICATION_STATUS_LABELS: Record<
     string,
     { label: string; color: string; bg: string }
 > = {
-    draft: { label: 'Draft', color: 'text-gray-500 dark:text-zinc-400', bg: 'bg-gray-100 dark:bg-zinc-800' },
+    draft: {
+        label: "Draft",
+        color: "text-gray-500 dark:text-zinc-400",
+        bg: "bg-gray-100 dark:bg-zinc-800",
+    },
     submitted: {
-        label: 'Under Review',
-        color: 'text-blue-400',
-        bg: 'bg-blue-50 dark:bg-blue-900/30',
+        label: "Under Review",
+        color: "text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-900/30",
     },
     pending_psychometric: {
-        label: 'Action Required',
-        color: 'text-amber-400',
-        bg: 'bg-amber-50 dark:bg-amber-900/30',
+        label: "Action Required",
+        color: "text-amber-400",
+        bg: "bg-amber-50 dark:bg-amber-900/30",
     },
     pending_data_sync: {
-        label: 'Syncing Data',
-        color: 'text-blue-400',
-        bg: 'bg-blue-50 dark:bg-blue-900/30',
+        label: "Syncing Data",
+        color: "text-blue-400",
+        bg: "bg-blue-50 dark:bg-blue-900/30",
     },
     queued_for_ai: {
-        label: 'In AI Queue',
-        color: 'text-purple-400',
-        bg: 'bg-purple-50 dark:bg-purple-900/30',
+        label: "In AI Queue",
+        color: "text-purple-400",
+        bg: "bg-purple-50 dark:bg-purple-900/30",
     },
     processing: {
-        label: 'AI Evaluating',
-        color: 'text-purple-400',
-        bg: 'bg-purple-50 dark:bg-purple-900/30',
+        label: "AI Evaluating",
+        color: "text-purple-400",
+        bg: "bg-purple-50 dark:bg-purple-900/30",
     },
     evaluated: {
-        label: 'Evaluated',
-        color: 'text-green-400',
-        bg: 'bg-green-50 dark:bg-green-900/30',
+        label: "Evaluated",
+        color: "text-green-400",
+        bg: "bg-green-50 dark:bg-green-900/30",
     },
     approved: {
-        label: 'Approved',
-        color: 'text-emerald-400',
-        bg: 'bg-emerald-50 dark:bg-emerald-900/30',
+        label: "Approved",
+        color: "text-emerald-400",
+        bg: "bg-emerald-50 dark:bg-emerald-900/30",
     },
     rejected: {
-        label: 'Not Approved',
-        color: 'text-red-400',
-        bg: 'bg-red-50 dark:bg-red-900/30',
+        label: "Not Approved",
+        color: "text-red-400",
+        bg: "bg-red-50 dark:bg-red-900/30",
     },
     withdrawn: {
-        label: 'Withdrawn',
-        color: 'text-gray-400 dark:text-zinc-500',
-        bg: 'bg-gray-100 dark:bg-zinc-800',
+        label: "Withdrawn",
+        color: "text-gray-400 dark:text-zinc-500",
+        bg: "bg-gray-100 dark:bg-zinc-800",
     },
 };
 
@@ -144,22 +148,22 @@ const APPLICATION_STATUS_LABELS: Record<
 // Helpers
 // ---------------------------------------------------------------------------
 
-const etbFormatter = new Intl.NumberFormat('en-US', {
+const etbFormatter = new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
 });
 
 function formatETB(amount: string | number | null | undefined): string {
-    if (amount === null || amount === undefined) return '—';
-    const n = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (Number.isNaN(n)) return '—';
+    if (amount === null || amount === undefined) return "—";
+    const n = typeof amount === "string" ? parseFloat(amount) : amount;
+    if (Number.isNaN(n)) return "—";
     return `ETB ${etbFormatter.format(Math.round(n))}`;
 }
 
 function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
+    return new Date(iso).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
     });
 }
 
@@ -181,9 +185,9 @@ function normalizePageErrors(
 
 function StatusBadge({ status }: { status: string }) {
     const meta = APPLICATION_STATUS_LABELS[status] ?? {
-        label: status.replace(/_/g, ' '),
-        color: 'text-gray-500 dark:text-zinc-400',
-        bg: 'bg-gray-100 dark:bg-zinc-800',
+        label: status.replace(/_/g, " "),
+        color: "text-gray-500 dark:text-zinc-400",
+        bg: "bg-gray-100 dark:bg-zinc-800",
     };
     return (
         <span
@@ -203,21 +207,27 @@ function StatCard({
     label: string;
     value: string;
     sub?: string;
-    accent?: 'green' | 'red' | 'neutral';
+    accent?: "green" | "red" | "neutral";
 }) {
     const valueColor =
-        accent === 'green'
-            ? 'text-emerald-400'
-            : accent === 'red'
-              ? 'text-red-400'
-              : 'text-gray-900 dark:text-zinc-100';
+        accent === "green"
+            ? "text-emerald-400"
+            : accent === "red"
+              ? "text-red-400"
+              : "text-gray-900 dark:text-zinc-100";
     return (
         <div className="rounded-xl border border-gray-200 dark:border-zinc-700/50 bg-gray-100 dark:bg-zinc-800/60 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">{label}</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-zinc-400">
+                {label}
+            </p>
             <p className={`mt-1 text-xl font-bold tabular-nums ${valueColor}`}>
                 {value}
             </p>
-            {sub && <p className="mt-0.5 text-xs text-gray-400 dark:text-zinc-500">{sub}</p>}
+            {sub && (
+                <p className="mt-0.5 text-xs text-gray-400 dark:text-zinc-500">
+                    {sub}
+                </p>
+            )}
         </div>
     );
 }
@@ -232,15 +242,15 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
 
     const labels = records.map((r) => r.date);
 
-    const data: ChartData<'line'> = useMemo(
+    const data: ChartData<"line"> = useMemo(
         () => ({
             labels,
             datasets: [
                 {
-                    label: 'Daily Inflow',
+                    label: "Daily Inflow",
                     data: records.map((r) => r.inflow),
-                    borderColor: '#22c55e',
-                    backgroundColor: '#22c55e33',
+                    borderColor: "#22c55e",
+                    backgroundColor: "#22c55e33",
                     fill: true,
                     tension: 0.3,
                     borderWidth: 1.5,
@@ -248,10 +258,10 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
                     pointHoverRadius: 4,
                 },
                 {
-                    label: 'Daily Outflow',
+                    label: "Daily Outflow",
                     data: records.map((r) => r.outflow),
-                    borderColor: '#ef4444',
-                    backgroundColor: '#ef444433',
+                    borderColor: "#ef4444",
+                    backgroundColor: "#ef444433",
                     fill: true,
                     tension: 0.3,
                     borderWidth: 1.5,
@@ -259,10 +269,10 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
                     pointHoverRadius: 4,
                 },
                 {
-                    label: 'Net Cash Flow',
+                    label: "Net Cash Flow",
                     data: records.map((r) => r.net),
-                    borderColor: '#fafafa',
-                    backgroundColor: 'transparent',
+                    borderColor: "#fafafa",
+                    backgroundColor: "transparent",
                     fill: false,
                     tension: 0.3,
                     borderWidth: 2,
@@ -275,20 +285,20 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
         [records, palette],
     );
 
-    const options: ChartOptions<'line'> = useMemo(
+    const options: ChartOptions<"line"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            animation: { duration: 400, easing: 'easeOutQuart' },
+            interaction: { mode: "index", intersect: false },
+            animation: { duration: 400, easing: "easeOutQuart" },
             plugins: {
                 legend: {
-                    position: 'top',
+                    position: "top",
                     labels: {
                         color: palette.textMuted,
                         padding: 16,
                         usePointStyle: true,
-                        pointStyle: 'circle',
+                        pointStyle: "circle",
                         font: chartFont(),
                     },
                 },
@@ -307,8 +317,13 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
                 },
                 datalabels: { display: false },
                 zoom: {
-                    zoom: { wheel: { enabled: false }, pinch: { enabled: false }, drag: { enabled: false }, mode: 'x' },
-                    pan: { enabled: false, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: false },
+                        pinch: { enabled: false },
+                        drag: { enabled: false },
+                        mode: "x",
+                    },
+                    pan: { enabled: false, mode: "x" },
                 },
             },
             scales: {
@@ -328,7 +343,7 @@ function DailyCashFlowChart({ records }: { records: HeartbeatRecord[] }) {
                     ticks: {
                         color: palette.textMuted,
                         callback: (value) =>
-                            `ETB ${Number(value).toLocaleString('en-US')}`,
+                            `ETB ${Number(value).toLocaleString("en-US")}`,
                         font: chartFont(),
                     },
                 },
@@ -352,15 +367,15 @@ function WeeklyTxnChart({ weeks }: { weeks: WeeklyTxn[] }) {
     const isDark = useIsDarkMode();
     const palette = useMemo(() => getChartPalette(isDark), [isDark]);
 
-    const data: ChartData<'bar'> = useMemo(
+    const data: ChartData<"bar"> = useMemo(
         () => ({
             labels: weeks.map((w) => w.week),
             datasets: [
                 {
-                    label: 'Weekly Transactions',
+                    label: "Weekly Transactions",
                     data: weeks.map((w) => w.total),
-                    backgroundColor: '#3b82f6cc',
-                    borderColor: '#3b82f6',
+                    backgroundColor: "#3b82f6cc",
+                    borderColor: "#3b82f6",
                     borderWidth: 1,
                     borderRadius: 4,
                     borderSkipped: false,
@@ -371,11 +386,11 @@ function WeeklyTxnChart({ weeks }: { weeks: WeeklyTxn[] }) {
         [weeks, palette],
     );
 
-    const options: ChartOptions<'bar'> = useMemo(
+    const options: ChartOptions<"bar"> = useMemo(
         () => ({
             responsive: true,
             maintainAspectRatio: false,
-            animation: { duration: 400, easing: 'easeOutQuart' },
+            animation: { duration: 400, easing: "easeOutQuart" },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -392,8 +407,13 @@ function WeeklyTxnChart({ weeks }: { weeks: WeeklyTxn[] }) {
                 },
                 datalabels: { display: false },
                 zoom: {
-                    zoom: { wheel: { enabled: false }, pinch: { enabled: false }, drag: { enabled: false }, mode: 'x' },
-                    pan: { enabled: false, mode: 'x' },
+                    zoom: {
+                        wheel: { enabled: false },
+                        pinch: { enabled: false },
+                        drag: { enabled: false },
+                        mode: "x",
+                    },
+                    pan: { enabled: false, mode: "x" },
                 },
             },
             scales: {
@@ -460,8 +480,7 @@ export default function LoanApplication() {
     const [txTableOpen, setTxTableOpen] = useState(false);
 
     const hasActiveApp =
-        existingApplication !== null &&
-        existingApplication.status !== 'draft';
+        existingApplication !== null && existingApplication.status !== "draft";
 
     const hasSubmitErrors = Object.keys(pageErrors).length > 0;
 
@@ -475,34 +494,34 @@ export default function LoanApplication() {
 
     const volatilityConfig = {
         Low: {
-            color: 'text-emerald-400',
-            bg: 'bg-emerald-50 dark:bg-emerald-900/30',
-            desc: 'Your revenue is very stable',
+            color: "text-emerald-400",
+            bg: "bg-emerald-50 dark:bg-emerald-900/30",
+            desc: "Your revenue is very stable",
         },
         Moderate: {
-            color: 'text-amber-400',
-            bg: 'bg-amber-50 dark:bg-amber-900/30',
-            desc: 'Some variation in your revenue pattern',
+            color: "text-amber-400",
+            bg: "bg-amber-50 dark:bg-amber-900/30",
+            desc: "Some variation in your revenue pattern",
         },
         High: {
-            color: 'text-red-400',
-            bg: 'bg-red-50 dark:bg-red-900/30',
-            desc: 'Significant revenue variation detected',
+            color: "text-red-400",
+            bg: "bg-red-50 dark:bg-red-900/30",
+            desc: "Significant revenue variation detected",
         },
-        'Insufficient data': {
-            color: 'text-gray-500 dark:text-zinc-400',
-            bg: 'bg-gray-100 dark:bg-zinc-800',
-            desc: 'Not enough data to assess stability',
+        "Insufficient data": {
+            color: "text-gray-500 dark:text-zinc-400",
+            bg: "bg-gray-100 dark:bg-zinc-800",
+            desc: "Not enough data to assess stability",
         },
     } as const;
 
     const consistencyMeta =
         cashflowStats !== null
             ? cashflowStats.positive_ratio >= 70
-                ? { label: 'Strong consistency', dot: 'bg-emerald-400' }
+                ? { label: "Strong consistency", dot: "bg-emerald-400" }
                 : cashflowStats.positive_ratio >= 40
-                  ? { label: 'Moderate', dot: 'bg-amber-400' }
-                  : { label: 'Needs attention', dot: 'bg-red-400' }
+                  ? { label: "Moderate", dot: "bg-amber-400" }
+                  : { label: "Needs attention", dot: "bg-red-400" }
             : null;
 
     return (
@@ -543,15 +562,18 @@ export default function LoanApplication() {
                                 {heartbeatDays} days of transaction data
                                 {transactionDateRange && (
                                     <>
-                                        {' '}
-                                        · {formatDate(transactionDateRange.from)}{' '}
+                                        {" "}
+                                        ·{" "}
+                                        {formatDate(
+                                            transactionDateRange.from,
+                                        )}{" "}
                                         – {formatDate(transactionDateRange.to)}
                                     </>
                                 )}
                             </p>
                         )}
                     </div>
-                    {!hasActiveApp && (
+                    {/* {!hasActiveApp && (
                         <button
                             type="button"
                             onClick={() => setModalOpen(true)}
@@ -560,7 +582,7 @@ export default function LoanApplication() {
                             <Plus className="h-4 w-4" />
                             Apply for a Loan
                         </button>
-                    )}
+                    )} */}
                 </div>
 
                 {/* Empty state */}
@@ -620,11 +642,11 @@ export default function LoanApplication() {
                                         existingApplication.apr !== null &&
                                         existingApplication.apr !== undefined
                                             ? `${(Number(existingApplication.apr) * 100).toFixed(2)}%`
-                                            : 'Pending evaluation'
+                                            : "Pending evaluation"
                                     }
                                     sub={
                                         existingApplication.apr !== null
-                                            ? 'Annual percentage rate'
+                                            ? "Annual percentage rate"
                                             : undefined
                                     }
                                 />
@@ -632,16 +654,16 @@ export default function LoanApplication() {
                                     label="AI Risk Band"
                                     value={
                                         existingApplication.ai_risk_band ??
-                                        'Pending'
+                                        "Pending"
                                     }
                                     accent={
                                         existingApplication.ai_risk_band ===
-                                        'Low'
-                                            ? 'green'
+                                        "Low"
+                                            ? "green"
                                             : existingApplication.ai_risk_band ===
-                                                'High'
-                                              ? 'red'
-                                              : 'neutral'
+                                                "High"
+                                              ? "red"
+                                              : "neutral"
                                     }
                                 />
                             </div>
@@ -650,14 +672,14 @@ export default function LoanApplication() {
                             <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-zinc-500">
                                 <CalendarDays className="h-3.5 w-3.5 shrink-0" />
                                 <span>
-                                    Submitted{' '}
+                                    Submitted{" "}
                                     {formatDate(existingApplication.created_at)}
                                 </span>
                             </div>
 
                             {/* Psychometric CTA */}
                             {existingApplication.status ===
-                                'pending_psychometric' && (
+                                "pending_psychometric" && (
                                 <div className="flex items-center justify-between gap-4 rounded-xl border border-blue-700/50 bg-blue-900/20 px-4 py-3">
                                     <div className="flex items-center gap-3">
                                         <AlertTriangle className="h-4 w-4 shrink-0 text-blue-400" />
@@ -742,8 +764,8 @@ export default function LoanApplication() {
                                         <p
                                             className={`mt-0.5 text-base font-bold tabular-nums ${
                                                 cashflowStats.avg_net_30d >= 0
-                                                    ? 'text-emerald-400'
-                                                    : 'text-red-400'
+                                                    ? "text-emerald-400"
+                                                    : "text-red-400"
                                             }`}
                                         >
                                             {formatETB(
@@ -763,9 +785,9 @@ export default function LoanApplication() {
                                     <span className="font-semibold text-gray-700 dark:text-zinc-300">
                                         {cashflowStats.positive_ratio}%
                                         <span className="ml-1.5 text-gray-400 dark:text-zinc-500">
-                                            ({cashflowStats.positive_days}{' '}
-                                            positive /{' '}
-                                            {cashflowStats.negative_days}{' '}
+                                            ({cashflowStats.positive_days}{" "}
+                                            positive /{" "}
+                                            {cashflowStats.negative_days}{" "}
                                             negative)
                                         </span>
                                     </span>
@@ -786,9 +808,7 @@ export default function LoanApplication() {
                                     <p className="mb-3 text-xs font-medium text-gray-500 dark:text-zinc-400">
                                         Weekly Transaction Volume
                                     </p>
-                                    <WeeklyTxnChart
-                                        weeks={weeklyTxnCounts}
-                                    />
+                                    <WeeklyTxnChart weeks={weeklyTxnCounts} />
                                 </div>
                             )}
                         </div>
@@ -883,7 +903,7 @@ export default function LoanApplication() {
                                 </span>
                                 <span className="ml-2 text-xs text-gray-400 dark:text-zinc-500">
                                     {transactions.length} record
-                                    {transactions.length === 1 ? '' : 's'}
+                                    {transactions.length === 1 ? "" : "s"}
                                 </span>
                             </div>
                             {txTableOpen ? (
@@ -922,8 +942,8 @@ export default function LoanApplication() {
                                                     key={`${row.date}-${i}`}
                                                     className={`border-b border-gray-200/80 dark:border-zinc-800/80 ${
                                                         i % 2 === 0
-                                                            ? 'bg-white dark:bg-zinc-900'
-                                                            : 'bg-gray-50 dark:bg-zinc-800/30'
+                                                            ? "bg-white dark:bg-zinc-900"
+                                                            : "bg-gray-50 dark:bg-zinc-800/30"
                                                     }`}
                                                 >
                                                     <td className="px-6 py-3 text-gray-700 dark:text-zinc-300">
@@ -938,8 +958,8 @@ export default function LoanApplication() {
                                                     <td
                                                         className={`px-6 py-3 font-medium tabular-nums ${
                                                             Number(row.net) >= 0
-                                                                ? 'text-emerald-400'
-                                                                : 'text-red-400'
+                                                                ? "text-emerald-400"
+                                                                : "text-red-400"
                                                         }`}
                                                     >
                                                         {formatETB(row.net)}
@@ -959,12 +979,16 @@ export default function LoanApplication() {
             </div>
 
             <ApplyModal
-                isOpen={modalOpen || showSuccess || (hasSubmitErrors && !showSuccess)}
+                isOpen={
+                    modalOpen ||
+                    showSuccess ||
+                    (hasSubmitErrors && !showSuccess)
+                }
                 onClose={() => {
                     setModalOpen(false);
                     setShowSuccess(false);
                 }}
-                userName={authUser?.name ?? ''}
+                userName={authUser?.name ?? ""}
                 businessUuid={businessUuid}
                 psychometricCompleted={psychometricCompleted}
                 initialSuccess={showSuccess}

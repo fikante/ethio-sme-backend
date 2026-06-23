@@ -106,11 +106,11 @@ export default function Landing() {
             <div className="min-h-screen bg-white text-[#0A0A0A] dark:bg-[#0A0A0A] dark:text-white">
                 <div className="pointer-events-none absolute inset-0 overflow-hidden">
                     <div
-                        className="absolute inset-0 bg-[url('/photos/image.png')] bg-cover bg-center opacity-[0.08] grayscale [animation:heroKenBurns_18s_ease-in-out_infinite] dark:opacity-[0.2]"
+                        className="absolute inset-0 bg-[url('/photos/image.png')] bg-cover bg-[position:50%_28%] opacity-[0.16] [animation:heroKenBurns_18s_ease-in-out_infinite] dark:opacity-[0.26] sm:bg-center"
                         aria-hidden="true"
                     />
                     <div
-                        className="absolute inset-0 bg-gradient-to-b from-white/95 via-[#E5E5E5]/40 to-white/95 dark:from-[#0A0A0A]/90 dark:via-[#111111]/80 dark:to-[#0A0A0A]/95"
+                        className="absolute inset-0 bg-gradient-to-b from-white/88 via-[#E5E5E5]/30 to-white/92 dark:from-[#0A0A0A]/85 dark:via-[#111111]/75 dark:to-[#0A0A0A]/90"
                         aria-hidden="true"
                     />
                     <div
