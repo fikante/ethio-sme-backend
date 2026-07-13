@@ -1,0 +1,1 @@
+const e="psychometric-completed:";function o(t){localStorage.setItem(`${e}${t}`,String(Date.now())),window.dispatchEvent(new CustomEvent("psychometric-completed",{detail:{token:t}}))}function c(t){return t?localStorage.getItem(`${e}${t}`)!==null:!1}export{c as i,o as m};

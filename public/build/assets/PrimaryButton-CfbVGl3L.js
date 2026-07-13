@@ -1,0 +1,1 @@
+import{j as m}from"./app-d1m2Hi7s.js";import{g as s}from"./uiTheme-CNI7PnLm.js";function p({className:r="",disabled:t,children:o,...a}){return m.jsx("button",{...a,className:`${s} uppercase tracking-widest ${t?"opacity-25":""} ${r}`,disabled:t,children:o})}export{p as P};

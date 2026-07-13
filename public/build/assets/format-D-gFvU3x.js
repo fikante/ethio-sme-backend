@@ -1,0 +1,1 @@
+function n(r){if(r==null)return"Pending Full Data";const t=Number(r);return Number.isNaN(t)?String(r):`ETB ${t.toLocaleString("en-US",{maximumFractionDigits:0})}`}function e(r){if(r==null)return"—";const t=Number(r);return Number.isNaN(t)?"—":`${(t*100).toFixed(1)}%`}function i(r){return r.replace(/_/g," ").replace(/\b\w/g,t=>t.toUpperCase())}export{n as a,i as b,e as f};
