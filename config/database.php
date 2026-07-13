@@ -3,6 +3,10 @@
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
+$pgsqlDisablePrepares = defined('Pdo\\Pgsql::ATTR_DISABLE_PREPARES')
+    ? constant('Pdo\\Pgsql::ATTR_DISABLE_PREPARES')
+    : (defined('PDO::PGSQL_ATTR_DISABLE_PREPARES') ? constant('PDO::PGSQL_ATTR_DISABLE_PREPARES') : null);
+
 return [
 
     /*
@@ -97,16 +101,12 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
-            'options' => extension_loaded('pdo_pgsql') ? array_filter(
-                defined('PDO::PGSQL_ATTR_DISABLE_PREPARES')
-                    ? [
-                        PDO::PGSQL_ATTR_DISABLE_PREPARES => filter_var(
-                            env('DB_DISABLE_PREPARES', false),
-                            FILTER_VALIDATE_BOOLEAN,
-                        ),
-                    ]
-                    : []
-            ) : [],
+            'options' => extension_loaded('pdo_pgsql') && $pgsqlDisablePrepares !== null ? [
+                $pgsqlDisablePrepares => filter_var(
+                    env('DB_DISABLE_PREPARES', false),
+                    FILTER_VALIDATE_BOOLEAN,
+                ),
+            ] : [],
         ],
 
         'sqlsrv' => [
